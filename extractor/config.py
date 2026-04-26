@@ -31,7 +31,7 @@ ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 LLAMA_API_KEY     = os.environ.get("LLAMA_API_KEY", "")
 
 # ── GitHub ───────────────────────────────────────
-GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
+GITHUB_TOKEN = os.environ.get("G_TOKEN", "")
 GITHUB_REPO  = os.environ.get("GITHUB_REPO", "")
 
 # ── Output ───────────────────────────────────────
