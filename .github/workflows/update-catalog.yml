@@ -1,0 +1,60 @@
+name: Update Catalog from SharePoint
+
+on:
+  schedule:
+    - cron: '0 6 * * 1-5'   # Weekdays 6 AM UTC
+  workflow_dispatch:          # Manual trigger button
+  push:
+    branches: [main]
+    paths:
+      - 'extractor/**'        # Only when extractor changes
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('extractor/requirements.txt') }}
+
+      - name: Install dependencies
+        run: |
+          cd extractor
+          pip install -r requirements.txt
+
+      - name: Run SharePoint extraction
+        env:
+          SHAREPOINT_SITE_URL: ${{ secrets.SHAREPOINT_SITE_URL }}
+          AZURE_CLIENT_ID:     ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_TENANT_ID:     ${{ secrets.AZURE_TENANT_ID }}
+          ANTHROPIC_API_KEY:   ${{ secrets.ANTHROPIC_API_KEY }}
+          LLAMA_API_KEY:       ${{ secrets.LLAMA_API_KEY }}
+          GITHUB_TOKEN:        ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPO:         ${{ github.repository }}
+        run: |
+          cd extractor
+          python main.py
+
+      - name: Commit catalog_data.json to repo
+        run: |
+          git config --global user.email "catalog-bot@pwc.com"
+          git config --global user.name  "Catalog Bot"
+          git add catalog_data.json
+          git diff --staged --quiet || \
+            git commit -m \
+            "Auto-update catalog $(date +'%Y-%m-%d %H:%M') UTC"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
