@@ -2,20 +2,24 @@ name: Update Catalog from SharePoint
 
 on:
   schedule:
-    - cron: '0 6 * * 1-5'   # Weekdays 6 AM UTC
-  workflow_dispatch:          # Manual trigger button
+    - cron: '0 6 * * 1-5'
+  workflow_dispatch:
   push:
     branches: [main]
-    paths:
-      - 'extractor/**'        # Only when extractor changes
 
 jobs:
   extract:
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: write
+      pages: write
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.G_TOKEN }}
 
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
@@ -41,15 +45,15 @@ jobs:
           AZURE_TENANT_ID:     ${{ secrets.AZURE_TENANT_ID }}
           ANTHROPIC_API_KEY:   ${{ secrets.ANTHROPIC_API_KEY }}
           LLAMA_API_KEY:       ${{ secrets.LLAMA_API_KEY }}
-          GITHUB_TOKEN:        ${{ secrets.GITHUB_TOKEN }}
+          G_TOKEN:             ${{ secrets.G_TOKEN }}
           GITHUB_REPO:         ${{ github.repository }}
         run: |
           cd extractor
           python main.py
 
-      - name: Commit catalog_data.json to repo
+      - name: Commit and push catalog_data.json
         run: |
-          git config --global user.email "catalog-bot@pwc.com"
+          git config --global user.email "catalog-bot@github.com"
           git config --global user.name  "Catalog Bot"
           git add catalog_data.json
           git diff --staged --quiet || \
@@ -57,4 +61,4 @@ jobs:
             "Auto-update catalog $(date +'%Y-%m-%d %H:%M') UTC"
           git push
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.G_TOKEN }}
