@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>IT Contracting Dashboard — PwC</title>
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --or:#D04A02;--ord:#A33A00;--orm:#E8703A;--orl:#FAD4C0;--ort:#FEF0E7;
+  --bk:#1A1A1A;--dk:#2D2D2D;--md:#4A4A4A;--gd:#7D7D7D;--gy:#B0B0B0;
+  --gl:#E0E0E0;--gb:#F5F5F5;
+  --gn:#059669;--gnl:#D1FAE5;--gnb:#065F46;
+  --am:#D97706;--aml:#FEF3C7;--amb:#78350F;
+  --rd:#DC2626;--rdl:#FEE2E2;--rdb:#991B1B;
+  --fs:'Source Sans Pro',sans-serif;--ff:Georgia,serif;
+  --r:4px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{font-family:var(--fs);background:#E4E4E4;color:var(--dk);font-size:15px;line-height:1.55;}
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-thumb{background:var(--gy);border-radius:3px;}
+.nav{background:var(--dk);border-bottom:3px solid var(--or);height:56px;display:flex;align-items:center;padding:0 18px;position:sticky;top:0;z-index:1000;box-shadow:0 2px 8px rgba(0,0,0,.18);}
+.nav-logo{font-family:var(--ff);font-size:1.6rem;font-weight:700;color:var(--or);margin-right:10px;flex-shrink:0;}
+.nav-div{width:1px;height:20px;background:rgba(255,255,255,.15);margin:0 10px;}
+.nav-title{font-size:.78rem;font-weight:700;color:rgba(255,255,255,.38);text-transform:uppercase;letter-spacing:1px;flex-shrink:0;}
+.nav-tabs{display:flex;height:56px;margin-left:14px;overflow-x:auto;flex:1;}
+.ntab{display:flex;align-items:center;padding:0 14px;font-size:.80rem;font-weight:700;color:rgba(255,255,255,.38);cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap;text-transform:uppercase;letter-spacing:.5px;transition:all .15s;user-select:none;}
+.ntab:hover{color:rgba(255,255,255,.80);}
+.ntab.active{color:var(--or);border-bottom-color:var(--or);}
+.nbadge{background:var(--or);color:#fff;border-radius:9px;padding:1px 6px;font-size:.68rem;margin-left:4px;}
+.nav-r{display:flex;align-items:center;gap:8px;margin-left:auto;flex-shrink:0;}
+.nbtn{border:none;border-radius:var(--r);padding:6px 13px;font-size:.78rem;font-weight:700;cursor:pointer;font-family:var(--fs);}
+.nbtn.or{background:var(--or);color:#fff;}
+.nbtn.ai{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;}
+.nlive{background:var(--gn);color:#fff;border-radius:9px;padding:3px 9px;font-size:.70rem;font-weight:700;}
+.page{display:none;padding:14px 18px;}
+.page.active{display:block;}
+.ph{background:var(--dk);border-left:5px solid var(--or);border-radius:var(--r);padding:13px 17px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;}
+.ph-t{font-family:var(--ff);font-size:1.25rem;font-weight:700;color:#fff;margin-bottom:3px;}
+.ph-s{font-size:.80rem;color:rgba(255,255,255,.40);}
+.ph-v{font-family:var(--ff);font-size:1.8rem;font-weight:700;color:var(--or);}
+.ph-l{font-size:.68rem;color:rgba(255,255,255,.30);text-transform:uppercase;letter-spacing:.8px;}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px;}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:12px;}
+.g6{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:12px;}
+.g31{display:grid;grid-template-columns:3fr 1.2fr;gap:12px;}
+.kc{border-radius:var(--r);padding:12px 15px;color:#fff;position:relative;overflow:hidden;}
+.kc::after{content:'';position:absolute;top:-14px;right:-14px;width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,.06);}
+.kc.or{background:var(--or);}
+.kc.dk{background:var(--dk);}
+.kc.md{background:var(--md);}
+.kc.gd{background:var(--gd);}
+.kc.gn{background:var(--gn);}
+.kc.bk{background:var(--bk);}
+.kc.am{background:var(--am);}
+.kv{font-family:var(--ff);font-size:2rem;font-weight:700;line-height:1;margin-bottom:2px;}
+.kl{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;opacity:.90;}
+.ks{font-size:.68rem;opacity:.48;margin-top:2px;}
+.cd{background:#fff;border-radius:var(--r);border:1px solid var(--gl);padding:13px;box-shadow:0 1px 3px rgba(0,0,0,.07);margin-bottom:12px;}
+.cd:last-child{margin-bottom:0;}
+.cdh{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--gl);}
+.cdt{font-size:.76rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--dk);}
+.ctg{font-size:.70rem;font-weight:700;padding:2px 8px;border-radius:9px;text-transform:uppercase;letter-spacing:.3px;}
+.ctg.or{background:var(--orl);color:var(--ord);}
+.ctg.gn{background:var(--gnl);color:var(--gnb);}
+.ctg.gr{background:var(--gb);color:var(--gd);}
+.ctg.am{background:var(--aml);color:var(--amb);}
+.ctg.rd{background:var(--rdl);color:var(--rdb);}
+.sl{font-size:.76rem;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--or);border-bottom:2px solid var(--or);padding-bottom:5px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;}
+.badge{display:inline-block;padding:2px 7px;border-radius:2px;font-size:.72rem;font-weight:700;color:#fff;white-space:nowrap;}
+.badge.or{background:var(--or);}
+.badge.gn{background:var(--gn);}
+.badge.am{background:var(--am);}
+.badge.rd{background:var(--rd);}
+.badge.md{background:var(--md);}
+.badge.gd{background:var(--gd);}
+.ab{border-radius:var(--r);padding:11px 14px;margin-bottom:10px;border-left:4px solid;line-height:1.55;}
+.ab.gn{background:var(--gnl);border-color:var(--gn);color:var(--gnb);}
+.ab.am{background:var(--aml);border-color:var(--am);color:var(--amb);}
+.ab.rd{background:var(--rdl);border-color:var(--rd);color:var(--rdb);}
+.ab.or{background:var(--ort);border-color:var(--or);color:var(--ord);}
+.ab-title{font-weight:700;font-size:.96rem;margin-bottom:4px;}
+.ab-body{font-size:.82rem;}
+.fb{background:var(--dk);border-radius:var(--r);padding:10px 14px;margin-bottom:12px;border-left:4px solid var(--or);display:flex;align-items:flex-end;gap:9px;flex-wrap:wrap;}
+.fl{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--or);margin-bottom:4px;}
+.fg{display:flex;flex-direction:column;}
+.fsel,.finp{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:var(--r);color:#fff;font-size:.82rem;padding:6px 10px;font-family:var(--fs);outline:none;min-width:130px;}
+.fsel option{background:var(--dk);}
+.finp::placeholder{color:rgba(255,255,255,.28);}
+.fsel:focus,.finp:focus{border-color:var(--or);}
+.fbtn{background:var(--or);color:#fff;border:none;border-radius:var(--r);padding:7px 13px;font-size:.80rem;font-weight:700;cursor:pointer;font-family:var(--fs);}
+.fbtn:hover{background:var(--ord);}
+.fbtn.sec{background:transparent;border:1px solid rgba(255,255,255,.22);color:rgba(255,255,255,.58);}
+.fbtn.sec:hover{background:rgba(255,255,255,.07);}
+.bar-row{display:flex;align-items:center;gap:8px;margin-bottom:7px;}
+.bar-lbl{font-size:.78rem;font-weight:600;color:var(--md);flex:0 0 140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.bar-track{flex:1;background:var(--gb);border-radius:2px;height:17px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:2px;display:flex;align-items:center;justify-content:flex-end;padding-right:5px;transition:width .5s ease;}
+.bar-fill span{font-size:.68rem;font-weight:700;color:#fff;white-space:nowrap;}
+.bar-val{font-size:.80rem;font-weight:700;color:var(--dk);min-width:54px;text-align:right;}
+.tbl{width:100%;border-collapse:collapse;font-size:.84rem;}
+.tbl thead tr{background:var(--dk);}
+.tbl thead th{padding:9px 11px;text-align:left;font-weight:700;font-size:.74rem;letter-spacing:.4px;text-transform:uppercase;color:#fff;white-space:nowrap;}
+.tbl tbody tr{border-bottom:1px solid #EFEFEF;cursor:pointer;transition:background .10s;}
+.tbl tbody tr:nth-child(even){background:#FAFAFA;}
+.tbl tbody tr:hover{background:var(--orl);}
+.tbl tbody td{padding:8px 11px;vertical-align:middle;}
+.hm{border-collapse:collapse;font-size:.80rem;}
+.hm th.rh{background:var(--dk);color:#fff;padding:6px 10px;font-size:.72rem;font-weight:700;text-align:left;min-width:100px;}
+.hm th.ch{background:var(--dk);color:rgba(255,255,255,.70);padding:6px 9px;font-size:.68rem;font-weight:700;text-align:center;max-width:80px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hm td.rl{background:var(--gb);color:var(--md);font-weight:700;padding:6px 10px;font-size:.76rem;white-space:nowrap;}
+.hm td{padding:6px 9px;text-align:center;font-weight:600;font-size:.76rem;border:1px solid rgba(255,255,255,.08);}
+.ring{display:inline-flex;align-items:center;justify-content:center;border-radius:50%;font-family:var(--ff);font-weight:700;color:#fff;flex-shrink:0;}
+.neg-card{background:#fff;border:1px solid var(--gl);border-radius:var(--r);padding:13px;margin-bottom:10px;transition:box-shadow .14s,border-color .14s;}
+.neg-card:hover{border-color:var(--or);box-shadow:0 3px 10px rgba(0,0,0,.10);}
+.neg-prices{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin:9px 0;}
+.np-box{background:var(--gb);border-radius:var(--r);padding:7px;text-align:center;}
+.np-v{font-family:var(--ff);font-size:1.0rem;font-weight:700;}
+.np-l{font-size:.62rem;color:var(--gd);text-transform:uppercase;letter-spacing:.4px;font-weight:700;margin-top:2px;}
+.mkt-box{background:rgba(208,74,2,.04);border:1px solid var(--orl);border-radius:var(--r);padding:10px 13px;margin-bottom:9px;}
+.mkt-title{font-size:.70rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--ord);margin-bottom:7px;}
+.mkt-row{display:flex;justify-content:space-between;align-items:flex-start;padding:4px 0;border-bottom:1px solid rgba(208,74,2,.08);font-size:.78rem;}
+.mkt-row:last-child{border-bottom:none;}
+.mkt-src{color:var(--gd);font-weight:600;flex-shrink:0;margin-right:8px;}
+.mkt-val{font-weight:700;color:var(--dk);text-align:right;}
+.gauge-wrap{background:var(--gb);border-radius:var(--r);padding:12px 14px;border:1px solid var(--gl);}
+.gauge-track{background:linear-gradient(to right,var(--gnl),var(--aml),var(--rdl));border-radius:3px;height:24px;position:relative;margin:8px 0 4px;}
+.gauge-pin{position:absolute;top:50%;transform:translate(-50%,-50%);width:16px;height:16px;background:var(--or);border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 2px var(--or);}
+.gauge-avg-line{position:absolute;top:-4px;width:2px;height:calc(100% + 8px);background:var(--md);}
+.gauge-lbls{display:flex;justify-content:space-between;font-size:.70rem;color:var(--gd);}
+.dz{border:2px dashed var(--gl);border-radius:var(--r);padding:22px;text-align:center;cursor:pointer;transition:all .16s;background:#fff;}
+.dz:hover,.dz.on{border-color:var(--or);background:var(--ort);}
+.uprog{background:var(--gb);border-radius:var(--r);padding:10px 13px;margin-top:9px;display:none;}
+.uprog-bar{background:var(--gl);border-radius:2px;height:7px;margin-top:5px;overflow:hidden;}
+.uprog-fill{background:var(--or);height:100%;border-radius:2px;transition:width .3s;}
+.ext-box{background:var(--ort);border:1px solid var(--orl);border-radius:var(--r);padding:10px 13px;margin-top:9px;font-size:.82rem;display:none;}
+.ext-row{display:flex;justify-content:space-between;align-items:flex-start;padding:4px 0;border-bottom:1px solid rgba(208,74,2,.10);}
+.ext-row:last-child{border-bottom:none;}
+.ext-k{color:var(--md);font-weight:700;text-transform:uppercase;font-size:.70rem;letter-spacing:.4px;flex-shrink:0;margin-right:8px;}
+.ext-v{font-weight:700;color:var(--dk);text-align:right;}
+.ext-v.pr{color:var(--or);font-family:var(--ff);font-size:1.05rem;}
+.bv-mat{border-collapse:collapse;min-width:100%;font-size:.82rem;}
+.bv-mat th.sh{background:var(--dk);color:#fff;padding:9px 12px;text-align:left;min-width:190px;position:sticky;left:0;z-index:3;font-size:.76rem;font-weight:700;border-right:2px solid var(--or);}
+.bv-mat th.vh{background:var(--dk);color:rgba(255,255,255,.82);padding:9px 11px;text-align:center;min-width:120px;border-bottom:2px solid var(--or);font-size:.74rem;font-weight:700;}
+.bv-mat th.sumh{background:var(--bk);color:var(--or);padding:9px 11px;text-align:center;min-width:105px;font-size:.74rem;font-weight:700;border-left:2px solid var(--or);}
+.bv-mat td.sc{background:var(--gb);padding:9px 12px;font-weight:700;font-size:.80rem;color:var(--dk);position:sticky;left:0;z-index:2;border-right:2px solid var(--or);max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.bv-mat td.sc span{display:block;font-size:.68rem;font-weight:400;color:var(--gd);margin-top:2px;}
+.bv-mat td.pc{padding:8px 10px;text-align:center;border:1px solid #F0F0F0;cursor:pointer;transition:background .12s;}
+.bv-mat td.pc:hover{background:var(--ort)!important;}
+.bv-mat td.pc .pv{font-family:monospace;font-weight:700;font-size:.90rem;display:block;}
+.bv-mat td.pc .pl{font-size:.64rem;color:var(--gd);display:block;margin-top:2px;}
+.bv-mat td.pc .pb{display:inline-block;border-radius:2px;padding:1px 5px;font-size:.64rem;font-weight:700;margin-top:2px;}
+.bv-mat td.nc{background:#FAFAFA;text-align:center;color:#C0C0C0;font-size:.76rem;padding:8px 10px;border:1px solid #F4F4F4;}
+.bv-mat td.sumc{background:var(--ort);padding:9px 11px;text-align:center;border-left:2px solid var(--or);}
+.bv-mat td.sumc .sv{font-family:monospace;font-weight:700;color:var(--ord);font-size:.88rem;display:block;}
+.bv-mat td.sumc .sl2{font-size:.64rem;color:var(--gd);display:block;margin-top:2px;}
+.bv-mat .bc{background:rgba(5,150,105,.10)!important;}
+.bv-mat .wc{background:rgba(220,38,38,.06)!important;}
+.bv-mat .bc .pv{color:var(--gn);}
+.bv-mat .wc .pv{color:var(--rd);}
+.bv-mat tr:nth-child(even) td.sc{background:#F0F0F0;}
+.bv-mat tfoot td{background:var(--dk);color:#fff;padding:9px 11px;font-size:.76rem;font-weight:700;border-top:2px solid var(--or);}
+.bv-mat tfoot td.fsvc{position:sticky;left:0;background:var(--bk);border-right:2px solid var(--or);color:var(--or);}
+.bv-mat tfoot td.ftot{background:var(--bk);border-left:2px solid var(--or);color:var(--or);}
+.cov-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--gl);font-size:.80rem;}
+.cov-bar-wrap{flex:1;background:var(--gb);border-radius:2px;height:13px;overflow:hidden;}
+.cov-bar-fill{height:100%;border-radius:2px;}
+.cov-pct{flex:0 0 36px;text-align:right;font-weight:700;font-size:.78rem;}
+.cov-price{flex:0 0 82px;text-align:right;font-family:monospace;font-weight:700;color:var(--or);font-size:.78rem;}
+.pod-row{background:var(--gb);border-radius:var(--r);padding:8px 11px;border-left:3px solid var(--gl);display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:5px;}
+.pod-row.best{border-left-color:var(--gn);background:rgba(5,150,105,.05);}
+.pod-svc{font-size:.80rem;font-weight:600;color:var(--dk);flex:1;line-height:1.35;}
+.pod-r{text-align:right;flex-shrink:0;}
+.pod-price{font-family:monospace;font-weight:700;color:var(--gn);font-size:.88rem;}
+.pod-ven{font-size:.68rem;color:var(--gd);margin-top:2px;}
+.chip{display:inline-flex;align-items:center;gap:4px;padding:5px 11px;border-radius:13px;cursor:pointer;font-size:.80rem;font-weight:600;border:1.5px solid var(--gl);background:#fff;color:var(--md);transition:all .12s;margin-bottom:4px;max-width:220px;}
+.chip.on{border-color:var(--or);background:var(--orl);color:var(--ord);}
+.fvp{position:fixed;top:56px;right:0;width:400px;height:calc(100vh - 56px);background:#fff;border-left:3px solid var(--or);box-shadow:-3px 0 16px rgba(0,0,0,.10);z-index:500;display:none;flex-direction:column;}
+.fvp.on{display:flex;}
+.fvh{background:var(--dk);padding:12px 15px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.fvt{font-size:.84rem;font-weight:700;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:330px;}
+.fvb{flex:1;overflow-y:auto;padding:15px;}
+.fmr{display:flex;justify-content:space-between;align-items:flex-start;padding:7px 0;border-bottom:1px solid #F2F2F2;font-size:.82rem;}
+.fmk{color:var(--gd);font-weight:700;text-transform:uppercase;letter-spacing:.4px;font-size:.72rem;flex-shrink:0;margin-right:10px;}
+.fmv{font-weight:700;color:var(--dk);text-align:right;word-break:break-all;}
+.fmv.pr{color:var(--or);font-family:var(--ff);font-size:1.10rem;}
+.sp-btn{display:block;width:100%;background:var(--or);color:#fff;text-align:center;padding:9px;border-radius:var(--r);font-size:.82rem;font-weight:700;margin-top:11px;cursor:pointer;border:none;font-family:var(--fs);}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.50);z-index:1999;display:none;}
+.ov.on{display:block;}
+.mo{background:#fff;border-radius:6px;box-shadow:0 8px 30px rgba(0,0,0,.18);position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:520px;max-height:88vh;overflow-y:auto;z-index:2000;display:none;}
+.mo.on{display:block;}
+.moh{background:var(--dk);padding:14px 18px;display:flex;align-items:center;justify-content:space-between;border-radius:6px 6px 0 0;}
+.mot{font-family:var(--ff);font-size:1.02rem;font-weight:700;color:#fff;}
+.moc{padding:18px;}
+.mf{margin-bottom:12px;}
+.mf label{display:block;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--md);margin-bottom:4px;}
+.mf input,.mf select,.mf textarea{width:100%;border:1.5px solid var(--gl);border-radius:var(--r);padding:7px 10px;font-size:.84rem;font-family:var(--fs);color:var(--dk);outline:none;transition:border-color .14s;}
+.mf input:focus,.mf select:focus,.mf textarea:focus{border-color:var(--or);}
+.mf textarea{resize:vertical;min-height:70px;}
+.mcb{width:100%;background:var(--or);color:#fff;border:none;border-radius:var(--r);padding:10px;font-size:.86rem;font-weight:700;cursor:pointer;font-family:var(--fs);margin-top:6px;}
+.mcb.ai{background:linear-gradient(135deg,#667eea,#764ba2);}
+.mst{margin-top:9px;padding:8px 11px;border-radius:var(--r);font-size:.82rem;font-weight:600;display:none;}
+.mst.ok{background:var(--gnl);color:var(--gn);display:block;}
+.mst.er{background:var(--rdl);color:var(--rd);display:block;}
+.mst.ld{background:var(--gb);color:var(--md);display:block;}
+.mcls{background:none;border:none;color:rgba(255,255,255,.50);font-size:1.1rem;cursor:pointer;}
+.mcls:hover{color:#fff;}
+.mtabs{display:flex;border-bottom:2px solid var(--gl);margin-bottom:12px;}
+.mtab{padding:6px 12px;font-size:.74rem;font-weight:700;color:var(--gd);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;text-transform:uppercase;letter-spacing:.4px;transition:all .14s;}
+.mtab.active{color:var(--or);border-bottom-color:var(--or);}
+.mpanel{display:none;}
+.mpanel.active{display:block;}
+.afab{position:fixed;bottom:22px;right:22px;width:56px;height:56px;background:var(--or);border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 18px rgba(208,74,2,.45);z-index:999;border:none;color:#fff;font-family:var(--fs);transition:transform .14s;}
+.afab:hover{transform:scale(1.07);}
+.afab-ic{font-size:1.0rem;font-weight:700;line-height:1;}
+.afab-lbl{font-size:.50rem;font-weight:700;text-transform:uppercase;letter-spacing:.3px;}
+.afab-bdg{position:absolute;top:-2px;right:-2px;background:var(--gn);color:#fff;border-radius:50%;width:16px;height:16px;font-size:.58rem;font-weight:700;display:none;align-items:center;justify-content:center;border:2px solid #fff;}
+.chat{position:fixed;bottom:88px;right:22px;width:400px;max-height:660px;background:#fff;border-radius:6px;box-shadow:0 8px 36px rgba(0,0,0,.18);z-index:998;display:none;flex-direction:column;overflow:hidden;border:1px solid var(--gl);}
+.chat.on{display:flex;}
+.chat-h{background:linear-gradient(135deg,var(--dk),var(--bk));padding:12px 15px;display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid var(--or);}
+.chat-av{width:34px;height:34px;background:var(--or);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.74rem;font-weight:700;color:#fff;flex-shrink:0;}
+.chat-name{font-family:var(--ff);font-size:.92rem;font-weight:700;color:#fff;line-height:1.2;}
+.chat-sts{font-size:.66rem;color:rgba(255,255,255,.42);display:flex;align-items:center;gap:4px;margin-top:2px;}
+.live-dot{width:6px;height:6px;background:var(--gn);border-radius:50%;animation:blink 2s infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.2;}}
+.chat-msgs{flex:1;overflow-y:auto;padding:12px;background:#F7F7F7;min-height:160px;max-height:300px;}
+.msg{margin-bottom:8px;overflow:hidden;}
+.msg.u .bbl{background:var(--or);color:#fff;border-radius:10px 10px 2px 10px;padding:8px 12px;float:right;clear:both;max-width:85%;font-size:.82rem;word-break:break-word;display:block;line-height:1.50;}
+.msg.b .bbl{background:#fff;color:var(--dk);border:1px solid #E8E8E8;border-left:2px solid var(--orm);border-radius:10px 10px 10px 2px;padding:8px 12px;float:left;clear:both;max-width:92%;font-size:.82rem;word-break:break-word;display:block;box-shadow:0 1px 3px rgba(0,0,0,.07);line-height:1.50;}
+.cl{clear:both;}
+.chat-qs{background:#fff;border-top:1px solid #EEE;padding:7px 10px;}
+.chat-ql{font-size:.64rem;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--gd);margin-bottom:5px;}
+.chat-chips{display:flex;flex-wrap:wrap;gap:4px;}
+.chat-chip{background:var(--ort);border:1.5px solid var(--orl);color:var(--ord);border-radius:10px;padding:3px 9px;font-size:.70rem;font-weight:600;cursor:pointer;white-space:nowrap;transition:all .11s;}
+.chat-chip:hover{background:var(--or);color:#fff;border-color:var(--or);}
+.chat-in{background:#fff;border-top:1px solid var(--gl);padding:8px 10px;}
+.chat-inp-row{display:flex;gap:6px;align-items:center;}
+.chat-inp{flex:1;border:1.5px solid var(--gl);border-radius:13px;padding:7px 13px;font-size:.82rem;font-family:var(--fs);outline:none;background:var(--gb);}
+.chat-inp:focus{border-color:var(--or);background:#fff;}
+.chat-send{background:var(--or);color:#fff;border:none;border-radius:50%;width:34px;height:34px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.chat-send:hover{background:var(--ord);}
+.chat-note{font-size:.64rem;color:var(--gd);margin-top:4px;text-align:center;}
+.typing{display:inline-flex;gap:3px;align-items:center;}
+.typing div{width:5px;height:5px;background:var(--orm);border-radius:50%;animation:ty 1.2s infinite;}
+.typing div:nth-child(2){animation-delay:.2s;}
+.typing div:nth-child(3){animation-delay:.4s;}
+@keyframes ty{0%,60%,100%{transform:translateY(0);}30%{transform:translateY(-5px);}}
+[data-tip]{position:relative;}
+[data-tip]::after{content:attr(data-tip);position:absolute;bottom:calc(100%+5px);left:50%;transform:translateX(-50%);background:var(--dk);color:#fff;font-size:.68rem;padding:3px 8px;border-radius:var(--r);white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .14s;z-index:100;}
+[data-tip]:hover::after{opacity:1;}
+.empty-state{text-align:center;padding:60px 20px;color:var(--gd);}
+.empty-state .es-icon{font-size:3rem;margin-bottom:12px;}
+.empty-state .es-title{font-size:1.1rem;font-weight:700;color:var(--md);margin-bottom:8px;}
+.empty-state .es-body{font-size:.86rem;line-height:1.6;}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-logo">PwC</div>
+  <div class="nav-div"></div>
+  <div class="nav-title">IT Contracting Dashboard</div>
+  <div class="nav-tabs">
+    <div class="ntab active" data-page="ov">Overview</div>
+    <div class="ntab" data-page="bv">Browse &amp; Verdict</div>
+    <div class="ntab" data-page="ng">Negotiation Centre</div>
+    <div class="ntab" data-page="nq">New Quotation<span class="nbadge">PS1</span></div>
+    <div class="ntab" data-page="rq">RFQ Builder<span class="nbadge">PS2</span></div>
+    <div class="ntab" data-page="vn">Vendor Analysis</div>
+    <div class="ntab" data-page="px">Pricing Intelligence</div>
+    <div class="ntab" data-page="dt">Data Table</div>
+  </div>
+  <div class="nav-r">
+    <button class="nbtn ai" onclick="document.getElementById('ai-ov').classList.add('on');document.getElementById('ai-mo').classList.add('on')">AI Settings</button>
+    <div class="nlive" id="nlive">Loading…</div>
+  </div>
+</nav>
+
+<!-- OVERVIEW -->
+<div class="page active" id="pg-ov">
+  <div class="ph">
+    <div><div class="ph-t">IT Contracting Dashboard — Executive Overview</div><div class="ph-s">Live pricing intelligence from SharePoint · Per-license benchmarks · Vendor analysis · Panasonic Automotive</div></div>
+    <div style="text-align:right"><div class="ph-v" id="ov-total">—</div><div class="ph-l">Total Line Items</div></div>
+  </div>
+  <div id="ov-loading" style="display:none;text-align:center;padding:40px;color:var(--gd)">
+    <div style="font-size:1.2rem;margin-bottom:8px">⏳</div>
+    <div style="font-weight:700">Loading catalog data from SharePoint…</div>
+  </div>
+  <div class="g6" id="ov-kpi"></div>
+  <div class="sl">Category Overview <span style="font-size:.82rem;font-weight:400;color:var(--gd);letter-spacing:0;text-transform:none">Click any card to drill into Negotiation Centre</span></div>
+  <div id="cat-cards" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px"></div>
+  <div class="g3">
+    <div class="cd"><div class="cdh"><div class="cdt">Avg Unit Price by Category</div><div class="ctg or">Per License</div></div><div id="ch-pcat"></div></div>
+    <div class="cd"><div class="cdh"><div class="cdt">Top Negotiation Targets</div><div class="ctg or">Price Spread %</div></div><div id="ch-spread"></div></div>
+    <div class="cd"><div class="cdh"><div class="cdt">Vendor Quote Volume</div><div class="ctg gr">Coverage</div></div><div id="ch-vvol"></div></div>
+  </div>
+  <div class="g2">
+    <div class="cd"><div class="cdh"><div class="cdt">Vendor × Category Heatmap</div><div class="ctg or">Coverage</div></div><div style="overflow-x:auto" id="hm-ov"></div></div>
+    <div class="cd"><div class="cdh"><div class="cdt">Unit Price Range by Category</div><div class="ctg or">Min / Avg / Max</div></div><div id="ch-rng"></div></div>
+  </div>
+  <div class="cd"><div class="cdh"><div class="cdt">Executive Insights</div><div class="ctg am">Key Findings</div></div><div id="exec-ins" style="display:grid;grid-template-columns:1fr 1fr;gap:9px"></div></div>
+</div>
+
+<!-- BROWSE & VERDICT -->
+<div class="page" id="pg-bv">
+  <div class="ph">
+    <div><div class="ph-t">Browse &amp; Verdict — Service × Vendor Price Matrix</div><div class="ph-s">Select services · Compare vendor unit prices · Build optimal IT contracting combination</div></div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <span id="bv-badge" style="background:var(--or);color:#fff;border-radius:var(--r);padding:5px 13px;font-size:.80rem;font-weight:700;display:none">0 selected</span>
+      <button onclick="bvClear()" style="background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.22);color:rgba(255,255,255,.72);border-radius:var(--r);padding:5px 12px;font-size:.78rem;font-weight:700;cursor:pointer;font-family:var(--fs)">Clear All</button>
+    </div>
+  </div>
+  <div class="fb">
+    <div class="fg"><div class="fl">Category</div><select class="fsel" id="bv-cat" onchange="bvFilterChips()"><option value="All">All Categories</option></select></div>
+    <div class="fg" style="flex:1;min-width:200px"><div class="fl">Search Services</div><input type="text" class="finp" id="bv-srch" placeholder="Type to filter…" oninput="bvFilterChips()"></div>
+    <div class="fg"><div class="fl">Sort By</div><select class="fsel" id="bv-sort" onchange="bvRender()"><option value="best">Best Price First</option><option value="alpha">Alphabetical</option><option value="spread">Highest Spread</option><option value="vendors">Most Vendors</option></select></div>
+    <button class="fbtn" onclick="bvSelectAll()">Select All</button>
+    <button class="fbtn sec" onclick="bvClear()">Reset</button>
+    <span style="font-size:.80rem;color:rgba(255,255,255,.52);align-self:flex-end;margin-left:auto" id="bv-cnt-lbl">—</span>
+  </div>
+  <div class="cd">
+    <div class="cdh"><div class="cdt">Available Services</div><div style="display:flex;gap:7px;align-items:center"><span class="ctg or" id="bv-sel-cnt">0 selected</span><span class="ctg gr" id="bv-tot-cnt">—</span></div></div>
+    <div id="bv-chips" style="display:flex;flex-wrap:wrap;gap:4px;max-height:145px;overflow-y:auto;padding:2px 0"></div>
+  </div>
+  <div class="cd" style="margin-top:12px">
+    <div class="cdh">
+      <div class="cdt">Service × Vendor Unit Price Matrix</div>
+      <div style="display:flex;gap:7px;align-items:center">
+        <span class="ctg gn" id="bv-mat-info">Select services to populate</span>
+        <button onclick="bvExportMatrix()" style="background:var(--or);color:#fff;border:none;border-radius:var(--r);padding:3px 10px;font-size:.74rem;font-weight:700;cursor:pointer;font-family:var(--fs)">Export CSV</button>
+      </div>
+    </div>
+    <div style="overflow:auto;max-height:500px" id="bv-mat-wrap">
+      <div style="padding:30px;text-align:center;color:var(--gd);font-size:.88rem">Select services above to build the matrix.</div>
+    </div>
+    <div id="bv-legend" style="display:none;flex-wrap:wrap;gap:14px;padding:8px 4px 2px;font-size:.72rem;color:var(--gd);border-top:1px solid var(--gl);margin-top:8px">
+      <span><span style="display:inline-block;width:11px;height:11px;background:rgba(5,150,105,.15);border:1px solid var(--gn);border-radius:2px;vertical-align:middle;margin-right:4px"></span>★ BEST unit price</span>
+      <span><span style="display:inline-block;width:11px;height:11px;background:rgba(220,38,38,.08);border:1px solid var(--rd);border-radius:2px;vertical-align:middle;margin-right:4px"></span>▲ HIGHEST unit price</span>
+      <span><span style="display:inline-block;width:11px;height:11px;background:var(--gb);border:1px solid var(--gl);border-radius:2px;vertical-align:middle;margin-right:4px"></span>— No quote</span>
+    </div>
+  </div>
+  <div id="bv-verdict-wrap" style="display:none;margin-top:12px"></div>
+  <div id="bv-analysis" style="display:none;margin-top:12px">
+    <div class="g3">
+      <div class="cd"><div class="cdh"><div class="cdt">Best Vendor Per Service</div><div class="ctg gn">Lowest Unit Price</div></div><div id="bv-best-svc"></div></div>
+      <div class="cd"><div class="cdh"><div class="cdt">Vendor Coverage</div><div class="ctg or">All Vendors</div></div><div id="bv-coverage"></div></div>
+      <div class="cd"><div class="cdh"><div class="cdt">Optimal Strategy</div><div class="ctg gn">Recommendation</div></div><div id="bv-strategy"></div></div>
+    </div>
+  </div>
+  <div class="cd" style="margin-top:12px">
+    <div class="cdh"><div class="cdt">All Matching Quotes</div><div style="display:flex;gap:7px"><span class="ctg gr" id="bv-tbl-cnt">—</span><button onclick="bvExportQuotes()" style="background:var(--dk);color:#fff;border:none;border-radius:var(--r);padding:3px 10px;font-size:.74rem;font-weight:700;cursor:pointer;font-family:var(--fs)">Export CSV</button></div></div>
+    <div style="overflow:auto;max-height:400px">
+      <table class="tbl"><thead><tr><th>Vendor</th><th>Category</th><th>Service</th><th>Unit Price</th><th>Unit</th><th>Qty</th><th>Total Line</th><th>Verdict</th><th>Year</th><th>View</th></tr></thead><tbody id="bv-tbody"></tbody></table>
+    </div>
+  </div>
+</div>
+
+<!-- NEGOTIATION CENTRE -->
+<div class="page" id="pg-ng">
+  <div class="ph"><div><div class="ph-t">Negotiation Centre — Per-License Price Intelligence</div><div class="ph-s">Unit pricing · Vendor benchmarks · Market references · Negotiation targets per service</div></div></div>
+  <div class="fb">
+    <div class="fg"><div class="fl">Category</div><select class="fsel" id="ng-cat" onchange="ngRender()"><option value="All">All Categories</option></select></div>
+    <div class="fg"><div class="fl">Vendor</div><select class="fsel" id="ng-ven" onchange="ngRender()"><option value="All">All Vendors</option></select></div>
+    <div class="fg"><div class="fl">Service</div><select class="fsel" id="ng-svc" onchange="ngRender()"><option value="All">All Services</option></select></div>
+    <button class="fbtn sec" onclick="ngReset()">Reset</button>
+  </div>
+  <div class="g4" id="ng-kpi" style="margin-bottom:12px"></div>
+  <div class="g31">
+    <div>
+      <div class="sl">Service Negotiation Cards <span style="font-size:.80rem;font-weight:400;color:var(--gd);letter-spacing:0;text-transform:none">Ranked by spread — highest leverage first</span></div>
+      <div id="ng-cards"></div>
+    </div>
+    <div>
+      <div class="cd"><div class="cdh"><div class="cdt">Avg Unit Price by Category</div><div class="ctg or">Reference</div></div><div id="ng-catbar"></div></div>
+      <div class="cd" style="margin-top:12px"><div class="cdh"><div class="cdt">Market References</div><div class="ctg am">External</div></div><div id="ng-mktref"></div></div>
+    </div>
+  </div>
+  <div class="cd"><div class="cdh"><div class="cdt">Full Benchmark Table</div><div class="ctg gr">All Services — Unit Prices</div></div><div style="overflow:auto;max-height:380px"><table class="tbl"><thead><tr><th>Service</th><th>Category</th><th>Vendors</th><th>Best Unit Price</th><th>Avg Unit Price</th><th>Max Unit Price</th><th>Spread %</th><th>Best Vendor</th><th>Unit</th><th>Verdict</th></tr></thead><tbody id="ng-full"></tbody></table></div></div>
+</div>
+
+<!-- NEW QUOTATION PS1 -->
+<div class="page" id="pg-nq">
+  <div class="ph">
+    <div><div class="ph-t">New Quotation — Benchmark &amp; Verdict</div><div class="ph-s">PS1: Evaluate an incoming vendor quote against historical per-license pricing</div></div>
+  </div>
+  <div class="g2">
+    <div>
+      <div class="cd">
+        <div class="cdh"><div class="cdt">Upload Quote File</div><div class="ctg gr">PDF / XLSX / CSV</div></div>
+        <div class="dz" id="dz" ondragover="event.preventDefault();this.classList.add('on')" ondragleave="this.classList.remove('on')" ondrop="event.preventDefault();this.classList.remove('on');handleFile(event.dataTransfer.files[0])" onclick="document.getElementById('fi-up').click()">
+          <div style="font-size:.92rem;font-weight:600;color:var(--md);margin-bottom:4px">Drop file or click to browse</div>
+          <div style="font-size:.80rem;color:var(--gd)">PDF, XLSX, CSV — price and vendor auto-extracted</div>
+          <input type="file" id="fi-up" accept=".pdf,.xlsx,.xls,.csv,.txt,.docx" style="display:none" onchange="handleFile(this.files[0])">
+        </div>
+        <div class="uprog" id="uprog"><div style="display:flex;justify-content:space-between;font-size:.80rem;font-weight:600;color:var(--md);margin-bottom:4px"><span id="uprog-txt">Processing…</span><span id="uprog-pct">0%</span></div><div class="uprog-bar"><div class="uprog-fill" id="uprog-fill"></div></div></div>
+        <div class="ext-box" id="ext-box">
+          <div style="font-size:.70rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--orm);margin-bottom:7px">Extracted from File</div>
+          <div class="ext-row"><span class="ext-k">File</span><span class="ext-v" id="ex-fname">—</span></div>
+          <div class="ext-row"><span class="ext-k">Unit Price</span><span class="ext-v pr" id="ex-price">—</span></div>
+          <div class="ext-row"><span class="ext-k">Vendor</span><span class="ext-v" id="ex-vendor">—</span></div>
+          <div class="ext-row"><span class="ext-k">Services</span><span class="ext-v" id="ex-svcs">—</span></div>
+        </div>
+      </div>
+      <div class="cd" style="margin-top:12px">
+        <div class="cdh"><div class="cdt">Quote Details</div><div class="ctg or">Enter / Confirm</div></div>
+        <div class="g2">
+          <div><label style="font-size:.72rem;font-weight:700;text-transform:uppercase;color:var(--md);display:block;margin-bottom:4px">Vendor Name</label><input type="text" id="nq-vn" style="width:100%;border:1.5px solid var(--gl);border-radius:var(--r);padding:7px 10px;font-size:.86rem;font-family:var(--fs);outline:none" placeholder="e.g. NTT Data" oninput="scoreIt()"></div>
+          <div><label style="font-size:.72rem;font-weight:700;text-transform:uppercase;color:var(--md);display:block;margin-bottom:4px">Unit Price (USD)</label><input type="number" id="nq-pr" style="width:100%;border:1.5px solid var(--gl);border-radius:var(--r);padding:7px 10px;font-size:.86rem;font-family:var(--fs);outline:none" placeholder="e.g. 57.00" oninput="scoreIt()"></div>
+        </div>
+        <div style="margin-top:9px"><label style="font-size:.72rem;font-weight:700;text-transform:uppercase;color:var(--md);display:block;margin-bottom:4px">Category</label><select id="nq-cat" style="width:100%;border:1.5px solid var(--gl);border-radius:var(--r);padding:7px 10px;font-size:.86rem;font-family:var(--fs);outline:none;background:#fff" onchange="nqFilterSvcs();scoreIt()"><option value="All">All Categories</option></select></div>
+        <div style="margin-top:9px"><label style="font-size:.72rem;font-weight:700;text-transform:uppercase;color:var(--md);display:block;margin-bottom:4px">Unit Type</label><select id="nq-unit" style="width:100%;border:1.5px solid var(--gl);border-radius:var(--r);padding:7px 10px;font-size:.86rem;font-family:var(--fs);outline:none;background:#fff" onchange="scoreIt()"><option>per license</option><option>per seat</option><option>per user</option><option>per device</option><option>per month</option><option>per year</option><option>per quote</option></select></div>
+      </div>
+      <div class="cd" style="margin-top:12px">
+        <div class="cdh"><div class="cdt">Services in Quote</div><div class="ctg gr" id="nq-sel-cnt">0 selected</div></div>
+        <input type="text" id="nq-ss" style="width:100%;border:1.5px solid var(--gl);border-radius:var(--r);padding:6px 9px;font-size:.82rem;font-family:var(--fs);outline:none;margin-bottom:8px" placeholder="Search services…" oninput="nqFilterSvcs()">
+        <div id="nq-svcs" style="max-height:175px;overflow-y:auto;display:flex;flex-wrap:wrap;gap:4px"></div>
+      </div>
+    </div>
+    <div>
+      <div id="nq-empty" class="cd" style="text-align:center;padding:40px 20px">
+        <div class="empty-state"><div class="es-icon">📊</div><div class="es-title">Awaiting Quote Input</div><div class="es-body">Enter a unit price and select a service to see full benchmark analysis against real catalog data.</div></div>
+      </div>
+      <div id="nq-result" style="display:none">
+        <div id="nq-verdict" class="cd" style="margin-bottom:12px"></div>
+        <div class="g2" id="nq-kpi" style="margin-bottom:12px"></div>
+        <div class="cd" style="margin-bottom:12px"><div class="cdh"><div class="cdt">Market Position</div><div class="ctg or">Unit Price vs Catalog</div></div><div id="nq-gauge"></div></div>
+        <div class="cd" style="margin-bottom:12px"><div class="cdh"><div class="cdt">Vendor Comparison</div><div class="ctg or">Historical Unit Prices</div></div><div id="nq-chart"></div></div>
+        <div id="nq-mktref" style="margin-bottom:12px"></div>
+        <div class="cd"><div class="cdh"><div class="cdt">Recommendation</div><div class="ctg gn">Advisory</div></div><div id="nq-rec"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- RFQ BUILDER PS2 -->
+<div class="page" id="pg-rq">
+  <div class="ph">
+    <div><div class="ph-t">RFQ Builder — Expected Price Reference</div><div class="ph-s">PS2: Set per-license budget targets before going to market · Based on real catalog data</div></div>
+    <button onclick="loadDemoRFQ()" style="background:var(--orm);color:#fff;border:none;border-radius:var(--r);padding:8px 17px;font-size:.84rem;font-weight:700;cursor:pointer;font-family:var(--fs)">Load Example</button>
+  </div>
+  <div class="fb" style="align-items:flex-start;gap:10px">
+    <div class="fg"><div class="fl">Category</div><select class="fsel" id="rq-cat-sel" onchange="rqCatChange()"><option value="All">All Categories</option></select></div>
+    <div class="fg"><div class="fl">Total Users</div><input type="number" class="finp" id="rq-users" value="1000" min="1" style="width:110px" oninput="rqRender()"></div>
+    <div class="fg"><div class="fl">Contract Term</div><select class="fsel" id="rq-term" onchange="rqRender()"><option value="1">1 Year</option><option value="3" selected>3 Years</option><option value="5">5 Years</option></select></div>
+    <button class="fbtn sec" onclick="rqReset()">Reset</button>
+  </div>
+  <div class="g2">
+    <div>
+      <div class="cd"><div class="cdh"><div class="cdt">Select Services</div><div style="display:flex;gap:7px"><span class="ctg gr" id="rq-sel-cnt">0 selected</span><button onclick="rqSelectAll()" style="background:var(--or);color:#fff;border:none;border-radius:var(--r);padding:3px 9px;font-size:.72rem;font-weight:700;cursor:pointer;font-family:var(--fs)">All</button><button onclick="rqClear()" style="background:transparent;border:1px solid var(--gl);color:var(--gd);border-radius:var(--r);padding:3px 9px;font-size:.72rem;font-weight:700;cursor:pointer;font-family:var(--fs)">Clear</button></div></div>
+        <input type="text" id="rq-ss" style="width:100%;border:1.5px solid var(--gl);border-radius:var(--r);padding:6px 9px;font-size:.82rem;font-family:var(--fs);outline:none;margin-bottom:8px" placeholder="Search services…" oninput="rqFilterSvcs()">
+        <div id="rq-svcs" style="max-height:220px;overflow-y:auto;display:flex;flex-wrap:wrap;gap:4px"></div>
+      </div>
+      <div class="cd" style="margin-top:12px"><div class="cdh"><div class="cdt">Suggested Vendors</div><div class="ctg gn">RFQ Target List</div></div><div id="rq-vend-list"></div></div>
+    </div>
+    <div>
+      <div id="rq-empty" class="cd" style="text-align:center;padding:40px 20px">
+        <div class="empty-state"><div class="es-icon">💰</div><div class="es-title">Select Services to See Expected Pricing</div><div class="es-body">Pick services to see per-license budget targets, price ranges and vendor recommendations from real catalog data.</div></div>
+      </div>
+      <div id="rq-result" style="display:none">
+        <div id="rq-kpi" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px"></div>
+        <div class="cd" style="margin-bottom:12px"><div class="cdh"><div class="cdt">Per-License Budget Range</div><div class="ctg or">From Catalog</div></div><div id="rq-range"></div></div>
+        <div class="cd" style="margin-bottom:12px">
+          <div class="cdh"><div class="cdt">Per-Service Breakdown</div><div class="ctg or">Unit Prices</div></div>
+          <div style="overflow:auto"><table class="tbl"><thead><tr><th>Service</th><th>Category</th><th>Best Unit Price</th><th>Avg Unit Price</th><th>Max Unit Price</th><th>Target (−10%)</th><th>Unit</th><th>Best Vendor</th></tr></thead><tbody id="rq-svc-tbl"></tbody></table></div>
+        </div>
+        <div id="rq-mktref" style="margin-bottom:12px"></div>
+        <div class="cd"><div class="cdh"><div class="cdt">RFQ Strategy</div><div class="ctg gn">Export Ready</div></div><div id="rq-strategy"></div><button onclick="rqExport()" style="width:100%;background:var(--or);color:#fff;border:none;border-radius:var(--r);padding:10px;font-size:.86rem;font-weight:700;cursor:pointer;font-family:var(--fs);margin-top:11px">Export RFQ Summary CSV</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- VENDOR ANALYSIS -->
+<div class="page" id="pg-vn">
+  <div class="ph"><div><div class="ph-t">Vendor Analysis — Portfolio &amp; Per-License Pricing</div><div class="ph-s">Vendor profiles · Category coverage · Service breadth · Unit price competitiveness</div></div></div>
+  <div class="fb">
+    <div class="fg"><div class="fl">Vendor</div><select class="fsel" id="vn-sel" onchange="vnRender()"><option value="All">All Vendors</option></select></div>
+    <div class="fg"><div class="fl">Category</div><select class="fsel" id="vn-cat" onchange="vnRender()"><option value="All">All Categories</option></select></div>
+  </div>
+  <div class="g4" id="vn-kpi" style="margin-bottom:12px"></div>
+  <div class="g3">
+    <div class="cd"><div class="cdh"><div class="cdt">Quote Volume</div><div class="ctg gr">By Vendor</div></div><div id="vn-rank"></div></div>
+    <div class="cd"><div class="cdh"><div class="cdt">Service Breadth</div><div class="ctg or">Unique Services</div></div><div id="vn-breadth"></div></div>
+    <div class="cd"><div class="cdh"><div class="cdt">Avg Unit Price</div><div class="ctg gr">Per License</div></div><div id="vn-avg"></div></div>
+  </div>
+  <div class="cd" style="margin-bottom:12px"><div class="cdh"><div class="cdt">Category Coverage Matrix</div><div class="ctg or">Heatmap</div></div><div style="overflow-x:auto" id="vn-hm"></div></div>
+  <div class="sl">Vendor Profiles</div>
+  <div id="vn-profiles" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px"></div>
+</div>
+
+<!-- PRICING INTELLIGENCE -->
+<div class="page" id="pg-px">
+  <div class="ph"><div><div class="ph-t">Pricing Intelligence — Unit Price Analysis</div><div class="ph-s">Per-license price distribution · Vendor competitiveness · Spread analysis · Market references</div></div></div>
+  <div class="fb">
+    <div class="fg"><div class="fl">Category</div><select class="fsel" id="px-cat" onchange="pxRender()"><option value="All">All Categories</option></select></div>
+    <div class="fg"><div class="fl">Vendor</div><select class="fsel" id="px-ven" onchange="pxRender()"><option value="All">All Vendors</option></select></div>
+    <div class="fg"><div class="fl">Service</div><select class="fsel" id="px-svc" onchange="pxRender()"><option value="All">All Services</option></select></div>
+    <button class="fbtn sec" onclick="pxReset()">Reset</button>
+  </div>
+  <div class="g4">
+    <div class="kc or"><div class="kv" id="px-avg">—</div><div class="kl">Avg Unit Price</div></div>
+    <div class="kc gn"><div class="kv" id="px-min">—</div><div class="kl">Best Unit Price</div></div>
+    <div class="kc md"><div class="kv" id="px-max">—</div><div class="kl">Highest Unit Price</div></div>
+    <div class="kc dk"><div class="kv" id="px-sp">—</div><div class="kl">Max Spread</div></div>
+  </div>
+  <div class="g3">
+    <div class="cd"><div class="cdh"><div class="cdt">Unit Price Range by Category</div><div class="ctg or">Min/Avg/Max</div></div><div id="px-rng"></div></div>
+    <div class="cd"><div class="cdh"><div class="cdt">Top Spread Services</div><div class="ctg or">Negotiation Targets</div></div><div id="px-sprd"></div></div>
+    <div class="cd"><div class="cdh"><div class="cdt">Vendor Competitiveness</div><div class="ctg gr">vs Market Avg</div></div><div id="px-cmp"></div></div>
+  </div>
+  <div class="g2">
+    <div class="cd"><div class="cdh"><div class="cdt">Best Vendor per Service</div><div class="ctg gn">Lowest Unit Price</div></div><div style="overflow:auto;max-height:320px"><table class="tbl"><thead><tr><th>Service</th><th>Best Vendor</th><th>Best Unit Price</th><th>vs Avg</th><th>Saving/Unit</th></tr></thead><tbody id="px-best"></tbody></table></div></div>
+    <div class="cd"><div class="cdh"><div class="cdt">Market Reference Pricing</div><div class="ctg am">External Benchmarks</div></div><div id="px-mktref"></div></div>
+  </div>
+  <div class="cd"><div class="cdh"><div class="cdt">Full Benchmarking Table</div><div class="ctg gr">Per-License Prices</div></div><div style="overflow:auto;max-height:380px"><table class="tbl"><thead><tr><th>Service</th><th>Category</th><th>Vendors</th><th>Best Unit Price</th><th>Avg Unit Price</th><th>Max Unit Price</th><th>Spread</th><th>Best Vendor</th><th>Verdict</th></tr></thead><tbody id="px-full"></tbody></table></div></div>
+</div>
+
+<!-- DATA TABLE -->
+<div class="page" id="pg-dt">
+  <div class="ph"><div><div class="ph-t">Data Table — Full Catalog</div><div class="ph-s">All line items from SharePoint · Per-license unit prices · Filter, search and export</div></div></div>
+  <div class="fb">
+    <div class="fg"><div class="fl">Category</div><select class="fsel" id="dt-cat" onchange="dtRender()"><option value="All">All Categories</option></select></div>
+    <div class="fg"><div class="fl">Vendor</div><select class="fsel" id="dt-ven" onchange="dtRender()"><option value="All">All Vendors</option></select></div>
+    <div class="fg" style="flex:1;min-width:200px"><div class="fl">Search</div><input type="text" class="finp" id="dt-srch" placeholder="Service, vendor or file…" oninput="dtRender()"></div>
+    <button class="fbtn" onclick="dtExport()">Export CSV</button>
+    <span style="font-size:.80rem;color:rgba(255,255,255,.52);align-self:flex-end;margin-left:auto" id="dt-cnt">—</span>
+  </div>
+  <div class="cd"><div style="overflow:auto;max-height:600px"><table class="tbl"><thead><tr><th>Category</th><th>Vendor</th><th>Service</th><th>Unit Price</th><th>Unit</th><th>Qty</th><th>Total Line</th><th>Score</th><th>Verdict</th><th>Year</th><th>Qtr</th></tr></thead><tbody id="dt-tbody"></tbody></table></div></div>
+</div>
+
+<!-- AI CONFIG MODAL -->
+<div class="ov" id="ai-ov" onclick="document.getElementById('ai-ov').classList.remove('on');document.getElementById('ai-mo').classList.remove('on')"></div>
+<div class="mo" id="ai-mo">
+  <div class="moh"><div class="mot">AI Agent — Configuration</div><button class="mcls" onclick="document.getElementById('ai-ov').classList.remove('on');document.getElementById('ai-mo').classList.remove('on')">&#x2715;</button></div>
+  <div class="moc">
+    <div class="mtabs"><div class="mtab active" onclick="aiTab('oa',this)">OpenAI / Azure</div><div class="mtab" onclick="aiTab('be',this)">Custom Backend</div><div class="mtab" onclick="aiTab('sp2',this)">System Prompt</div></div>
+    <div class="mpanel active" id="ai-oa">
+      <div class="mf"><label>Provider</label><select id="ai-prov" onchange="document.getElementById('az-flds').style.display=this.value==='azure'?'block':'none'"><option value="local">Built-in (No API Key)</option><option value="openai">OpenAI (GPT-4o)</option><option value="azure">Azure OpenAI</option></select></div>
+      <div class="mf"><label>API Key</label><input type="password" id="ai-key" placeholder="sk-proj-…"></div>
+      <div class="mf"><label>Model</label><select id="ai-mdl"><option value="gpt-4o">GPT-4o</option><option value="gpt-4-turbo">GPT-4 Turbo</option><option value="gpt-3.5-turbo">GPT-3.5 Turbo</option></select></div>
+      <div id="az-flds" style="display:none">
+        <div class="mf"><label>Azure Endpoint</label><input type="url" id="az-ep"></div>
+        <div class="mf"><label>Deployment Name</label><input type="text" id="az-dep"></div>
+        <div class="mf"><label>API Version</label><input type="text" id="az-ver" value="2024-02-01"></div>
+      </div>
+      <button class="mcb" style="background:transparent;border:1.5px solid var(--or);color:var(--or);margin-bottom:7px" onclick="aiTestConn()">Test Connection</button>
+      <button class="mcb ai" onclick="aiSave()">Save Configuration</button>
+    </div>
+    <div class="mpanel" id="ai-be">
+      <div class="mf"><label>Backend URL</label><input type="url" id="be-url" placeholder="https://your-api.com/chat"></div>
+      <div class="mf"><label>API Key</label><input type="password" id="be-key"></div>
+      <button class="mcb ai" onclick="aiSave()">Save</button>
+    </div>
+    <div class="mpanel" id="ai-sp2">
+      <div class="mf"><label>System Prompt</label><textarea id="ai-sysp" style="min-height:120px" placeholder="You are an IT Contracting expert…"></textarea></div>
+      <button class="mcb ai" onclick="aiSave()">Save</button>
+    </div>
+    <div class="mst" id="ai-msg"></div>
+  </div>
+</div>
+
+<!-- FILE VIEWER PANEL -->
+<div class="fvp" id="fvp">
+  <div class="fvh"><div class="fvt" id="fv-title">Record Details</div><button class="mcls" onclick="document.getElementById('fvp').classList.remove('on')">&#x2715;</button></div>
+  <div class="fvb" id="fv-body"></div>
+</div>
+
+<!-- AI FAB -->
+<button class="afab" onclick="document.getElementById('chat').classList.toggle('on')">
+  <div class="afab-ic">AI</div>
+  <div class="afab-lbl">Chat</div>
+  <div class="afab-bdg" id="afab-bdg">0</div>
+</button>
+
+<!-- AI CHAT -->
+<div class="chat" id="chat">
+  <div class="chat-h">
+    <div style="display:flex;align-items:center;gap:9px">
+      <div class="chat-av">AI</div>
+      <div>
+        <div class="chat-name">IT Contracting Agent</div>
+        <div class="chat-sts"><div class="live-dot"></div><span id="chat-status">Loading catalog…</span></div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:7px">
+      <button onclick="chatClear()" style="background:none;border:none;color:rgba(255,255,255,.36);cursor:pointer;font-size:.72rem;font-family:var(--fs)">Clear</button>
+      <button class="mcls" onclick="document.getElementById('chat').classList.remove('on')">&#x2715;</button>
+    </div>
+  </div>
+  <div class="chat-msgs" id="chat-msgs">
+    <div class="msg b"><div class="bbl">IT Contracting Agent ready.<br><br><strong>PS1:</strong> "Is $57/license for M365 E5 fair?"<br><strong>PS2:</strong> "What should I budget per seat for ServiceNow ITSM?"<br><br>All answers based on your real catalog data.</div></div><div class="cl"></div>
+  </div>
+  <div class="chat-qs"><div class="chat-ql">Quick Questions</div><div class="chat-chips" id="chat-chips"></div></div>
+  <div class="chat-in">
+    <div class="chat-inp-row">
+      <input type="text" class="chat-inp" id="chat-inp" placeholder="Ask about unit prices, vendors, negotiations…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();chatSend();}">
+      <button class="chat-send" onclick="chatSend()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      </button>
+    </div>
+    <div class="chat-note"><span style="color:var(--orm);cursor:pointer;text-decoration:underline" onclick="document.getElementById('ai-ov').classList.add('on');document.getElementById('ai-mo').classList.add('on')">Configure API key</span> for GPT-4o. Built-in intelligence always active.</div>
+  </div>
+</div>
