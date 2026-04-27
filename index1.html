@@ -604,3 +604,1380 @@ html,body{font-family:var(--fs);background:#E4E4E4;color:var(--dk);font-size:15p
     <div class="chat-note"><span style="color:var(--orm);cursor:pointer;text-decoration:underline" onclick="document.getElementById('ai-ov').classList.add('on');document.getElementById('ai-mo').classList.add('on')">Configure API key</span> for GPT-4o. Built-in intelligence always active.</div>
   </div>
 </div>
+
+<script>
+'use strict';
+
+/* ── PALETTE ── */
+const OR='#D04A02',ORD='#A33A00',ORM='#E8703A',ORL='#FAD4C0',ORT='#FEF0E7';
+const DK='#2D2D2D',MD='#4A4A4A',GD='#7D7D7D',GL='#E0E0E0',GB='#F5F5F5';
+const GN='#059669',GNL='#D1FAE5',GNB='#065F46';
+const AM='#D97706',AML='#FEF3C7',AMB='#78350F';
+const RD='#DC2626',RDL='#FEE2E2',RDB='#991B1B';
+const PAL=[OR,DK,ORM,GD,ORD,MD,'#6B4226','#374151','#5C4033','#78350F','#1E3A5F','#2D6A4F','#7B2D8B','#1D4ED8'];
+const CAT_COL={'Cybersecurity':OR,'Network & Telecom':DK,'Hosting':'#1E3A5F','M365 & Power Platform':GD,'IdAM':ORM,'Service Management (SNow)':ORD,'MSP':'#2D6A4F'};
+
+/* ── MARKET REFS ── */
+const MREF={
+  'Cybersecurity':[
+    {s:'Gartner 2024 IT Market Guide',v:'$75K–$220K for enterprise endpoint + SIEM bundle'},
+    {s:'IDC Security Spending Guide 2024',v:'Avg $112K for SME cybersecurity full stack'},
+    {s:'Gartner MQ: PAM 2024',v:'CyberArk enterprise avg: $100K–$180K/yr'},
+    {s:'IDC Zero Trust 2024',v:'Zscaler ZIA Transformation avg: $140K–$200K'}
+  ],
+  'Network & Telecom':[
+    {s:'Cisco Global Price List 2024',v:'C8300 router: $8,500–$18,000 per unit list price'},
+    {s:'Gartner MQ: WAN Edge 2024',v:'SD-WAN avg total: $85K–$160K enterprise'},
+    {s:'IDC Network Infrastructure 2024',v:'NGFW (PA-445 class): $12K–$28K per unit'},
+    {s:'Cisco SMARTnet Benchmark 2024',v:'SMARTnet avg 12–18% of hardware list price annually'}
+  ],
+  'Hosting':[
+    {s:'Gartner IT Infrastructure Benchmark 2024',v:'VMware vSphere enterprise avg: $160K–$280K'},
+    {s:'451 Research: Storage 2024',v:'NetApp AFF A250/A30 HA avg: $180K–$260K'},
+    {s:'Oracle Standard List 2024',v:'Oracle DB Enterprise: $47.5K/processor/yr'}
+  ],
+  'M365 & Power Platform':[
+    {s:'Microsoft MSRP 2024',v:'M365 E3: $36/user/mo · E5: $57/user/mo'},
+    {s:'Gartner SaaS Benchmark 2024',v:'Power BI Premium avg: $20/user/mo'},
+    {s:'IDC Cloud Productivity 2024',v:'Microsoft resellers avg 5–15% below MSRP >500 seats'}
+  ],
+  'IdAM':[
+    {s:'Forrester IAM Wave 2024',v:'Okta Workforce avg: $8–$15/user/mo at 1,000 seats'},
+    {s:'Gartner MQ IGA 2024',v:'SailPoint IIQ avg: $100K–$180K enterprise'},
+    {s:'Quest Migration Benchmark 2024',v:'On-Demand Migration T5: $120K–$170K typical'}
+  ],
+  'Service Management (SNow)':[
+    {s:'Gartner MQ ITSM 2024',v:'ServiceNow ITSM Pro avg: $110/user/mo'},
+    {s:'Forrester ITSM Benchmark 2024',v:'Atlassian JSM most cost-effective for <500 agents'},
+    {s:'ServiceNow List Price 2024',v:'App Engine Enterprise avg: $250K–$350K/yr'}
+  ]
+};
+
+/* ── STATE — NO HARDCODED DATA ── */
+let DB=[], VENDORS=[], CATEGORIES=[], SERVICES=[];
+let nqSelSvcs=new Set(), rqSelSvcs=new Set(), rqCurCat='All';
+let bvSelSvcs=new Set(), bvFiltered=[];
+let aiCfg={prov:'local',key:'',mdl:'gpt-4o',azEp:'',azDep:'',azVer:'2024-02-01',beUrl:'',beKey:'',sysp:''};
+let aiHist=[], aiTyping=false, aiMsgCnt=0;
+
+/* ── INIT ── */
+document.addEventListener('DOMContentLoaded', async () => {
+  try { const s=localStorage.getItem('pwc_ai'); if(s) Object.assign(aiCfg,JSON.parse(s)); } catch(e){}
+  await loadCatalog();
+  if(!DB.length){ showNoData(); return; }
+  rebuildIndex();
+  initNav();
+  populateDropdowns();
+  ovRender();
+  nqFilterSvcs();
+  rqFilterSvcs();
+  bvFilterChips();
+  initChatChips();
+  dtRender();
+  set('chat-status','Catalog active · '+DB.length+' records');
+});
+
+/* ── LOAD CATALOG ── */
+async function loadCatalog(){
+  const urls=['./catalog_data.json','catalog_data.json'];
+  for(const url of urls){
+    try{
+      const r=await fetch(url+'?v='+Date.now());
+      if(!r.ok) continue;
+      const d=await r.json();
+      if(Array.isArray(d)&&d.length>0){
+        DB=[...d];
+        document.getElementById('nlive').textContent=DB.length+' Records';
+        document.getElementById('nlive').style.background=GN;
+        console.log('✅ Loaded '+DB.length+' records');
+        return;
+      }
+    }catch(e){ console.log('Cannot load '+url,e); }
+  }
+  document.getElementById('nlive').textContent='No Data';
+  document.getElementById('nlive').style.background=RD;
+}
+
+function showNoData(){
+  document.getElementById('nlive').textContent='No Data';
+  document.getElementById('nlive').style.background=RD;
+  const kEl=document.getElementById('ov-kpi');
+  if(kEl) kEl.innerHTML=`<div style="grid-column:1/-1" class="ab rd">
+    <div class="ab-title">No Catalog Data Found</div>
+    <div class="ab-body">
+      catalog_data.json not found or empty.<br>
+      Run the SharePoint extractor: <strong>python main.py</strong><br>
+      Then push catalog_data.json to your GitHub repository root.
+    </div>
+  </div>`;
+  set('ov-total','0');
+}
+
+/* ── REBUILD INDEX ── */
+function rebuildIndex(){
+  VENDORS=[...new Set(DB.map(r=>r.vendor))].filter(Boolean).sort();
+  CATEGORIES=[...new Set(DB.map(r=>r.cat))].filter(Boolean).sort();
+  SERVICES=[...new Set(DB.map(r=>r.service||'').concat(DB.flatMap(r=>r.services||[])))].filter(Boolean).sort();
+}
+
+function refreshAll(){
+  clearDDs(); populateDropdowns();
+  ovRender(); bvFilterChips(); bvRender(); ngRender(); pxRender(); vnRender(); dtRender();
+}
+
+/* ── NAV ── */
+function initNav(){
+  document.querySelectorAll('.ntab').forEach(tab=>{
+    tab.addEventListener('click',()=>{
+      const pg=tab.dataset.page;
+      document.querySelectorAll('.ntab').forEach(t=>t.classList.remove('active'));
+      document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById('pg-'+pg).classList.add('active');
+      if(pg==='bv'){bvFilterChips();bvRender();}
+      if(pg==='ng') ngRender();
+      if(pg==='px') pxRender();
+      if(pg==='vn') vnRender();
+      if(pg==='dt') dtRender();
+      if(pg==='rq') rqFilterSvcs();
+    });
+  });
+}
+function goPage(pg){
+  document.querySelectorAll('.ntab').forEach(t=>t.classList.toggle('active',t.dataset.page===pg));
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  const el=document.getElementById('pg-'+pg);
+  if(el) el.classList.add('active');
+  if(pg==='ng') ngRender();
+  if(pg==='px') pxRender();
+  if(pg==='vn') vnRender();
+  if(pg==='bv'){bvFilterChips();bvRender();}
+  if(pg==='dt') dtRender();
+}
+
+/* ── CORE HELPERS ── */
+function getPrice(r){ return Number(r.unit_price||r.price||0); }
+function getServices(r){ if(r.service) return [r.service]; if(r.services) return r.services; return []; }
+function getUnit(r){ return r.unit||'per license'; }
+
+function fmt(n){
+  if(!n||isNaN(n)||n<=0) return '—';
+  if(n>=1e6) return '$'+(n/1e6).toFixed(2)+'M';
+  if(n>=1000) return '$'+Math.round(n).toLocaleString('en-US');
+  return '$'+Number(n).toFixed(2);
+}
+function fmtU(n,unit){
+  if(!n||isNaN(n)) return '—';
+  const u=(unit||'unit').replace('per license','/lic').replace('per seat','/seat').replace('per user','/user').replace('per month','/mo').replace('per year','/yr').replace('per device','/dev').replace('per quote','/quote');
+  return '$'+Number(n).toFixed(2)+' '+u;
+}
+function vcol(v){ return PAL[VENDORS.indexOf(v)%PAL.length]||DK; }
+function catcol(c){ return CAT_COL[c]||GD; }
+function vbadge(v){ return `<span style="background:${vcol(v)};color:#fff;padding:2px 8px;border-radius:2px;font-size:.76rem;font-weight:700;white-space:nowrap">${esc(v)}</span>`; }
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function fmtHtml(t){ return String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/`(.+?)`/g,'<code style="background:#F0F0F0;padding:1px 4px;border-radius:2px;font-family:monospace">$1</code>').replace(/\n\n/g,'<br><br>').replace(/\n/g,'<br>'); }
+function hcol(v,mx){ return v?`rgba(208,74,2,${(0.07+v/mx*0.86).toFixed(2)})`:GB; }
+function pScore(p,prices){
+  const vp=prices.filter(x=>x>0);
+  if(!vp.length||!p||p<=0) return null;
+  const mn=Math.min(...vp),mx=Math.max(...vp);
+  if(mx===mn) return 50;
+  return Math.max(0,Math.min(100,Math.round((1-(p-mn)/(mx-mn))*100)));
+}
+function verdict(sc){
+  if(sc===null) return{l:'No Data',c:'gd'};
+  if(sc>=70) return{l:'COMPETITIVE',c:'gn'};
+  if(sc>=40) return{l:'AVERAGE',c:'am'};
+  return{l:'HIGH RISK',c:'rd'};
+}
+function scol(sc){ if(sc===null)return GD; if(sc>=70)return GN; if(sc>=40)return AM; return RD; }
+function set(id,v){ const e=document.getElementById(id); if(e) e.textContent=v; }
+
+function renderBars(id,data,opts){
+  const el=document.getElementById(id); if(!el) return;
+  if(!data||!data.length){el.innerHTML=`<div style="color:${GD};font-size:.84rem;padding:10px;text-align:center">No data available</div>`;return;}
+  const o=Object.assign({col:OR,lw:'140px',h:17,showVal:true},opts||{});
+  const mx=Math.max(...data.map(d=>d.v||0),1);
+  el.innerHTML=data.map(d=>{
+    const pct=Math.round((d.v||0)/mx*100),cv=d.c||o.col;
+    const lbl=String(d.l||''),val=d.f||fmt(d.v);
+    return`<div class="bar-row">
+      <div class="bar-lbl" style="flex:0 0 ${o.lw};min-width:${o.lw}" title="${esc(lbl)}">${esc(lbl.length>22?lbl.substring(0,22)+'…':lbl)}</div>
+      <div class="bar-track" style="height:${o.h}px"><div class="bar-fill" style="width:${pct}%;background:${cv};height:${o.h}px">${o.showVal&&pct>15?`<span>${esc(String(val))}</span>`:''}</div></div>
+      ${o.showVal?`<div class="bar-val">${esc(String(val))}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+/* ── DROPDOWNS ── */
+function clearDDs(){
+  ['ng-cat','ng-ven','ng-svc','px-cat','px-ven','px-svc','vn-sel','vn-cat','dt-cat','dt-ven','nq-cat','bv-cat','rq-cat-sel']
+    .forEach(id=>{const e=document.getElementById(id);if(e) while(e.options.length>1) e.remove(1);});
+}
+function addOpts(id,items){
+  const el=document.getElementById(id); if(!el) return;
+  items.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;el.appendChild(o);});
+}
+function populateDropdowns(){
+  addOpts('ng-cat',CATEGORIES); addOpts('ng-svc',SERVICES);
+  addOpts('px-cat',CATEGORIES); addOpts('px-svc',SERVICES);
+  addOpts('vn-sel',VENDORS); addOpts('vn-cat',CATEGORIES);
+  addOpts('dt-cat',CATEGORIES); addOpts('dt-ven',VENDORS);
+  addOpts('nq-cat',CATEGORIES); addOpts('bv-cat',CATEGORIES);
+  addOpts('rq-cat-sel',CATEGORIES);
+  updVenDD('ng-ven','All'); updVenDD('px-ven','All');
+}
+function updVenDD(id,cat){
+  const el=document.getElementById(id); if(!el) return;
+  const cur=el.value;
+  const vens=cat==='All'?VENDORS:[...new Set(DB.filter(r=>r.cat===cat).map(r=>r.vendor))].sort();
+  el.innerHTML='<option value="All">All Vendors</option>'+vens.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');
+  if(vens.includes(cur)) el.value=cur;
+}
+
+function dlCSV(csv,name){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download=name; a.click();
+}
+
+/* ══════════════════════════════════════
+   OVERVIEW
+══════════════════════════════════════ */
+function ovRender(){
+  if(!DB.length){ showNoData(); return; }
+  const allP=DB.map(r=>getPrice(r)).filter(p=>p>0);
+  const avg=allP.length?allP.reduce((a,b)=>a+b,0)/allP.length:0;
+  const svcVenMap={};
+  DB.forEach(r=>{
+    const svcs=getServices(r);
+    svcs.forEach(s=>{
+      if(!svcVenMap[s]) svcVenMap[s]=new Set();
+      svcVenMap[s].add(r.vendor);
+    });
+  });
+  const competitive=Object.values(svcVenMap).filter(s=>s.size>1).length;
+  let maxSpread=0;
+  Object.entries(svcVenMap).forEach(([s,vens])=>{
+    if(vens.size<2) return;
+    const ps=DB.filter(r=>getServices(r).includes(s)).map(r=>getPrice(r)).filter(p=>p>0);
+    if(ps.length>1&&Math.min(...ps)>0){
+      const sp=Math.round((Math.max(...ps)-Math.min(...ps))/Math.min(...ps)*100);
+      if(sp>maxSpread) maxSpread=sp;
+    }
+  });
+  set('ov-total',DB.length);
+  const kEl=document.getElementById('ov-kpi');
+  if(kEl) kEl.innerHTML=[
+    ['or',DB.length,'Line Items','All catalog records'],
+    ['dk',VENDORS.length,'Vendors','Active suppliers'],
+    ['md',CATEGORIES.length,'Categories','Tech domains'],
+    ['gd',SERVICES.length,'Services','Unique benchmarkable'],
+    ['gn',competitive,'Competitive Svcs','Multi-vendor quotes'],
+    ['bk',maxSpread+'%','Max Price Spread','Negotiation leverage']
+  ].map(([c,v,l,s])=>`<div class="kc $${c}"><div class="kv">$${v}</div><div class="kl">$${l}</div><div class="ks">$${s}</div></div>`).join('');
+  buildCatCards();
+  renderBars('ch-pcat',CATEGORIES.map((c,i)=>{
+    const ps=DB.filter(r=>r.cat===c).map(r=>getPrice(r)).filter(p=>p>0);
+    const a=ps.length?ps.reduce((a,b)=>a+b,0)/ps.length:0;
+    return{l:c,v:Math.round(a),f:fmtU(a,''),c:PAL[i%PAL.length]};
+  }).filter(d=>d.v>0).sort((a,b)=>a.v-b.v),{lw:'155px'});
+  const spD=Object.entries(svcVenMap).filter(([s,vs])=>vs.size>1).map(([s])=>{
+    const ps=DB.filter(r=>getServices(r).includes(s)).map(r=>getPrice(r)).filter(p=>p>0);
+    const sp=ps.length>1&&Math.min(...ps)>0?Math.round((Math.max(...ps)-Math.min(...ps))/Math.min(...ps)*100):0;
+    return{l:s,v:sp,f:sp+'%'};
+  }).sort((a,b)=>b.v-a.v).slice(0,10);
+  renderBars('ch-spread',spD,{lw:'160px',col:OR});
+  renderBars('ch-vvol',VENDORS.map(v=>({l:v,v:DB.filter(r=>r.vendor===v).length,c:vcol(v)})).sort((a,b)=>b.v-a.v),{lw:'120px'});
+  const hmMx=Math.max(...VENDORS.flatMap(v=>CATEGORIES.map(c=>DB.filter(r=>r.vendor===v&&r.cat===c).length)),1);
+  let hm='<table class="hm"><thead><tr><th class="rh">Vendor</th>'+CATEGORIES.map(c=>`<th class="ch" title="$${esc(c)}">$${esc(c.substring(0,9))}</th>`).join('')+'<th class="ch">Total</th></tr></thead><tbody>';
+  VENDORS.forEach(v=>{
+    const tot=DB.filter(r=>r.vendor===v).length;
+    hm+=`<tr><td class="rl">$${esc(v)}</td>`+CATEGORIES.map(c=>{const n=DB.filter(r=>r.vendor===v&&r.cat===c).length;return`<td style="background:$${hcol(n,hmMx)};color:$${n>0?DK:GL}">$${n>0?n:''}</td>`;}).join('')+`<td style="font-weight:700;color:$${OR};background:$${GB}">${tot}</td></tr>`;
+  });
+  hm+='</tbody></table>';
+  document.getElementById('hm-ov').innerHTML=hm;
+  const pRng=document.getElementById('ch-rng');
+  if(pRng){
+    const gmx=Math.max(...CATEGORIES.map(c=>{const ps=DB.filter(r=>r.cat===c).map(r=>getPrice(r));return ps.length?Math.max(...ps):0;}),1);
+    pRng.innerHTML=CATEGORIES.map(c=>{
+      const ps=DB.filter(r=>r.cat===c).map(r=>getPrice(r)).filter(p=>p>0);
+      if(!ps.length) return '';
+      const mn=Math.min(...ps),mx2=Math.max(...ps),av=ps.reduce((a,b)=>a+b,0)/ps.length;
+      const mnp=Math.round(mn/gmx*100),mxp=Math.round(mx2/gmx*100),avp=Math.round(av/gmx*100);
+      const col=catcol(c);
+      return`<div style="margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+          <span style="font-size:.80rem;font-weight:600;color:$${MD}">$${esc(c)}</span>
+          <span style="font-size:.80rem;font-weight:700;color:$${col}">$${fmt(av)} avg/unit</span>
+        </div>
+        <div style="background:${GB};border-radius:2px;height:13px;position:relative;overflow:hidden">
+          <div style="position:absolute;left:$${mnp}%;width:$${mxp-mnp}%;height:100%;background:${col};opacity:.22"></div>
+          <div style="position:absolute;left:$${avp}%;width:3px;height:100%;background:$${col}"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:.70rem;color:${GD};margin-top:2px">
+          <span>$${fmt(mn)}</span><span>$${fmt(mx2)}</span>
+        </div>
+      </div>`;
+    }).join('');
+  }
+  const insEl=document.getElementById('exec-ins');
+  if(insEl) insEl.innerHTML=`
+    <div class="ab or"><div class="ab-title">Catalog Summary</div><div class="ab-body">$${DB.length} line items from $${VENDORS.length} vendors across $${CATEGORIES.length} categories. $${SERVICES.length} unique services benchmarked. Overall avg unit price: <strong>${fmt(avg)}</strong>.</div></div>
+    <div class="ab am"><div class="ab-title">Negotiation Leverage</div><div class="ab-body">Price spread up to <strong>$${maxSpread}%</strong> detected across vendors. <strong>$${competitive} services</strong> have 2+ vendor quotes for competitive benchmarking.</div></div>
+    <div class="ab gn"><div class="ab-title">PS1 — Benchmark Incoming Quote</div><div class="ab-body">Use <strong>New Quotation</strong> to compare any vendor's unit price against ${DB.length} real catalog records. Get instant Proceed / Negotiate / Re-tender verdict.</div></div>
+    <div class="ab or"><div class="ab-title">PS2 — Plan Your Budget</div><div class="ab-body">Use <strong>RFQ Builder</strong> to set per-license budget targets before going to market. Identify vendors to invite and set credible price ceilings.</div></div>`;
+}
+
+function buildCatCards(){
+  const el=document.getElementById('cat-cards'); if(!el) return;
+  el.innerHTML=CATEGORIES.map(c=>{
+    const rows=DB.filter(r=>r.cat===c);
+    const vens=[...new Set(rows.map(r=>r.vendor))];
+    const svcs=[...new Set(rows.map(r=>r.service||'').filter(Boolean))];
+    const ps=rows.map(r=>getPrice(r)).filter(p=>p>0);
+    const avg=ps.length?ps.reduce((a,b)=>a+b,0)/ps.length:0;
+    const mn=ps.length?Math.min(...ps):0,mx=ps.length?Math.max(...ps):0;
+    const spread=mn>0?Math.round((mx-mn)/mn*100):0;
+    const col=catcol(c);
+    return`<div style="background:#fff;border:1px solid $${GL};border-radius:var(--r);border-top:4px solid $${col};overflow:hidden;cursor:pointer;transition:box-shadow .15s,transform .15s"
+      onclick="drillCat('${esc(c)}')"
+      onmouseenter="this.style.boxShadow='0 4px 14px rgba(0,0,0,.12)';this.style.transform='translateY(-2px)'"
+      onmouseleave="this.style.boxShadow='';this.style.transform=''">
+      <div style="padding:13px 15px;border-bottom:1px solid ${GL}">
+        <div style="font-family:var(--ff);font-size:1.02rem;font-weight:700;color:$${DK};margin-bottom:7px">$${esc(c)}</div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px">
+          <span style="background:$${GB};border-radius:2px;padding:3px 8px;font-size:.72rem;font-weight:700;color:$${MD}">${rows.length} Records</span>
+          <span style="background:$${GB};border-radius:2px;padding:3px 8px;font-size:.72rem;font-weight:700;color:$${MD}">${vens.length} Vendors</span>
+          <span style="background:$${spread>30?RDL:spread>15?AML:GNL};border-radius:2px;padding:3px 8px;font-size:.72rem;font-weight:700;color:$${spread>30?RD:spread>15?AM:GN}">Spread: ${spread}%</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px">
+          <div style="text-align:center;background:$${GNL};border-radius:var(--r);padding:5px"><div style="font-family:var(--ff);font-size:.90rem;font-weight:700;color:$${GN}">$${fmt(mn)}</div><div style="font-size:.60rem;color:$${GD};text-transform:uppercase;font-weight:700">Best/Unit</div></div>
+          <div style="text-align:center;background:$${ORT};border-radius:var(--r);padding:5px"><div style="font-family:var(--ff);font-size:.90rem;font-weight:700;color:$${col}">$${fmt(avg)}</div><div style="font-size:.60rem;color:$${GD};text-transform:uppercase;font-weight:700">Avg/Unit</div></div>
+          <div style="text-align:center;background:$${RDL};border-radius:var(--r);padding:5px"><div style="font-family:var(--ff);font-size:.90rem;font-weight:700;color:$${RD}">$${fmt(mx)}</div><div style="font-size:.60rem;color:$${GD};text-transform:uppercase;font-weight:700">Max/Unit</div></div>
+        </div>
+      </div>
+      <div style="padding:10px 15px">
+        <div style="font-size:.70rem;font-weight:700;text-transform:uppercase;color:$${col};margin-bottom:5px">Top Services ($${svcs.length})</div>
+        <div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:8px">
+          $${svcs.slice(0,4).map(s=>`<span style="background:$${ORT};border:1px solid $${ORL};color:$${ORD};border-radius:2px;padding:2px 5px;font-size:.68rem;font-weight:600">${esc(s.length>22?s.substring(0,22)+'…':s)}</span>`).join('')}
+          $${svcs.length>4?`<span style="font-size:.68rem;color:$${GD};padding:2px 4px">+${svcs.length-4}</span>`:''}
+        </div>
+        <div style="font-size:.70rem;font-weight:700;text-transform:uppercase;color:${col};margin-bottom:4px">Vendors</div>
+        ${vens.slice(0,3).map(v=>{
+          const vp=rows.filter(r=>r.vendor===v).map(r=>getPrice(r)).filter(p=>p>0);
+          const va=vp.length?vp.reduce((a,b)=>a+b,0)/vp.length:0;
+          return`<div style="display:flex;align-items:center;justify-content:space-between;padding:3px 0;border-bottom:1px solid #F8F8F8;font-size:.78rem">$${vbadge(v)}<span style="color:$${MD};font-family:monospace;font-weight:700">${fmt(va)}/unit</span></div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function drillCat(c){ goPage('ng'); const el=document.getElementById('ng-cat'); if(el){el.value=c;ngRender();} }
+
+/* ══════════════════════════════════════
+   NEGOTIATION CENTRE
+══════════════════════════════════════ */
+function ngReset(){ ['ng-cat','ng-ven','ng-svc'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='All';}); ngRender(); }
+function ngRender(){
+  if(!DB.length) return;
+  const cat=document.getElementById('ng-cat').value; updVenDD('ng-ven',cat);
+  const ven=document.getElementById('ng-ven').value, svc=document.getElementById('ng-svc').value;
+  let rows=DB;
+  if(cat!=='All') rows=rows.filter(r=>r.cat===cat);
+  if(ven!=='All') rows=rows.filter(r=>r.vendor===ven);
+  const svcMap={};
+  rows.forEach(r=>{
+    const svcs=getServices(r);
+    svcs.forEach(s=>{
+      if(svc!=='All'&&s!==svc) return;
+      if(!svcMap[s]) svcMap[s]=[];
+      svcMap[s].push({p:getPrice(r),v:r.vendor,f:r.file,unit:getUnit(r),year:r.year,q:r.quarter});
+    });
+  });
+  const ps=rows.map(r=>getPrice(r)).filter(p=>p>0);
+  const avg=ps.length?ps.reduce((a,b)=>a+b,0)/ps.length:0;
+  const mn=ps.length?Math.min(...ps):0;
+  const spDs=Object.entries(svcMap).filter(([s,q])=>q.length>1).map(([s,q])=>{
+    const v2=q.filter(x=>x.p>0);
+    return v2.length>1&&Math.min(...v2.map(x=>x.p))>0?Math.round((Math.max(...v2.map(x=>x.p))-Math.min(...v2.map(x=>x.p)))/Math.min(...v2.map(x=>x.p))*100):0;
+  });
+  const maxSp=spDs.length?Math.max(...spDs):0;
+  const kEl=document.getElementById('ng-kpi');
+  if(kEl) kEl.innerHTML=[
+    ['or',rows.length,'Records','In filter'],
+    ['gn',fmt(mn),'Best Unit Price','Floor'],
+    ['md',fmt(avg),'Avg Unit Price','Baseline'],
+    ['dk',maxSp+'%','Max Spread','Leverage']
+  ].map(([c,v,l,s])=>`<div class="kc $${c}"><div class="kv">$${v}</div><div class="kl">$${l}</div><div class="ks">$${s}</div></div>`).join('');
+  const nc=document.getElementById('ng-cards');
+  if(nc){
+    const entries=Object.entries(svcMap).sort((a,b)=>{
+      const sa=a[1].filter(x=>x.p>0),sb=b[1].filter(x=>x.p>0);
+      const spa=sa.length>1&&Math.min(...sa.map(x=>x.p))>0?Math.round((Math.max(...sa.map(x=>x.p))-Math.min(...sa.map(x=>x.p)))/Math.min(...sa.map(x=>x.p))*100):0;
+      const spb=sb.length>1&&Math.min(...sb.map(x=>x.p))>0?Math.round((Math.max(...sb.map(x=>x.p))-Math.min(...sb.map(x=>x.p)))/Math.min(...sb.map(x=>x.p))*100):0;
+      return spb-spa;
+    });
+    if(!entries.length){
+      nc.innerHTML=`<div class="ab am"><div class="ab-body">No services match the current filter. Try adjusting category or vendor.</div></div>`;
+    } else {
+      nc.innerHTML=entries.map(([s,quotes])=>{
+        const v2=quotes.filter(x=>x.p>0).sort((a,b)=>a.p-b.p);
+        const sp=v2.length>1&&v2[0].p>0?Math.round((v2[v2.length-1].p-v2[0].p)/v2[0].p*100):0;
+        const pavg=v2.length?v2.reduce((a,b)=>a+b.p,0)/v2.length:0;
+        const bv=v2.length?v2[0]:null,wv=v2.length?v2[v2.length-1]:null;
+        const spCls=sp>30?'rd':sp>15?'am':'gn';
+        const unit=v2.length?v2[0].unit||'per license':'per license';
+        return`<div class="neg-card">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px">
+            <div><div style="font-size:.90rem;font-weight:700;color:$${DK};margin-bottom:3px">$${esc(s)}</div><div style="font-size:.74rem;color:$${GD}">$${v2.length} vendor$${v2.length!==1?'s':''} · $${esc(unit)}</div></div>
+            <div style="text-align:right"><div style="font-family:var(--ff);font-size:1.35rem;font-weight:700;color:$${sp>30?RD:sp>15?AM:GN};line-height:1">$${sp}%</div><div style="font-size:.62rem;color:${GD}">Spread</div></div>
+          </div>
+          <div class="neg-prices">
+            <div class="np-box"><div class="np-v" style="color:$${GN}">$${bv?fmt(bv.p):'—'}</div><div class="np-l">Best${bv?' ('+bv.v.substring(0,8)+')':''}</div></div>
+            <div class="np-box"><div class="np-v" style="color:$${OR}">$${fmt(pavg)}</div><div class="np-l">Average</div></div>
+            <div class="np-box"><div class="np-v" style="color:$${RD}">$${wv?fmt(wv.p):'—'}</div><div class="np-l">Max${wv?' ('+wv.v.substring(0,8)+')':''}</div></div>
+          </div>
+          $${v2.length?`<div style="background:$${GB};border-radius:var(--r);overflow:hidden;margin-bottom:8px">$${v2.map((q,i)=>{const pct=Math.round(q.p/(v2[v2.length-1].p||1)*100)||1;return`<div style="display:flex;align-items:center;gap:6px;padding:4px 8px;background:$${i%2?'#fff':GB};font-size:.78rem"><div style="flex:1">$${vbadge(q.v)}</div><div style="font-family:monospace;font-weight:700;color:$${i===0?GN:DK}">$${fmt(q.p)}</div><div style="width:$${Math.max(pct*0.5,3)}%;max-width:50%;height:5px;background:${i===0?GN:i===v2.length-1?RD:AM};border-radius:2px;min-width:3px"></div></div>`;}).join('')}</div>`:''}
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <span class="badge $${spCls}">$${sp>30?'HIGH LEVERAGE':sp>15?'REVIEW':'OK'}</span>
+            <span style="font-size:.74rem;color:$${GD}">Target: <strong style="color:$${GN}">$${fmt(pavg*0.9)}</strong>/$${unit.replace('per ','')}</span>
+            <button onclick="chatAsk('Negotiation strategy for $${esc(s)}?')" style="background:$${ORT};border:1px solid $${ORL};color:$${ORD};border-radius:var(--r);padding:3px 9px;font-size:.70rem;font-weight:700;cursor:pointer;font-family:var(--fs)">Ask AI</button>
+          </div>
+        </div>`;
+      }).join('');
+    }
+  }
+  renderBars('ng-catbar',CATEGORIES.map((c2,i)=>{const ps2=DB.filter(r=>r.cat===c2).map(r=>getPrice(r)).filter(p=>p>0),a2=ps2.length?ps2.reduce((a,b)=>a+b,0)/ps2.length:0;return{l:c2,v:Math.round(a2),f:fmt(a2),c:PAL[i%PAL.length]};}).filter(d=>d.v>0).sort((a,b)=>a.v-b.v),{lw:'140px'});
+  const mktEl=document.getElementById('ng-mktref');
+  if(mktEl){const cats2=cat==='All'?CATEGORIES:[cat];const refs=cats2.flatMap(c2=>(MREF[c2]||[]).map(r=>({...r,cat:c2})));mktEl.innerHTML=refs.length?`<div class="mkt-box"><div class="mkt-title">Market Reference Pricing</div>$${refs.map(r=>`<div class="mkt-row"><span class="mkt-src">$${esc(r.s)}</span><span class="mkt-val">${esc(r.v)}</span></div>`).join('')}</div>`:`<div class="ab am"><div class="ab-body">Select a category to see market references.</div></div>`;}
+  const ft=document.getElementById('ng-full');
+  if(ft){ft.innerHTML=Object.entries(svcMap).map(([s,quotes])=>{
+    const v2=quotes.filter(x=>x.p>0);
+    if(!v2.length) return '';
+    const mn2=Math.min(...v2.map(x=>x.p)),mx2=Math.max(...v2.map(x=>x.p)),av2=v2.reduce((a,b)=>a+b.p,0)/v2.length;
+    const sp2=mn2>0?Math.round((mx2-mn2)/mn2*100):0;
+    const bvq=v2.find(x=>x.p===mn2);
+    const cat2=DB.find(r=>getServices(r).includes(s))?.cat||'—';
+    const unit2=v2[0].unit||'per license';
+    const cls2=sp2>30?'rd':sp2>15?'am':'gn';
+    return`<tr><td style="font-weight:600">$${esc(s)}</td><td><span style="border-left:3px solid $${catcol(cat2)};padding-left:6px;font-size:.80rem">$${esc(cat2)}</span></td><td style="text-align:center;font-weight:700">$${[...new Set(v2.map(x=>x.v))].length}</td><td style="color:$${GN};font-weight:700;font-family:monospace">$${fmt(mn2)}</td><td style="color:$${OR};font-weight:700;font-family:monospace">$${fmt(av2)}</td><td style="font-family:monospace">$${fmt(mx2)}</td><td style="font-weight:700;color:$${sp2>30?RD:sp2>15?AM:GN}">$${sp2}%</td><td>$${bvq?vbadge(bvq.v):'—'}</td><td style="font-size:.72rem;color:$${GD}">$${esc(unit2)}</td><td><span class="badge $${cls2}">$${sp2>30?'HIGH':sp2>15?'REVIEW':'OK'}</span></td></tr>`;
+  }).join('')||`<tr><td colspan="10" style="text-align:center;color:${GD};padding:16px">No data for current filter.</td></tr>`;}
+}
+
+/* ══════════════════════════════════════
+   BROWSE & VERDICT
+══════════════════════════════════════ */
+function bvFilterChips(){
+  const cat=document.getElementById('bv-cat').value||'All';
+  const srch=(document.getElementById('bv-srch').value||'').toLowerCase();
+  let sv=[...SERVICES];
+  if(cat!=='All'){const cs=new Set(DB.filter(r=>r.cat===cat).flatMap(r=>getServices(r)));sv=sv.filter(x=>cs.has(x));}
+  if(srch) sv=sv.filter(x=>x.toLowerCase().includes(srch));
+  bvFiltered=sv;
+  set('bv-cnt-lbl',sv.length+' services');
+  set('bv-tot-cnt',sv.length+' total');
+  set('bv-sel-cnt',bvSelSvcs.size+' selected');
+  const el=document.getElementById('bv-chips'); if(!el) return;
+  el.innerHTML='';
+  sv.forEach(x=>{
+    const on=bvSelSvcs.has(x);
+    const vcnt=new Set(DB.filter(r=>getServices(r).includes(x)).map(r=>r.vendor)).size;
+    const catOfSvc=DB.find(r=>getServices(r).includes(x))?.cat||'';
+    const cc=catcol(catOfSvc);
+    const chip=document.createElement('div');
+    chip.style.cssText=`display:inline-flex;align-items:center;gap:4px;padding:5px 11px;border-radius:13px;cursor:pointer;font-size:.80rem;font-weight:600;border:1.5px solid $${on?OR:GL};background:$${on?ORL:'#fff'};color:${on?ORD:MD};transition:all .12s;margin-bottom:4px;max-width:225px;user-select:none;`;
+    chip.innerHTML=`<span style="width:7px;height:7px;border-radius:50%;background:$${cc};flex-shrink:0;pointer-events:none"></span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;pointer-events:none">$${esc(x)}</span>$${vcnt>1?`<span style="background:$${on?'rgba(163,58,0,.18)':GB};border-radius:9px;padding:0 5px;font-size:.68rem;color:$${on?ORD:GD};flex-shrink:0;pointer-events:none">$${vcnt}v</span>`:''}`;
+    chip.addEventListener('click',function(){
+      if(bvSelSvcs.has(x)){bvSelSvcs.delete(x);}else{bvSelSvcs.add(x);}
+      const isOn=bvSelSvcs.has(x);
+      chip.style.border=`1.5px solid ${isOn?OR:GL}`;
+      chip.style.background=isOn?ORL:'#fff';
+      chip.style.color=isOn?ORD:MD;
+      set('bv-sel-cnt',bvSelSvcs.size+' selected');
+      bvUpdBadge(); bvRender();
+    });
+    el.appendChild(chip);
+  });
+  bvUpdBadge();
+}
+function bvClear(){bvSelSvcs.clear();document.getElementById('bv-cat').value='All';document.getElementById('bv-srch').value='';bvFilterChips();bvRender();}
+function bvSelectAll(){bvFiltered.forEach(s=>bvSelSvcs.add(s));bvFilterChips();bvRender();}
+function bvUpdBadge(){const n=bvSelSvcs.size;const b=document.getElementById('bv-badge');if(b){b.textContent=n+' selected';b.style.display=n>0?'block':'none';}set('bv-sel-cnt',n+' selected');}
+function bvGetVendors(sel){return[...new Set(DB.filter(r=>getServices(r).some(s=>sel.includes(s))&&getPrice(r)>0).map(r=>r.vendor))].sort();}
+
+function bvRender(){
+  bvUpdBadge();
+  const sel=[...bvSelSvcs];
+  const vw=document.getElementById('bv-verdict-wrap');
+  const an=document.getElementById('bv-analysis');
+  const lg=document.getElementById('bv-legend');
+  if(!sel.length){
+    document.getElementById('bv-mat-wrap').innerHTML=`<div style="padding:30px;text-align:center;color:${GD};font-size:.88rem">Select one or more services above to build the price matrix.</div>`;
+    set('bv-mat-info','Select services to populate');
+    if(vw) vw.style.display='none';
+    if(an) an.style.display='none';
+    if(lg) lg.style.display='none';
+    document.getElementById('bv-tbody').innerHTML=`<tr><td colspan="10" style="text-align:center;color:${GD};padding:22px">Select services to show matching quotes.</td></tr>`;
+    set('bv-tbl-cnt','—'); return;
+  }
+  if(lg) lg.style.display='flex';
+  bvBuildMatrix(sel);
+  const matchRows=DB.filter(r=>getPrice(r)>0&&getServices(r).some(s=>sel.includes(s)));
+  if(vw){vw.style.display='block';bvBuildVerdict(sel,matchRows);}
+  if(an){an.style.display='block';bvBuildBestSvc(sel);bvBuildCoverage(sel);bvBuildStrategy(sel);}
+  bvBuildTable(sel,matchRows);
+  set('bv-tbl-cnt',matchRows.length+' quotes');
+  set('bv-mat-info',sel.length+' services × '+bvGetVendors(sel).length+' vendors');
+}
+
+function bvBuildMatrix(sel){
+  const wrap=document.getElementById('bv-mat-wrap'); if(!wrap) return;
+  const vendors=bvGetVendors(sel);
+  if(!vendors.length){wrap.innerHTML=`<div style="padding:24px;text-align:center;color:${GD}">No vendor quotes found for selected services.</div>`;return;}
+  const sort=document.getElementById('bv-sort').value||'best';
+  const svcData=sel.map(svc=>{
+    const catOfSvc=DB.find(r=>getServices(r).includes(svc))?.cat||'';
+    const vp={};
+    vendors.forEach(v=>{
+      const rows=DB.filter(r=>r.vendor===v&&getServices(r).includes(svc)&&getPrice(r)>0);
+      if(rows.length){const prices=rows.map(r=>getPrice(r));vp[v]={best:Math.min(...prices),avg:prices.reduce((a,b)=>a+b,0)/prices.length,count:rows.length,unit:rows[0].unit||'per license'};}
+    });
+    const allBest=Object.values(vp).map(d=>d.best);
+    const mn=allBest.length?Math.min(...allBest):0,mx2=allBest.length?Math.max(...allBest):0,av=allBest.length?allBest.reduce((a,b)=>a+b,0)/allBest.length:0;
+    const spread=mn>0?Math.round((mx2-mn)/mn*100):0;
+    const bestVen=allBest.length?vendors.find(v=>vp[v]?.best===mn):null;
+    return{svc,catOfSvc,vp,mn,mx:mx2,av,spread,bestVen,qcnt:allBest.length};
+  });
+  if(sort==='alpha') svcData.sort((a,b)=>a.svc.localeCompare(b.svc));
+  else if(sort==='spread') svcData.sort((a,b)=>b.spread-a.spread);
+  else if(sort==='vendors') svcData.sort((a,b)=>b.qcnt-a.qcnt);
+  else svcData.sort((a,b)=>a.mn-b.mn);
+  let html=`<table class="bv-mat"><thead><tr><th class="sh">Service</th>`;
+  vendors.forEach(v=>{const col=vcol(v);const cnt=svcData.reduce((n,sd)=>n+(sd.vp[v]?1:0),0);html+=`<th class="vh"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:$${col};margin-right:4px"></span>$${esc(v)}<br><span style="font-size:.64rem;color:rgba(255,255,255,.40);font-weight:400">$${cnt}/$${sel.length} svcs</span></th>`;});
+  html+=`<th class="sumh">Best</th></tr></thead><tbody>`;
+  svcData.forEach(sd=>{
+    html+=`<tr><td class="sc" title="$${esc(sd.svc)}">$${esc(sd.svc.length>34?sd.svc.substring(0,34)+'…':sd.svc)}<span>${esc(sd.catOfSvc)}</span></td>`;
+    vendors.forEach(v=>{
+      const vd=sd.vp[v];
+      if(!vd){html+=`<td class="nc">—<br><span>No quote</span></td>`;}
+      else{
+        const isBest=v===sd.bestVen;
+        const isWorst=sd.mx>0&&vd.best===sd.mx&&Object.keys(sd.vp).length>1;
+        const pctVsAvg=sd.av>0?Math.round((vd.best-sd.av)/sd.av*100):0;
+        const cls=isBest?'pc bc':isWorst?'pc wc':'pc';
+        const bStyle=isBest?`background:$${GNL};color:$${GN}`:isWorst?`background:$${RDL};color:$${RD}`:`background:$${GB};color:$${GD}`;
+        const bTxt=isBest?'★ BEST':isWorst?'▲ HIGH':(pctVsAvg>10?`+${pctVsAvg}%`:pctVsAvg<-10?`${pctVsAvg}%`:'≈ avg');
+        html+=`<td class="$${cls}" onclick="bvCellClick('$${esc(v)}','$${esc(sd.svc)}')" title="$${esc(v)}: $${fmt(vd.best)}/$${vd.unit||'unit'}">
+          <span class="pv">${fmt(vd.best)}</span>
+          <span class="pl">${esc(vd.unit||'per license')}</span>
+          <span class="pb" style="$${bStyle}">$${bTxt}</span>
+        </td>`;
+      }
+    });
+    html+=`<td class="sumc"><span class="sv">$${sd.mn>0?fmt(sd.mn):'—'}</span><span class="sl2">$${sd.spread>0?sd.spread+'% spread':'single vendor'}</span>$${sd.bestVen?`<span style="display:block;margin-top:3px;font-size:.66rem;background:$${ORL};color:$${ORD};border-radius:2px;padding:2px 5px">$${esc(sd.bestVen)}</span>`:''}</td></tr>`;
+  });
+  html+=`</tbody><tfoot><tr><td class="fsvc">Best Unit Price Per Service</td>`;
+  vendors.forEach(v=>{
+    const tot=svcData.reduce((s,sd)=>s+(sd.vp[v]?.best||0),0);
+    const cov=svcData.filter(sd=>!!sd.vp[v]).length;
+    const allTots=vendors.map(v2=>svcData.reduce((s,sd)=>s+(sd.vp[v2]?.best||0),0));
+    const isLow=tot>0&&tot===Math.min(...allTots.filter(t=>t>0));
+    html+=`<td style="text-align:center;background:$${isLow?GNB:DK};border-top:2px solid $${isLow?GN:OR}"><span style="font-family:monospace;color:$${isLow?GN:'rgba(255,255,255,.72)'};font-weight:700;font-size:.86rem">$${tot>0?fmt(tot):'—'}</span><br><span style="font-size:.64rem;color:rgba(255,255,255,.38)">$${cov}/$${sel.length} svcs</span></td>`;
+  });
+  html+=`<td class="ftot">← Lowest</td></tr></tfoot></table>`;
+  wrap.innerHTML=html;
+}
+
+function bvCellClick(vendor,service){const row=DB.find(r=>r.vendor===vendor&&getServices(r).includes(service)&&getPrice(r)>0);if(row) openFV(row);}
+
+function bvBuildVerdict(sel,matchRows){
+  const el=document.getElementById('bv-verdict-wrap'); if(!el) return;
+  const prices=matchRows.map(r=>getPrice(r)).filter(p=>p>0);
+  if(!prices.length){el.innerHTML='<div class="ab rd"><div class="ab-body">No pricing data for selected services.</div></div>';return;}
+  const vendors=bvGetVendors(sel);
+  const full=vendors.filter(v=>sel.every(s=>DB.some(r=>r.vendor===v&&getServices(r).includes(s)&&getPrice(r)>0)));
+  const part=vendors.filter(v=>!full.includes(v)&&sel.some(s=>DB.some(r=>r.vendor===v&&getServices(r).includes(s)&&getPrice(r)>0)));
+  const mn=Math.min(...prices),mx=Math.max(...prices);
+  const spread=mn>0?Math.round((mx-mn)/mn*100):0;
+  let cls,title,body;
+  if(full.length>=2){cls='gn';title=`$${full.length} Vendors Cover All $${sel.length} Services — Strong Position`;body=`<strong>$${full.slice(0,3).join(', ')}</strong> each quote all selected services. Unit price spread: <strong>$${spread}%</strong>. Use competitor quotes to negotiate.`;}
+  else if(full.length===1){cls='am';title=`1 Vendor Covers All Services — $${part.length} Others Have Partial Coverage`;body=`<strong>$${full[0]}</strong> is the only full-coverage vendor. Consider split strategy to create competitive tension.`;}
+  else{cls='rd';title=`No Single Vendor Covers All ${sel.length} Services — Split Strategy Required`;body=`Use the matrix to identify the best multi-vendor combination for full coverage.`;}
+  el.innerHTML=`<div class="ab ${cls}">
+    <div class="ab-title">${title}</div>
+    <div class="ab-body" style="margin-bottom:8px">${body}</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:7px">
+      $${full.length?`<span style="background:$${GNL};color:$${GNB};border-radius:var(--r);padding:3px 11px;font-size:.76rem;font-weight:700">Full coverage: $${full.join(', ')}</span>`:''}
+      $${part.length?`<span style="background:$${AML};color:$${AMB};border-radius:var(--r);padding:3px 11px;font-size:.76rem;font-weight:700">Partial: $${part.slice(0,4).join(', ')}${part.length>4?' +'+(part.length-4):''}</span>`:''}
+      <span style="background:$${GB};color:$${MD};border-radius:var(--r);padding:3px 11px;font-size:.76rem;font-weight:700">$${vendors.length} vendors · $${spread}% spread</span>
+    </div>
+  </div>`;
+}
+
+function bvBuildBestSvc(sel){
+  const el=document.getElementById('bv-best-svc'); if(!el) return;
+  el.innerHTML=sel.map(svc=>{
+    const rows=DB.filter(r=>getServices(r).includes(svc)&&getPrice(r)>0);
+    if(!rows.length) return`<div class="pod-row"><div class="pod-svc">$${esc(svc)}</div><div class="pod-r" style="color:$${GD};font-size:.76rem">No quotes</div></div>`;
+    const sorted=[...rows].sort((a,b)=>getPrice(a)-getPrice(b));
+    const best=sorted[0];
+    const ps2=rows.map(r=>getPrice(r));
+    const av2=ps2.reduce((a,b)=>a+b,0)/ps2.length;
+    const pct=av2>0?Math.round((getPrice(best)-av2)/av2*100):0;
+    const allVens=[...new Set(rows.map(r=>r.vendor))];
+    return`<div class="pod-row best">
+      <div class="pod-svc">${esc(svc.length>32?svc.substring(0,32)+'…':svc)}
+        <div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:3px">$${allVens.slice(0,3).map(v=>`<span style="background:$${vcol(v)};color:#fff;border-radius:2px;padding:2px 5px;font-size:.64rem;font-weight:700">$${esc(v)}</span>`).join('')}$${allVens.length>3?`<span style="font-size:.66rem;color:$${GD}">+$${allVens.length-3}</span>`:''}</div>
+      </div>
+      <div class="pod-r">
+        <div class="pod-price">${fmt(getPrice(best))}</div>
+        <div class="pod-ven">$${esc(best.vendor)} · $${esc(getUnit(best))}</div>
+        <div style="font-size:.66rem;color:$${pct<0?GN:AM};font-weight:700;margin-top:2px">$${pct>0?'+':''}$${pct}% vs avg $${fmt(av2)}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function bvBuildCoverage(sel){
+  const el=document.getElementById('bv-coverage'); if(!el) return;
+  const vendors=bvGetVendors(sel);
+  const stats=vendors.map(v=>{
+    const covSvcs=sel.filter(s=>DB.some(r=>r.vendor===v&&getServices(r).includes(s)&&getPrice(r)>0));
+    const pct=Math.round(covSvcs.length/sel.length*100);
+    return{v,covSvcs,pct,miss:sel.filter(s=>!covSvcs.includes(s))};
+  }).sort((a,b)=>b.pct-a.pct);
+  el.innerHTML=stats.map(vs=>{
+    const fc=vs.pct===100?GN:vs.pct>=60?AM:GD;
+    return`<div class="cov-row">
+      <div style="flex:0 0 100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${vbadge(vs.v)}</div>
+      <div class="cov-bar-wrap"><div class="cov-bar-fill" style="width:$${vs.pct}%;background:$${fc}"></div></div>
+      <div class="cov-pct" style="color:$${fc}">$${vs.pct}%</div>
+    </div>
+    $${vs.miss.length?`<div style="font-size:.68rem;color:$${GD};padding:2px 0 5px">Missing: $${esc(vs.miss.slice(0,3).join(', '))}$${vs.miss.length>3?' +'+(vs.miss.length-3):''}</div>`:''} `;
+  }).join('');
+}
+
+function bvBuildStrategy(sel){
+  const el=document.getElementById('bv-strategy'); if(!el) return;
+  const vendors=bvGetVendors(sel);
+  const mixMap={};let mixTot=0;
+  sel.forEach(s=>{
+    const rows=DB.filter(r=>getServices(r).includes(s)&&getPrice(r)>0);
+    if(!rows.length) return;
+    const bRow=rows.reduce((a,b)=>getPrice(a)<getPrice(b)?a:b);
+    mixMap[s]={vendor:bRow.vendor,price:getPrice(bRow),unit:getUnit(bRow)};
+    mixTot+=getPrice(bRow);
+  });
+  const mixVens=[...new Set(Object.values(mixMap).map(m=>m.vendor))];
+  let html=`<div style="margin-bottom:11px">
+    <div style="font-size:.70rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:$${GN};border-bottom:1px solid $${GNL};padding-bottom:4px;margin-bottom:6px">Best-of-Breed Strategy</div>
+    <div style="font-family:monospace;font-weight:700;color:$${GN};font-size:.96rem;margin-bottom:5px">$${fmt(mixTot)}</div>
+    <div style="font-size:.78rem;color:$${MD};margin-bottom:8px">All $${sel.length} services · <strong>${mixVens.length} vendors</strong></div>
+    $${Object.entries(mixMap).slice(0,6).map(([s,m])=>`<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #F8F8F8;font-size:.76rem"><span style="color:$${MD};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:52%">$${esc(s.length>22?s.substring(0,22)+'…':s)}</span>$${vbadge(m.vendor)}<span style="font-family:monospace;font-weight:700;color:$${GN}">$${fmt(m.price)}</span></div>`).join('')}
+    $${Object.keys(mixMap).length>6?`<div style="font-size:.70rem;color:$${GD};padding-top:4px">+${Object.keys(mixMap).length-6} more services</div>`:''}
+  </div>`;
+  html+=`<button onclick="chatAsk('Optimal strategy for: $${sel.slice(0,3).join(', ')}$${sel.length>3?' and '+(sel.length-3)+' more':''}?')" style="width:100%;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;border-radius:var(--r);padding:9px;font-size:.80rem;font-weight:700;cursor:pointer;font-family:var(--fs);margin-top:5px">Ask AI for Full Strategy</button>`;
+  el.innerHTML=html;
+}
+
+function bvBuildTable(sel,matchRows){
+  const tbody=document.getElementById('bv-tbody'); if(!tbody) return;
+  if(!matchRows.length){tbody.innerHTML=`<tr><td colspan="10" style="text-align:center;color:${GD};padding:22px">No matching quotes.</td></tr>`;return;}
+  const allP=DB.map(r=>getPrice(r)).filter(p=>p>0);
+  tbody.innerHTML=[...matchRows].sort((a,b)=>getPrice(a)-getPrice(b)).map((r,i)=>{
+    const price=getPrice(r);
+    const sc=pScore(price,allP);
+    const vd=verdict(sc);
+    const col=catcol(r.cat);
+    const unit=getUnit(r);
+    const svcs=getServices(r).filter(s=>sel.includes(s));
+    return`<tr onclick="openFV(DB[$${DB.indexOf(r)}])" style="background:$${i%2?'#FAFAFA':'#fff'}">
+      <td>${vbadge(r.vendor||'')}</td>
+      <td><span style="border-left:3px solid $${col};padding-left:6px;font-size:.80rem;font-weight:600">$${esc(r.cat)}</span></td>
+      <td style="font-weight:600;font-size:.82rem;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.service||svcs[0]||'')}</td>
+      <td style="font-family:monospace;font-weight:700;color:$${OR}">$${fmt(price)}</td>
+      <td style="font-size:.76rem;color:$${GD}">$${esc(unit)}</td>
+      <td style="font-size:.78rem;text-align:center">${r.quantity||1}</td>
+      <td style="font-family:monospace;font-size:.78rem;color:$${MD}">$${r.total_line_price?fmt(r.total_line_price):'—'}</td>
+      <td><span class="badge $${vd.c}">$${esc(vd.l)}</span></td>
+      <td style="font-size:.78rem;color:$${GD}">$${r.year||'—'}</td>
+      <td style="color:${OR};font-weight:700;font-size:.78rem">View →</td>
+    </tr>`;
+  }).join('');
+}
+
+function bvExportMatrix(){
+  const sel=[...bvSelSvcs]; if(!sel.length){alert('Select services first.');return;}
+  const vendors=bvGetVendors(sel);
+  let csv='Service,Category,'+vendors.join(',')+',Best Unit Price,Best Vendor,Spread %\n';
+  sel.forEach(svc=>{
+    const catOfSvc=DB.find(r=>getServices(r).includes(svc))?.cat||'';
+    const row=[`"$${svc}"`,`"$${catOfSvc}"`];const prices=[];
+    vendors.forEach(v=>{const rows=DB.filter(r=>r.vendor===v&&getServices(r).includes(svc)&&getPrice(r)>0);const best=rows.length?Math.min(...rows.map(r=>getPrice(r))):'';row.push(best||'N/A');if(best)prices.push(best);});
+    const mn=prices.length?Math.min(...prices):'';const mx=prices.length?Math.max(...prices):'';
+    const bv=prices.length?vendors.find(v=>{const rows=DB.filter(r=>r.vendor===v&&getServices(r).includes(svc)&&getPrice(r)>0);return rows.length&&Math.min(...rows.map(r=>getPrice(r)))===mn;}):'' ;
+    const sp=mn&&mx&&mn>0?Math.round((mx-mn)/mn*100):'';
+    row.push(mn||'N/A',bv||'N/A',sp!==''?sp+'%':'N/A'); csv+=row.join(',')+'\n';
+  });
+  dlCSV(csv,'BrowseVerdict_UnitPrices.csv');
+}
+
+function bvExportQuotes(){
+  const sel=[...bvSelSvcs];
+  const rows=sel.length?DB.filter(r=>getServices(r).some(s=>sel.includes(s))&&getPrice(r)>0):DB;
+  const csv='Vendor,Category,File,Service,Unit Price,Unit,Quantity,Total Line,Year,Quarter\n'+rows.map(r=>`"$${r.vendor}","$${r.cat}","$${r.file||''}","$${r.service||''}","$${getPrice(r)}","$${getUnit(r)}","$${r.quantity||1}","$${r.total_line_price||''}","$${r.year||''}","$${r.quarter||''}"`).join('\n');
+  dlCSV(csv,'BrowseVerdict_Quotes.csv');
+}
+
+/* ══════════════════════════════════════
+   NEW QUOTATION PS1
+══════════════════════════════════════ */
+function nqFilterSvcs(){
+  const s=(document.getElementById('nq-ss').value||'').toLowerCase();
+  const cat=document.getElementById('nq-cat')?.value||'All';
+  let sv=SERVICES.filter(x=>!s||x.toLowerCase().includes(s));
+  if(cat!=='All'){const cs=new Set(DB.filter(r=>r.cat===cat).flatMap(r=>getServices(r)));sv=sv.filter(x=>cs.has(x));}
+  const el=document.getElementById('nq-svcs');
+  if(el) el.innerHTML=sv.map(x=>{const a=nqSelSvcs.has(x);return`<div onclick="togNqSvc($${JSON.stringify(x)},this)" style="display:inline-flex;align-items:center;padding:4px 10px;border-radius:11px;cursor:pointer;font-size:.80rem;font-weight:600;border:1.5px solid $${a?OR:GL};background:$${a?ORL:'#fff'};color:$${a?ORD:MD};transition:all .11s;margin-bottom:4px">${esc(x)}</div>`;}).join('');
+  set('nq-sel-cnt',nqSelSvcs.size+' selected');
+}
+function togNqSvc(s,el){
+  if(nqSelSvcs.has(s)){nqSelSvcs.delete(s);el.style.borderColor=GL;el.style.background='#fff';el.style.color=MD;}
+  else{nqSelSvcs.add(s);el.style.borderColor=OR;el.style.background=ORL;el.style.color=ORD;}
+  set('nq-sel-cnt',nqSelSvcs.size+' selected'); scoreIt();
+}
+
+function handleFile(file){
+  if(!file) return;
+  const prog=document.getElementById('uprog'),fill=document.getElementById('uprog-fill'),txt=document.getElementById('uprog-txt'),pct=document.getElementById('uprog-pct');
+  prog.style.display='block'; document.getElementById('ext-box').style.display='none';
+  let p=0; const iv=setInterval(()=>{p=Math.min(p+Math.random()*18,90);fill.style.width=p+'%';pct.textContent=Math.round(p)+'%';txt.textContent=p<30?'Reading…':p<60?'Extracting…':'Analysing…';},120);
+  const rd=new FileReader();
+  rd.onload=function(e){clearInterval(iv);fill.style.width='100%';pct.textContent='100%';txt.textContent='Complete';
+    setTimeout(()=>{prog.style.display='none';
+      let content='';try{content=new TextDecoder('utf-8',{fatal:false}).decode(new Uint8Array(e.target.result));}catch(er){}
+      const ex=extractMeta(content,file.name);
+      document.getElementById('ext-box').style.display='block';
+      document.getElementById('ex-fname').textContent=file.name;
+      document.getElementById('ex-price').textContent=ex.price>0?fmt(ex.price):'Not detected — enter below';
+      document.getElementById('ex-vendor').textContent=ex.vendor||'Not detected';
+      document.getElementById('ex-svcs').textContent=ex.services.length?ex.services.join(', '):'None detected';
+      if(ex.price>0) document.getElementById('nq-pr').value=ex.price;
+      if(ex.vendor) document.getElementById('nq-vn').value=ex.vendor;
+      if(ex.services.length){ex.services.forEach(s=>{if(SERVICES.includes(s))nqSelSvcs.add(s);});nqFilterSvcs();}
+      scoreIt();},350);};
+  rd.readAsArrayBuffer(file);
+}
+
+function extractMeta(content,filename){
+  const result={price:0,vendor:'',services:[]};const txt=String(content||''),fname=String(filename||'');
+  const found=[];
+  [/(?:total|amount|price|quote|cost)[:\s$]*(?:USD\s*)?([\d,]+(?:\.\d{1,2})?)/gi,/\$\s*([\d,]{3,})/g].forEach(p=>{let m;const rx=new RegExp(p.source,p.flags);while((m=rx.exec(txt))!==null){const n=parseFloat((m[1]||'').replace(/,/g,''));if(n>=1&&n<=50000000)found.push(n);}});
+  if(found.length) result.price=Math.max(...found);
+  VENDORS.forEach(v=>{if(txt.toLowerCase().includes(v.toLowerCase())||fname.toLowerCase().includes(v.toLowerCase().replace(/\s/g,'_')))if(!result.vendor)result.vendor=v;});
+  SERVICES.forEach(s=>{if(txt.toLowerCase().includes(s.toLowerCase()))result.services.push(s);});
+  result.services=[...new Set(result.services)]; return result;
+}
+
+function scoreIt(){
+  const pr=parseFloat(document.getElementById('nq-pr').value||'0');
+  const vn=(document.getElementById('nq-vn').value||'').trim();
+  const unit=(document.getElementById('nq-unit')?.value||'per license');
+  const emp=document.getElementById('nq-empty'),res=document.getElementById('nq-result');
+  if(!pr||pr<=0||nqSelSvcs.size===0){if(emp)emp.style.display='block';if(res)res.style.display='none';return;}
+  const sel=[...nqSelSvcs];
+  const hRows=DB.filter(r=>sel.some(s=>getServices(r).includes(s))&&getPrice(r)>0);
+  const hist=hRows.map(r=>getPrice(r));
+  if(!hist.length){if(emp){emp.style.display='block';}if(res)res.style.display='none';return;}
+  if(emp) emp.style.display='none'; if(res) res.style.display='block';
+  const avg=hist.reduce((a,b)=>a+b,0)/hist.length,mn=Math.min(...hist),mx=Math.max(...hist);
+  const sc=pScore(pr,hist),vd=verdict(sc),pct=avg>0?Math.round((pr-avg)/avg*100):0;
+  const target=avg*0.90;
+  const range=mx-mn||1;
+  const prPos=Math.max(0,Math.min(100,Math.round((pr-mn)/range*100)));
+  const avgPos=Math.max(0,Math.min(100,Math.round((avg-mn)/range*100)));
+  const verdCls=sc>=70?'gn':sc>=40?'am':'rd';
+  const verdTitle=sc>=70?'PROCEED — Competitive Unit Price':sc>=40?'NEGOTIATE — Unit Price Above Optimal':'RE-TENDER — Significantly Above Market';
+  document.getElementById('nq-verdict').innerHTML=`<div class="ab $${verdCls}"><div class="ab-title">$${verdTitle}</div><div class="ab-body">$${vn?`<strong>$${esc(vn)}</strong> `:''} quoted <strong>$${fmtU(pr,unit)}</strong>, which is <strong>$${Math.abs(pct)}% $${pct<0?'below':'above'}</strong> the historical average of <strong>$${fmtU(avg,unit)}</strong> ($${hist.length} catalog records). $${sc>=70?`Competitive. Best on record: $${fmtU(mn,unit)}.`:sc>=40?`Negotiate to $${fmtU(target,unit)}. Saving: $${fmt(Math.round(pr-target))} per $${unit.replace('per ','')}.`:`Significantly above market. Best: $${fmtU(mn,unit)}. Target: $${fmtU(target,unit)}.`}</div></div>`;
+  document.getElementById('nq-kpi').innerHTML=[
+    ['or',fmtU(pr,unit),'Quoted Unit Price',vn||'Vendor'],
+    ['md',(pct>=0?'+':'')+pct+'%','vs Historical Avg',fmtU(avg,unit)],
+    [pct<0?'gn':'rd',fmtU(Math.abs(Math.round(avg-pr)),unit),pct<0?'Below Avg':'Above Avg','Difference'],
+    ['gn',fmtU(target,unit),'Target Price','−10% of avg']
+  ].map(([c,v,l,s])=>`<div class="kc $${c}"><div class="kv">$${v}</div><div class="kl">$${l}</div><div class="ks">$${s}</div></div>`).join('');
+  document.getElementById('nq-gauge').innerHTML=`<div class="gauge-wrap"><div style="display:flex;justify-content:space-between;font-size:.78rem;font-weight:700;margin-bottom:6px"><span style="color:$${GN}">Best: $${fmtU(mn,unit)}</span><span style="color:$${OR}">Avg: $${fmtU(avg,unit)}</span><span style="color:$${RD}">Max: $${fmtU(mx,unit)}</span></div><div class="gauge-track"><div class="gauge-avg-line" style="left:$${avgPos}%"></div><div class="gauge-pin" style="left:$${prPos}%"></div></div><div class="gauge-lbls"><span>$${fmtU(mn,unit)}</span><span>$${fmtU(mx,unit)}</span></div><div style="margin-top:8px;font-size:.74rem;color:$${GD}">Quote at <strong>$${prPos}th percentile</strong>. ${prPos<33?'Excellent — very competitive.':prPos<66?'Acceptable — negotiate toward lower end.':'High — significant negotiation headroom.'}</div></div>`;
+  const vendorRows=[...hRows.slice(0,7).map(r=>({l:r.vendor+' ('+r.year+')',v:getPrice(r),f:fmtU(getPrice(r),getUnit(r)),c:GD})),{l:(vn||'THIS QUOTE')+' ★',v:pr,f:fmtU(pr,unit),c:OR}].sort((a,b)=>a.v-b.v);
+  renderBars('nq-chart',vendorRows,{lw:'140px'});
+  const rowCats=[...new Set(hRows.map(r=>r.cat))];
+  const allRefs=rowCats.flatMap(c=>MREF[c]||[]);
+  const mktEl=document.getElementById('nq-mktref');
+  if(mktEl&&allRefs.length) mktEl.innerHTML=`<div class="mkt-box"><div class="mkt-title">Market Reference Pricing</div>$${allRefs.slice(0,5).map(r=>`<div class="mkt-row"><span class="mkt-src">$${esc(r.s)}</span><span class="mkt-val">${esc(r.v)}</span></div>`).join('')}</div>`;
+  const saving=Math.round(avg-pr);
+  document.getElementById('nq-rec').innerHTML=`<div class="ab $${verdCls}" style="margin-bottom:10px">$${sc>=70?`<strong>Recommended Action:</strong> Proceed at $${fmtU(pr,unit)}. Optionally request a 5% volume discount.`:sc>=40?`<strong>Recommended Action:</strong> Negotiate to <strong>$${fmtU(target,unit)}</strong>. Present historical average as justification. Estimated saving: <strong>$${fmt(Math.round(pr-target))}</strong> per unit.`:`<strong>Recommended Action:</strong> Reject and re-tender. Quote is $${Math.abs(pct)}% above market. Budget ceiling: <strong>${fmtU(target,unit)}</strong>.`}</div>
+    <table class="tbl" style="margin-top:11px"><thead><tr><th>Metric</th><th>Value</th><th>Assessment</th></tr></thead><tbody>
+      <tr><td>Quoted Unit Price</td><td style="font-family:monospace;font-weight:700;color:$${OR}">$${fmtU(pr,unit)}</td><td>${vn||'Vendor'}</td></tr>
+      <tr><td>Historical Average</td><td style="font-family:monospace">$${fmtU(avg,unit)}</td><td style="color:$${pct>=0?RD:GN};font-weight:600">$${pct>=0?'+':''}$${pct}% ${pct>=0?'ABOVE':'BELOW'}</td></tr>
+      <tr><td>Historical Best</td><td style="font-family:monospace;color:$${GN};font-weight:700">$${fmtU(mn,unit)}</td><td style="color:${GN}">Negotiation floor</td></tr>
+      <tr><td>Recommended Target</td><td style="font-family:monospace;font-weight:700;color:$${GN}">$${fmtU(target,unit)}</td><td style="color:${GN}">−10% of avg</td></tr>
+      <tr><td>Potential Saving</td><td style="font-family:monospace;font-weight:700;color:$${saving>0?GN:RD}">$${fmt(Math.abs(saving))}/unit</td><td style="color:$${saving>0?GN:RD}">$${saving>0?'Already below avg':'Above avg — negotiate'}</td></tr>
+      <tr><td>Records Used</td><td style="font-weight:700">$${hist.length}</td><td style="color:$${GD}">${[...new Set(hRows.map(r=>r.vendor))].length} vendors</td></tr>
+    </tbody></table>`;
+}
+
+/* ══════════════════════════════════════
+   RFQ BUILDER PS2
+══════════════════════════════════════ */
+function rqCatChange(){ rqCurCat=document.getElementById('rq-cat-sel').value; rqFilterSvcs(); rqRender(); }
+function rqReset(){ document.getElementById('rq-cat-sel').value='All'; document.getElementById('rq-users').value='1000'; document.getElementById('rq-term').value='3'; rqCurCat='All'; rqSelSvcs.clear(); rqFilterSvcs(); rqRender(); }
+
+function rqFilterSvcs(){
+  const s=(document.getElementById('rq-ss').value||'').toLowerCase();
+  let sv=SERVICES.filter(x=>!s||x.toLowerCase().includes(s));
+  if(rqCurCat!=='All'){const cs=new Set(DB.filter(r=>r.cat===rqCurCat).flatMap(r=>getServices(r)));sv=sv.filter(x=>cs.has(x));}
+  const el=document.getElementById('rq-svcs'); if(!el) return;
+  el.innerHTML=sv.map(x=>{const a=rqSelSvcs.has(x);return`<div onclick="togRqSvc($${JSON.stringify(x)},this)" style="display:inline-flex;align-items:center;padding:4px 10px;border-radius:11px;cursor:pointer;font-size:.80rem;font-weight:600;border:1.5px solid $${a?OR:GL};background:$${a?ORL:'#fff'};color:$${a?ORD:MD};transition:all .11s;margin-bottom:4px">${esc(x)}</div>`;}).join('');
+  set('rq-sel-cnt',rqSelSvcs.size+' selected');
+}
+function togRqSvc(s,el){
+  if(rqSelSvcs.has(s)){rqSelSvcs.delete(s);el.style.borderColor=GL;el.style.background='#fff';el.style.color=MD;}
+  else{rqSelSvcs.add(s);el.style.borderColor=OR;el.style.background=ORL;el.style.color=ORD;}
+  set('rq-sel-cnt',rqSelSvcs.size+' selected'); rqRender();
+}
+function rqSelectAll(){ const sv=SERVICES.slice(); if(rqCurCat!=='All'){const cs=new Set(DB.filter(r=>r.cat===rqCurCat).flatMap(r=>getServices(r)));sv.filter(x=>cs.has(x)).forEach(s=>rqSelSvcs.add(s));}else{sv.forEach(s=>rqSelSvcs.add(s));} rqFilterSvcs(); rqRender(); }
+function rqClear(){ rqSelSvcs.clear(); rqFilterSvcs(); rqRender(); }
+function loadDemoRFQ(){ rqCurCat='Service Management (SNow)'; document.getElementById('rq-cat-sel').value=rqCurCat; ['ServiceNow IT Service Management Professional','ServiceNow App Engine Enterprise','ServiceNow Software Asset Management Professional'].forEach(s=>{if(SERVICES.includes(s))rqSelSvcs.add(s);}); rqFilterSvcs(); rqRender(); goPage('rq'); }
+
+function rqRender(){
+  const sel=[...rqSelSvcs];
+  const users=parseInt(document.getElementById('rq-users').value||'1000',10)||1000;
+  const term=parseInt(document.getElementById('rq-term').value||'1',10)||1;
+  const emp=document.getElementById('rq-empty'),res=document.getElementById('rq-result');
+  if(!sel.length){if(emp)emp.style.display='block';if(res)res.style.display='none';
+    const vl=document.getElementById('rq-vend-list');if(vl)vl.innerHTML='<div class="ab am" style="font-size:.82rem">Select services to see suggested vendors.</div>';
+    return;}
+  if(emp) emp.style.display='none'; if(res) res.style.display='block';
+  const hRows=DB.filter(r=>sel.some(s=>getServices(r).includes(s))&&getPrice(r)>0);
+  if(!hRows.length){if(res)res.style.display='none';return;}
+  const hist=hRows.map(r=>getPrice(r));
+  const avg=hist.reduce((a,b)=>a+b,0)/hist.length,mn=Math.min(...hist),mx=Math.max(...hist);
+  const target=avg*0.90,ceiling=avg*1.10;
+  const vens=[...new Set(hRows.map(r=>r.vendor))];
+  const kpiEl=document.getElementById('rq-kpi');
+  if(kpiEl) kpiEl.innerHTML=[
+    ['gn',fmt(mn),'Best Unit Price','Floor — negotiation target'],
+    ['or',fmt(target),'Budget Target','−10% of avg'],
+    ['rd',fmt(ceiling),'Walk-Away Ceiling','+10% of avg']
+  ].map(([c,v,l,s])=>`<div class="kc $${c}"><div class="kv">$${v}</div><div class="kl">$${l}</div><div class="ks">$${s}</div></div>`).join('');
+  const range2=mx-mn||1;
+  const tPos=Math.max(0,Math.min(100,Math.round((target-mn)/range2*100)));
+  const aPos=Math.max(0,Math.min(100,Math.round((avg-mn)/range2*100)));
+  const cPos=Math.max(0,Math.min(100,Math.round((ceiling-mn)/range2*100)));
+  const rngEl=document.getElementById('rq-range');
+  if(rngEl) rngEl.innerHTML=`<div class="gauge-wrap"><div style="font-size:.74rem;font-weight:700;color:$${OR};text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px">Expected Unit Price Range — $${users.toLocaleString()} users · $${term}-year term</div><div class="gauge-track" style="background:linear-gradient(to right,$${GNL},$${AML},$${RDL})"><div class="gauge-avg-line" style="left:$${tPos}%;background:$${GN}"></div><div class="gauge-avg-line" style="left:$${aPos}%;background:$${OR}"></div><div class="gauge-avg-line" style="left:$${cPos}%;background:$${RD}"></div></div><div style="display:flex;justify-content:space-between;font-size:.70rem;color:$${GD};margin-top:4px"><span style="color:$${GN}">Floor: $${fmt(mn)}</span><span style="color:$${GN}">Target: $${fmt(target)}</span><span style="color:$${OR}">Avg: $${fmt(avg)}</span><span style="color:$${RD}">Ceiling: ${fmt(ceiling)}</span></div></div>`;
+  const tbody=document.getElementById('rq-svc-tbl');
+  if(tbody){tbody.innerHTML=sel.map(s=>{
+    const sp2=DB.filter(r=>getServices(r).includes(s)&&getPrice(r)>0);
+    if(!sp2.length) return'';
+    const p2=sp2.map(r=>getPrice(r));
+    const sm2=Math.min(...p2),mx2=Math.max(...p2),av2=p2.reduce((a,b)=>a+b,0)/p2.length;
+    const bvRow=sp2.find(r=>getPrice(r)===sm2);
+    const cat2=sp2[0]?.cat||'';
+    const unit2=bvRow?getUnit(bvRow):'per license';
+    return`<tr><td style="font-weight:600;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="$${esc(s)}">$${esc(s.length>28?s.substring(0,28)+'...':s)}</td><td><span style="border-left:3px solid $${catcol(cat2)};padding-left:5px;font-size:.78rem">$${esc(cat2)}</span></td><td style="font-family:monospace;font-weight:700;color:$${GN}">$${fmt(sm2)}</td><td style="font-family:monospace;color:$${OR};font-weight:700">$${fmt(av2)}</td><td style="font-family:monospace">$${fmt(mx2)}</td><td style="font-family:monospace;font-weight:700;color:$${GN}">$${fmt(av2*0.9)}</td><td style="font-size:.74rem;color:$${GD}">$${esc(unit2)}</td><td>$${bvRow?vbadge(bvRow.vendor):'—'}</td></tr>`;
+  }).join('');}
+  const rowCats=[...new Set(hRows.map(r=>r.cat))];
+  const allRefs=rowCats.flatMap(c=>MREF[c]||[]);
+  const mktEl=document.getElementById('rq-mktref');
+  if(mktEl&&allRefs.length) mktEl.innerHTML=`<div class="mkt-box"><div class="mkt-title">External Market References — Use as Negotiation Evidence</div>$${allRefs.slice(0,6).map(r=>`<div class="mkt-row"><span class="mkt-src">$${esc(r.s)}</span><span class="mkt-val">${esc(r.v)}</span></div>`).join('')}</div>`;
+  const stEl=document.getElementById('rq-strategy');
+  if(stEl) stEl.innerHTML=`<div class="ab gn"><div class="ab-title">RFQ Strategy — $${sel.length} Service$${sel.length!==1?'s':''} · $${users.toLocaleString()} Users · $${term}-Year Term</div><div class="ab-body">• Set budget target: <strong>$${fmt(target)}</strong>/unit (−10% of avg)<br>• Walk-away ceiling: <strong>$${fmt(ceiling)}</strong>/unit — do not exceed<br>• Best ever recorded: <strong>$${fmt(mn)}</strong>/unit — use as floor<br>• Total $${term}-year at target: <strong>$${fmt(target*users*12*term)}</strong> ($${users.toLocaleString()} users)<br>• Invite: ${vens.join(', ')}</div></div>`;
+  const vlEl=document.getElementById('rq-vend-list');
+  if(vlEl) vlEl.innerHTML=vens.length?vens.map(v=>{const vr2=hRows.filter(r=>r.vendor===v);const vp2=vr2.map(r=>getPrice(r)).filter(p=>p>0);const va2=vp2.length?vp2.reduce((a,b)=>a+b,0)/vp2.length:0;const vs2=[...new Set(vr2.flatMap(r=>getServices(r)).filter(s=>rqSelSvcs.has(s)))];return`<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid $${GL};font-size:.82rem"><div>$${vbadge(v)}<span style="font-size:.76rem;color:$${GD};margin-left:5px">$${vs2.length}/$${sel.length} services</span></div><div style="font-family:monospace;font-weight:700;color:$${OR}">${fmt(va2)}/unit</div></div>`;}).join(''):'<div class="ab am">No vendors found.</div>';
+}
+
+function rqExport(){
+  const sel=[...rqSelSvcs]; if(!sel.length){alert('Select services first.');return;}
+  const users=parseInt(document.getElementById('rq-users').value||'1000',10)||1000;
+  const term=parseInt(document.getElementById('rq-term').value||'1',10)||1;
+  const hRows=DB.filter(r=>sel.some(s=>getServices(r).includes(s))&&getPrice(r)>0);
+  const hist=hRows.map(r=>getPrice(r));
+  if(!hist.length) return;
+  const avg=hist.reduce((a,b)=>a+b,0)/hist.length,mn=Math.min(...hist);
+  const csv='RFQ Summary — IT Contracting Dashboard — PwC\nGenerated,'+new Date().toLocaleDateString()+'\nServices,"'+sel.join('; ')+'"\nTotal Users,'+users+'\nContract Term,'+term+' Year(s)\n\nParameter,Unit Price,Per User/Mo,Total Term\nHistorical Average,$$'+avg.toFixed(2)+',$$'+(avg/12).toFixed(2)+',$$'+Math.round(avg*users*12*term)+'\nBudget Target (-10%),$$'+(avg*0.9).toFixed(2)+',$$'+((avg*0.9)/12).toFixed(2)+',$$'+Math.round(avg*0.9*users*12*term)+'\nWalk-Away Ceiling (+10%),$'+(avg*1.1).toFixed(2)+',$'+((avg*1.1)/12).toFixed(2)+',$'+Math.round(avg*1.1*users*12*term)+'\nBest On Record,$'+mn.toFixed(2)+'\n\nService Breakdown\nService,Category,Best Unit Price,Avg Unit Price,Max Unit Price,Target (-10%),Best Vendor\n'+sel.map(s=>{const sp=DB.filter(r=>getServices(r).includes(s)&&getPrice(r)>0);if(!sp.length)return'';const p=sp.map(r=>getPrice(r));const sm=Math.min(...p),av=p.reduce((a,b)=>a+b,0)/p.length,mx=Math.max(...p);const bv=sp.find(r=>getPrice(r)===sm);const cat=sp[0]?.cat||'';return`"${s}","${cat}",$${sm.toFixed(2)},$${av.toFixed(2)},$${mx.toFixed(2)},$${(av*0.9).toFixed(2)},"${bv?.vendor||''}"`}).filter(Boolean).join('\n');
+  dlCSV(csv,'RFQ_Summary_PwC.csv');
+}
+/* ══════════════════════════════════════
+   VENDOR ANALYSIS
+══════════════════════════════════════ */
+function vnRender(){
+  if(!DB.length) return;
+  const ven=document.getElementById('vn-sel').value||'All';
+  const cat=document.getElementById('vn-cat').value||'All';
+  let rows=DB;
+  if(ven!=='All') rows=rows.filter(r=>r.vendor===ven);
+  if(cat!=='All') rows=rows.filter(r=>r.cat===cat);
+  const vens=ven==='All'?VENDORS:[ven];
+  const prices=rows.map(r=>getPrice(r)).filter(p=>p>0);
+  const avg=prices.length?prices.reduce((a,b)=>a+b,0)/prices.length:0;
+  const svcs=[...new Set(rows.flatMap(r=>getServices(r)))];
+  const kEl=document.getElementById('vn-kpi');
+  if(kEl) kEl.innerHTML=[
+    ['or',rows.length,'Records','In filter'],
+    ['dk',vens.length,'Vendors','Selected'],
+    ['md',svcs.length,'Services','Covered'],
+    ['gn',fmt(avg),'Avg Unit Price','Per license']
+  ].map(([c,v,l,s])=>`<div class="kc ${c}"><div class="kv">${v}</div><div class="kl">${l}</div><div class="ks">${s}</div></div>`).join('');
+  renderBars('vn-rank',vens.map(v=>({l:v,v:DB.filter(r=>r.vendor===v).length,c:vcol(v)})).sort((a,b)=>b.v-a.v),{lw:'120px'});
+  renderBars('vn-breadth',vens.map(v=>{const us=[...new Set(DB.filter(r=>r.vendor===v).flatMap(r=>getServices(r)))];return{l:v,v:us.length,f:us.length+' svcs',c:vcol(v)};}).sort((a,b)=>b.v-a.v),{lw:'120px'});
+  renderBars('vn-avg',vens.map(v=>{const ps=DB.filter(r=>r.vendor===v).map(r=>getPrice(r)).filter(p=>p>0);const a=ps.length?ps.reduce((x,y)=>x+y,0)/ps.length:0;return{l:v,v:Math.round(a),f:fmt(a),c:vcol(v)};}).filter(d=>d.v>0).sort((a,b)=>a.v-b.v),{lw:'120px'});
+  const hmMx=Math.max(...vens.flatMap(v=>CATEGORIES.map(c=>DB.filter(r=>r.vendor===v&&r.cat===c).length)),1);
+  let hm='<table class="hm"><thead><tr><th class="rh">Vendor</th>'+CATEGORIES.map(c=>`<th class="ch" title="${esc(c)}">${esc(c.substring(0,9))}</th>`).join('')+'<th class="ch">Total</th></tr></thead><tbody>';
+  vens.forEach(v=>{
+    hm+=`<tr><td class="rl">${esc(v)}</td>`+CATEGORIES.map(c=>{
+      const n=DB.filter(r=>r.vendor===v&&r.cat===c).length;
+      const ps=DB.filter(r=>r.vendor===v&&r.cat===c).map(r=>getPrice(r)).filter(p=>p>0);
+      const a=ps.length?ps.reduce((x,y)=>x+y,0)/ps.length:0;
+      return`<td style="background:${hcol(n,hmMx)};color:${n>0?DK:GL};cursor:${n>0?'pointer':'default'}" title="${n>0?esc(v)+' / '+esc(c)+': '+n+' records, avg '+fmt(a):''}" onclick="${n>0?`drillCat('${esc(c)}')`:''}"><div style="font-weight:700">${n>0?n:''}</div>${n>0?`<div style="font-size:.60rem;color:${MD}">${fmt(a)}</div>`:''}</td>`;
+    }).join('')+`<td style="font-weight:700;color:${OR};background:${GB}">${DB.filter(r=>r.vendor===v).length}</td></tr>`;
+  });
+  hm+='</tbody></table>';
+  document.getElementById('vn-hm').innerHTML=hm;
+  const profEl=document.getElementById('vn-profiles');
+  if(profEl) profEl.innerHTML=vens.slice(0,9).map(v=>{
+    const vr=DB.filter(r=>r.vendor===v);
+    const vp=vr.map(r=>getPrice(r)).filter(p=>p>0);
+    const va=vp.length?vp.reduce((a,b)=>a+b,0)/vp.length:0;
+    const vmn=vp.length?Math.min(...vp):0;
+    const vmx=vp.length?Math.max(...vp):0;
+    const vcats=[...new Set(vr.map(r=>r.cat))];
+    const vsvcs=[...new Set(vr.flatMap(r=>getServices(r)))];
+    const col=vcol(v);
+    return`<div style="background:#fff;border:1px solid ${GL};border-radius:var(--r);border-top:4px solid ${col};padding:13px">
+      <div style="display:flex;align-items:center;gap:9px;margin-bottom:10px">
+        <div style="width:36px;height:36px;border-radius:50%;background:${col};display:flex;align-items:center;justify-content:center;font-size:.80rem;font-weight:700;color:#fff;flex-shrink:0">${esc(v.substring(0,2).toUpperCase())}</div>
+        <div><div style="font-size:.92rem;font-weight:700;color:${DK}">${esc(v)}</div><div style="font-size:.72rem;color:${GD}">${vr.length} records · ${vcats.length} categories</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:10px">
+        <div style="text-align:center;background:${GNL};border-radius:var(--r);padding:5px"><div style="font-family:var(--ff);font-size:.88rem;font-weight:700;color:${GN}">${fmt(vmn)}</div><div style="font-size:.60rem;color:${GD};text-transform:uppercase;font-weight:700">Best/Unit</div></div>
+        <div style="text-align:center;background:${ORT};border-radius:var(--r);padding:5px"><div style="font-family:var(--ff);font-size:.88rem;font-weight:700;color:${col}">${fmt(va)}</div><div style="font-size:.60rem;color:${GD};text-transform:uppercase;font-weight:700">Avg/Unit</div></div>
+        <div style="text-align:center;background:${RDL};border-radius:var(--r);padding:5px"><div style="font-family:var(--ff);font-size:.88rem;font-weight:700;color:${RD}">${fmt(vmx)}</div><div style="font-size:.60rem;color:${GD};text-transform:uppercase;font-weight:700">Max/Unit</div></div>
+      </div>
+      <div style="font-size:.70rem;font-weight:700;text-transform:uppercase;color:${col};margin-bottom:4px">Categories</div>
+      <div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:8px">
+        ${vcats.map(c=>`<span style="background:${ORT};border:1px solid ${ORL};color:${ORD};border-radius:2px;padding:2px 6px;font-size:.68rem;font-weight:600">${esc(c)}</span>`).join('')}
+      </div>
+      <div style="font-size:.70rem;font-weight:700;text-transform:uppercase;color:${col};margin-bottom:4px">Services (${vsvcs.length})</div>
+      <div style="font-size:.74rem;color:${MD};line-height:1.5">${vsvcs.slice(0,4).map(s=>esc(s.length>30?s.substring(0,30)+'…':s)).join(' · ')}${vsvcs.length>4?` · <span style="color:${GD}">+${vsvcs.length-4} more</span>`:''}</div>
+      <button onclick="chatAsk('Tell me about ${esc(v)} pricing and negotiation strategy')" style="width:100%;margin-top:10px;background:${ORT};border:1px solid ${ORL};color:${ORD};border-radius:var(--r);padding:6px;font-size:.76rem;font-weight:700;cursor:pointer;font-family:var(--fs)">Ask AI About ${esc(v)}</button>
+    </div>`;
+  }).join('');
+}
+
+/* ══════════════════════════════════════
+   PRICING INTELLIGENCE
+══════════════════════════════════════ */
+function pxReset(){ ['px-cat','px-ven','px-svc'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='All';}); pxRender(); }
+function pxRender(){
+  if(!DB.length) return;
+  const cat=document.getElementById('px-cat').value||'All';
+  const ven=document.getElementById('px-ven').value||'All';
+  const svc=document.getElementById('px-svc').value||'All';
+  updVenDD('px-ven',cat); if(ven!=='All') document.getElementById('px-ven').value=ven;
+  let rows=DB;
+  if(cat!=='All') rows=rows.filter(r=>r.cat===cat);
+  if(ven!=='All') rows=rows.filter(r=>r.vendor===ven);
+  if(svc!=='All') rows=rows.filter(r=>getServices(r).includes(svc));
+  const prices=rows.map(r=>getPrice(r)).filter(p=>p>0);
+  if(!prices.length){set('px-avg','—');set('px-min','—');set('px-max','—');set('px-sp','—');return;}
+  const avg=prices.reduce((a,b)=>a+b,0)/prices.length;
+  const mn=Math.min(...prices),mx=Math.max(...prices);
+  const spread=mn>0?Math.round((mx-mn)/mn*100):0;
+  set('px-avg',fmt(avg));set('px-min',fmt(mn));set('px-max',fmt(mx));set('px-sp',spread+'%');
+  const svcMap={};
+  rows.forEach(r=>{
+    getServices(r).forEach(s=>{
+      if(!svcMap[s]) svcMap[s]=[];
+      svcMap[s].push({p:getPrice(r),v:r.vendor,unit:getUnit(r)});
+    });
+  });
+  const catList=cat==='All'?CATEGORIES:[cat];
+  renderBars('px-rng',catList.map((c,i)=>{
+    const ps=DB.filter(r=>r.cat===c).map(r=>getPrice(r)).filter(p=>p>0);
+    if(!ps.length) return null;
+    return{l:c,v:Math.round(ps.reduce((a,b)=>a+b,0)/ps.length),f:fmt(ps.reduce((a,b)=>a+b,0)/ps.length),c:PAL[i%PAL.length]};
+  }).filter(Boolean).sort((a,b)=>a.v-b.v),{lw:'150px'});
+  const spData=Object.entries(svcMap).filter(([,q])=>q.filter(x=>x.p>0).length>1).map(([s,q])=>{
+    const v2=q.filter(x=>x.p>0);
+    const sp2=Math.min(...v2.map(x=>x.p))>0?Math.round((Math.max(...v2.map(x=>x.p))-Math.min(...v2.map(x=>x.p)))/Math.min(...v2.map(x=>x.p))*100):0;
+    return{l:s,v:sp2,f:sp2+'%'};
+  }).sort((a,b)=>b.v-a.v).slice(0,10);
+  renderBars('px-sprd',spData,{lw:'160px',col:OR});
+  const venCmpData=Object.keys(svcMap).length>0?VENDORS.map(v=>{
+    const vp=rows.filter(r=>r.vendor===v).map(r=>getPrice(r)).filter(p=>p>0);
+    if(!vp.length) return null;
+    const va=vp.reduce((a,b)=>a+b,0)/vp.length;
+    const pct=avg>0?Math.round((va-avg)/avg*100):0;
+    return{l:v,v:Math.abs(pct),f:(pct>=0?'+':'')+pct+'% vs avg',c:pct<-10?GN:pct>10?RD:AM};
+  }).filter(Boolean).sort((a,b)=>a.v-b.v):[];
+  renderBars('px-cmp',venCmpData,{lw:'120px'});
+  const allRefs=(cat==='All'?CATEGORIES:[cat]).flatMap(c=>MREF[c]||[]);
+  const mktEl=document.getElementById('px-mktref');
+  if(mktEl) mktEl.innerHTML=allRefs.length?`<div class="mkt-box"><div class="mkt-title">Market Reference Pricing</div>${allRefs.map(r=>`<div class="mkt-row"><span class="mkt-src">${esc(r.s)}</span><span class="mkt-val">${esc(r.v)}</span></div>`).join('')}</div>`:`<div class="ab am"><div class="ab-body">Select a category to see external market references.</div></div>`;
+  const allP=DB.map(r=>getPrice(r)).filter(p=>p>0);
+  const bestTb=document.getElementById('px-best');
+  if(bestTb){
+    const svcEntries=Object.entries(svcMap).map(([s,quotes])=>{
+      const v2=quotes.filter(x=>x.p>0);
+      if(!v2.length) return null;
+      const mn2=Math.min(...v2.map(x=>x.p));
+      const av2=v2.reduce((a,b)=>a+b.p,0)/v2.length;
+      const bVen=v2.find(x=>x.p===mn2);
+      const sv2=mn2-av2;
+      return{s,mn2,av2,sv2,bVen,unit:(bVen?.unit||'per license')};
+    }).filter(Boolean).sort((a,b)=>a.mn2-b.mn2).slice(0,20);
+    bestTb.innerHTML=svcEntries.map(e=>`<tr>
+      <td style="font-weight:600;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(e.s)}">${esc(e.s.length>26?e.s.substring(0,26)+'…':e.s)}</td>
+      <td>${e.bVen?vbadge(e.bVen.v):'—'}</td>
+      <td style="font-family:monospace;font-weight:700;color:${GN}">${fmt(e.mn2)}</td>
+      <td style="font-family:monospace;color:${OR}">${fmt(e.av2)}</td>
+      <td style="font-family:monospace;font-weight:700;color:${e.sv2<0?GN:RD}">${e.sv2<0?fmt(Math.abs(e.sv2))+' saved':'—'}</td>
+    </tr>`).join('')||`<tr><td colspan="5" style="text-align:center;color:${GD};padding:16px">No data.</td></tr>`;
+  }
+  const fullTb=document.getElementById('px-full');
+  if(fullTb){
+    fullTb.innerHTML=Object.entries(svcMap).map(([s,quotes])=>{
+      const v2=quotes.filter(x=>x.p>0);
+      if(!v2.length) return '';
+      const mn2=Math.min(...v2.map(x=>x.p)),mx2=Math.max(...v2.map(x=>x.p)),av2=v2.reduce((a,b)=>a+b.p,0)/v2.length;
+      const sp2=mn2>0?Math.round((mx2-mn2)/mn2*100):0;
+      const bVen=v2.find(x=>x.p===mn2);
+      const cat2=rows.find(r=>getServices(r).includes(s))?.cat||'';
+      const cls2=sp2>30?'rd':sp2>15?'am':'gn';
+      const unit2=bVen?.unit||'per license';
+      return`<tr>
+        <td style="font-weight:600;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(s)}">${esc(s.length>24?s.substring(0,24)+'…':s)}</td>
+        <td><span style="border-left:3px solid ${catcol(cat2)};padding-left:5px;font-size:.78rem">${esc(cat2)}</span></td>
+        <td style="text-align:center;font-weight:700">${[...new Set(v2.map(x=>x.v))].length}</td>
+        <td style="font-family:monospace;font-weight:700;color:${GN}">${fmt(mn2)}</td>
+        <td style="font-family:monospace;color:${OR};font-weight:700">${fmt(av2)}</td>
+        <td style="font-family:monospace">${fmt(mx2)}</td>
+        <td style="font-weight:700;color:${sp2>30?RD:sp2>15?AM:GN}">${sp2}%</td>
+        <td>${bVen?vbadge(bVen.v):'—'}</td>
+        <td><span class="badge ${cls2}">${sp2>30?'HIGH':sp2>15?'REVIEW':'OK'}</span></td>
+      </tr>`;
+    }).join('')||`<tr><td colspan="9" style="text-align:center;color:${GD};padding:16px">No data.</td></tr>`;
+  }
+}
+
+/* ══════════════════════════════════════
+   DATA TABLE
+══════════════════════════════════════ */
+function dtRender(){
+  if(!DB.length) return;
+  const cat=document.getElementById('dt-cat').value||'All';
+  const ven=document.getElementById('dt-ven').value||'All';
+  const srch=(document.getElementById('dt-srch').value||'').toLowerCase();
+  let rows=DB;
+  if(cat!=='All') rows=rows.filter(r=>r.cat===cat);
+  if(ven!=='All') rows=rows.filter(r=>r.vendor===ven);
+  if(srch) rows=rows.filter(r=>
+    String(r.service||'').toLowerCase().includes(srch)||
+    String(r.vendor||'').toLowerCase().includes(srch)||
+    String(r.file||'').toLowerCase().includes(srch)||
+    String(r.cat||'').toLowerCase().includes(srch)
+  );
+  set('dt-cnt',rows.length+' records');
+  const allP=DB.map(r=>getPrice(r)).filter(p=>p>0);
+  const tbody=document.getElementById('dt-tbody');
+  if(!tbody) return;
+  if(!rows.length){
+    tbody.innerHTML=`<tr><td colspan="11" style="text-align:center;color:${GD};padding:22px">No records match. <a href="#" onclick="document.getElementById('dt-cat').value='All';document.getElementById('dt-ven').value='All';document.getElementById('dt-srch').value='';dtRender()" style="color:${OR}">Clear filters</a></td></tr>`;
+    return;
+  }
+  tbody.innerHTML=rows.map((r,i)=>{
+    const price=getPrice(r);
+    const sc=pScore(price,allP);
+    const vd=verdict(sc);
+    const col=catcol(r.cat);
+    const unit=getUnit(r);
+    return`<tr onclick="openFV(DB[${DB.indexOf(r)}])" style="background:${i%2?'#FAFAFA':'#fff'}">
+      <td><span style="border-left:3px solid ${col};padding-left:6px;font-size:.80rem;font-weight:600">${esc(r.cat||'')}</span></td>
+      <td>${vbadge(r.vendor||'')}</td>
+      <td style="font-size:.82rem;font-weight:600;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(r.service||'')}">${esc(r.service||'')}</td>
+      <td style="font-family:monospace;font-weight:700;color:${OR}">${fmt(price)}</td>
+      <td style="font-size:.76rem;color:${GD}">${esc(unit)}</td>
+      <td style="font-size:.78rem;text-align:center">${r.quantity||1}</td>
+      <td style="font-family:monospace;font-size:.78rem;color:${MD}">${r.total_line_price?fmt(r.total_line_price):'—'}</td>
+      <td><div class="ring" style="background:${scol(sc)};width:32px;height:32px;font-size:.74rem">${sc!==null?sc:'—'}</div></td>
+      <td><span class="badge ${vd.c}">${esc(vd.l)}</span></td>
+      <td style="font-size:.78rem;color:${GD}">${r.year||'—'}</td>
+      <td style="font-size:.78rem;color:${GD}">${r.quarter||'—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function dtExport(){
+  const cat=document.getElementById('dt-cat').value||'All';
+  const ven=document.getElementById('dt-ven').value||'All';
+  const srch=(document.getElementById('dt-srch').value||'').toLowerCase();
+  let rows=DB;
+  if(cat!=='All') rows=rows.filter(r=>r.cat===cat);
+  if(ven!=='All') rows=rows.filter(r=>r.vendor===ven);
+  if(srch) rows=rows.filter(r=>String(r.service||'').toLowerCase().includes(srch)||String(r.vendor||'').toLowerCase().includes(srch));
+  const csv='Category,Vendor,File,Service,Unit Price,Unit,Quantity,Total Line Price,Year,Quarter\n'+rows.map(r=>`"${r.cat}","${r.vendor}","${r.file||''}","${r.service||''}","${getPrice(r)}","${getUnit(r)}","${r.quantity||1}","${r.total_line_price||''}","${r.year||''}","${r.quarter||''}"`).join('\n');
+  dlCSV(csv,'IT_Contracting_Catalog_'+new Date().toISOString().substring(0,10)+'.csv');
+}
+
+/* ══════════════════════════════════════
+   FILE VIEWER
+══════════════════════════════════════ */
+function openFV(r){
+  if(!r) return;
+  const price=getPrice(r);
+  const allP=DB.map(x=>getPrice(x)).filter(p=>p>0);
+  const sc=pScore(price,allP),vd=verdict(sc);
+  const catRows=DB.filter(x=>x.cat===r.cat).map(x=>getPrice(x)).filter(p=>p>0);
+  const catAvg=catRows.length?catRows.reduce((a,b)=>a+b,0)/catRows.length:0;
+  const pct=catAvg>0?Math.round((price-catAvg)/catAvg*100):0;
+  const unit=getUnit(r);
+  document.getElementById('fv-title').textContent=(r.service||r.file||'Record Details').substring(0,50);
+  document.getElementById('fv-body').innerHTML=`
+    <div class="ab ${vd.c}" style="margin-bottom:12px"><div class="ab-title">${vd.l}</div><div class="ab-body">Score: ${sc!==null?sc+'/ 100':'N/A'} — ${sc>=70?'Competitive unit price.':sc>=40?'Average — negotiate for improvement.':'High risk — re-evaluate.'}</div></div>
+    <div class="sl" style="margin-bottom:10px">Record Details</div>
+    ${[
+      ['Service',r.service||'—'],
+      ['Category',r.cat||'—'],
+      ['Vendor',r.vendor||'—'],
+      ['Unit Price',fmtU(price,unit)],
+      ['Unit',unit],
+      ['Quantity',r.quantity||1],
+      ['Total Line Price',r.total_line_price?fmt(r.total_line_price):'—'],
+      ['vs Category Avg',(pct>=0?'+':'')+pct+'% ('+fmt(catAvg)+' avg)'],
+      ['Year / Quarter',(r.year||'—')+' / '+(r.quarter||'—')],
+      ['Source File',r.file||'—'],
+      ['Description',r.description||'—'],
+    ].map(([k,v])=>`<div class="fmr"><span class="fmk">${k}</span><span class="fmv ${k==='Unit Price'?'pr':''}">${esc(String(v))}</span></div>`).join('')}
+    <div style="margin-top:14px">
+      <div style="font-size:.70rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:${GD};margin-bottom:7px">Same Service — Other Vendors</div>
+      ${(()=>{
+        const svc=r.service||'';
+        const others=DB.filter(x=>x.vendor!==r.vendor&&getServices(x).includes(svc)&&getPrice(x)>0).slice(0,5);
+        if(!others.length) return`<div style="font-size:.80rem;color:${GD}">No other vendor quotes for this service.</div>`;
+        return others.sort((a,b)=>getPrice(a)-getPrice(b)).map(o=>{
+          const op=getPrice(o),diff=Math.round((price-op)/op*100);
+          return`<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid #F4F4F4;font-size:.80rem">${vbadge(o.vendor)}<span style="font-family:monospace;font-weight:700;color:${GD}">${fmt(op)}</span><span style="color:${diff>0?RD:GN};font-weight:700;font-size:.76rem">${diff>=0?'+':''}${diff}%</span></div>`;
+        }).join('');
+      })()}
+    </div>
+    <button class="sp-btn" onclick="chatAsk('Analyse ${esc((r.service||r.file||'').substring(0,40))} from ${esc(r.vendor||'')} at ${fmtU(price,unit)}')" style="margin-top:14px">Ask AI to Analyse This Record</button>
+    <button class="sp-btn" onclick="nqPrefill(DB[${DB.indexOf(r)}])" style="background:${DK};margin-top:7px">Open in New Quotation (PS1)</button>
+  `;
+  document.getElementById('fvp').classList.add('on');
+}
+
+function nqPrefill(r){
+  if(!r) return;
+  document.getElementById('fvp').classList.remove('on');
+  goPage('nq');
+  if(r.vendor) document.getElementById('nq-vn').value=r.vendor;
+  if(getPrice(r)>0) document.getElementById('nq-pr').value=getPrice(r);
+  const svc=r.service||'';
+  if(svc&&SERVICES.includes(svc)){nqSelSvcs.clear();nqSelSvcs.add(svc);nqFilterSvcs();}
+  scoreIt();
+}
+
+/* ══════════════════════════════════════
+   AI CHAT
+══════════════════════════════════════ */
+function initChatChips(){
+  const chips=[];
+  if(VENDORS.length) chips.push('Best vendor for '+CATEGORIES[0]);
+  if(CATEGORIES.length) chips.push('Avg unit price for '+(SERVICES[0]||CATEGORIES[0]));
+  chips.push('Negotiation strategy for top spread services');
+  chips.push('What services have the highest price spread?');
+  chips.push('Which vendor offers the most competitive unit prices?');
+  chips.push('Set a budget for a 1000-user M365 renewal');
+  const el=document.getElementById('chat-chips');
+  if(el) el.innerHTML=chips.slice(0,5).map(q=>`<div class="chat-chip" onclick="chatAsk(${JSON.stringify(q)})">${esc(q)}</div>`).join('');
+}
+
+function addChatMsg(role,text){
+  aiHist.push({role,content:text});
+  const el=document.getElementById('chat-msgs');
+  if(!el) return;
+  const div=document.createElement('div');
+  div.className='msg '+role;
+  const bbl=document.createElement('div');
+  bbl.className='bbl';
+  bbl.innerHTML=fmtHtml(text);
+  div.appendChild(bbl);
+  const cl=document.createElement('div');
+  cl.className='cl';
+  div.appendChild(cl);
+  el.appendChild(div);
+  el.scrollTop=el.scrollHeight;
+  if(role==='b'){aiMsgCnt++;const b=document.getElementById('afab-bdg');if(b){b.textContent=aiMsgCnt;b.style.display='flex';}}
+}
+
+function showTyping(){
+  aiTyping=true;
+  const el=document.getElementById('chat-msgs');
+  if(!el) return;
+  const div=document.createElement('div');
+  div.className='msg b';div.id='typing-indicator';
+  div.innerHTML='<div class="bbl"><div class="typing"><div></div><div></div><div></div></div></div><div class="cl"></div>';
+  el.appendChild(div);el.scrollTop=el.scrollHeight;
+}
+
+function hideTyping(){
+  aiTyping=false;
+  const el=document.getElementById('typing-indicator');
+  if(el) el.remove();
+}
+
+function chatClear(){
+  aiHist=[];aiMsgCnt=0;
+  const el=document.getElementById('chat-msgs');
+  if(el) el.innerHTML='<div class="msg b"><div class="bbl">Chat cleared. Ask me anything about your IT contracts, unit prices or negotiation strategy.</div></div><div class="cl"></div>';
+  const b=document.getElementById('afab-bdg');if(b) b.style.display='none';
+}
+
+function chatAsk(q){
+  document.getElementById('chat').classList.add('on');
+  document.getElementById('chat-inp').value=q;
+  chatSend();
+}
+
+async function chatSend(){
+  const inp=document.getElementById('chat-inp');
+  const msg=(inp.value||'').trim();
+  if(!msg||aiTyping) return;
+  inp.value='';
+  addChatMsg('u',msg);
+  showTyping();
+  if(aiCfg.prov!=='local'&&aiCfg.key){
+    try{
+      const res=await callOpenAI(msg);
+      hideTyping();addChatMsg('b',res);return;
+    }catch(e){console.log('OpenAI failed:',e);}
+  }
+  if(aiCfg.beUrl){
+    try{
+      const res=await fetch(aiCfg.beUrl,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(aiCfg.beKey||'')},body:JSON.stringify({message:msg,catalog:{totalQuotes:DB.length,vendors:VENDORS,categories:CATEGORIES,sample:DB.slice(0,20)},history:aiHist.slice(-8)})});
+      if(res.ok){const d=await res.json();hideTyping();addChatMsg('b',d.response||d.message||JSON.stringify(d));return;}
+    }catch(e){console.log('Backend failed:',e);}
+  }
+  await new Promise(r=>setTimeout(r,600));
+  hideTyping();
+  addChatMsg('b',localAI(msg));
+}
+
+async function callOpenAI(msg){
+  const sysPrompt=aiCfg.sysp||`You are an expert IT Contracting Negotiation Agent for PwC Advisory.
+Catalog: ${DB.length} line items, ${VENDORS.length} vendors, ${CATEGORIES.length} categories.
+Top vendors: ${VENDORS.slice(0,6).join(', ')}.
+Categories: ${CATEGORIES.join(', ')}.
+All prices are per-unit/per-license.
+Be specific with numbers, target prices and negotiation scripts.
+Always give: PROCEED/NEGOTIATE/RE-TENDER verdict when relevant.`;
+  const msgs=[{role:'system',content:sysPrompt},...aiHist.slice(-8).map(h=>({role:h.role==='u'?'user':'assistant',content:h.content}))];
+  let url='https://api.openai.com/v1/chat/completions',headers={'Content-Type':'application/json','Authorization':'Bearer '+aiCfg.key};
+  if(aiCfg.prov==='azure'){url=`${aiCfg.azEp}/openai/deployments/${aiCfg.azDep}/chat/completions?api-version=${aiCfg.azVer}`;headers={'Content-Type':'application/json','api-key':aiCfg.key};}
+  const r=await fetch(url,{method:'POST',headers,body:JSON.stringify({model:aiCfg.prov==='azure'?undefined:aiCfg.mdl,messages:msgs,max_tokens:1200,temperature:0.3})});
+  if(!r.ok) throw new Error('OpenAI HTTP '+r.status);
+  const d=await r.json();
+  return d.choices?.[0]?.message?.content||'No response';
+}
+
+function localAI(q){
+  const ql=q.toLowerCase();
+  const allP=DB.map(r=>getPrice(r)).filter(p=>p>0);
+  const avg=allP.length?allP.reduce((a,b)=>a+b,0)/allP.length:0;
+  if(!DB.length) return '⚠️ No catalog data loaded yet. Run **python main.py** in the extractor folder to populate data from SharePoint, then refresh this dashboard.';
+  if(ql.includes('spread')||ql.includes('leverage')||ql.includes('negotiat')){
+    const svcMap={};DB.forEach(r=>{getServices(r).forEach(s=>{if(!svcMap[s])svcMap[s]=[];svcMap[s].push(getPrice(r));});});
+    const top=Object.entries(svcMap).filter(([,ps])=>ps.filter(p=>p>0).length>1).map(([s,ps])=>{const v=ps.filter(p=>p>0);const sp=Math.min(...v)>0?Math.round((Math.max(...v)-Math.min(...v))/Math.min(...v)*100):0;return{s,sp};}).sort((a,b)=>b.sp-a.sp).slice(0,5);
+    return `**Top Negotiation Targets by Price Spread:**\n\n${top.map((t,i)=>`${i+1}. **${t.s}** — ${t.sp}% spread`).join('\n')}\n\nHigh spread = multiple vendors quoting different prices = strong negotiation leverage. Use competitor quotes as evidence.`;
+  }
+  if(ql.includes('vendor')||ql.includes('best')){
+    const top=VENDORS.map(v=>{const ps=DB.filter(r=>r.vendor===v).map(r=>getPrice(r)).filter(p=>p>0);const a=ps.length?ps.reduce((x,y)=>x+y,0)/ps.length:0;return{v,a,n:ps.length};}).filter(d=>d.n>0).sort((a,b)=>a.a-b.a).slice(0,5);
+    return `**Vendors by Average Unit Price (Lowest First):**\n\n${top.map((t,i)=>`${i+1}. **${t.v}** — ${fmt(t.a)} avg/unit (${t.n} records)`).join('\n')}\n\nConsider splitting services across vendors to optimise total cost.`;
+  }
+  if(ql.includes('budget')||ql.includes('rfq')||ql.includes('plan')){
+    return `**Budget Planning Framework:**\n\n• **Floor (best-ever):** ${fmt(Math.min(...allP))}/unit\n• **Target (−10% avg):** ${fmt(avg*0.9)}/unit\n• **Market average:** ${fmt(avg)}/unit\n• **Walk-away ceiling:** ${fmt(avg*1.1)}/unit\n\nUse the **RFQ Builder** tab to generate per-service breakdown with vendor recommendations.`;
+  }
+  if(ql.includes('categor')){
+    return `**Categories in Catalog:**\n\n${CATEGORIES.map(c=>{const ps=DB.filter(r=>r.cat===c).map(r=>getPrice(r)).filter(p=>p>0);const a=ps.length?ps.reduce((x,y)=>x+y,0)/ps.length:0;return`• **${c}**: ${ps.length} records, avg ${fmt(a)}/unit`;}).join('\n')}`;
+  }
+  if(ql.includes('summary')||ql.includes('overview')){
+    return `**Catalog Summary:**\n\n• ${DB.length} line items from ${VENDORS.length} vendors\n• ${CATEGORIES.length} categories, ${SERVICES.length} services\n• Overall avg unit price: **${fmt(avg)}**\n• Best unit price: **${fmt(Math.min(...allP))}**\n\nUse **Browse & Verdict** to compare vendors side-by-side.`;
+  }
+  const matchVen=VENDORS.find(v=>ql.includes(v.toLowerCase()));
+  if(matchVen){
+    const vr=DB.filter(r=>r.vendor===matchVen);
+    const vp=vr.map(r=>getPrice(r)).filter(p=>p>0);
+    const va=vp.length?vp.reduce((a,b)=>a+b,0)/vp.length:0;
+    const vs=[...new Set(vr.flatMap(r=>getServices(r)))];
+    return `**${matchVen} Profile:**\n\n• ${vr.length} catalog records\n• ${vs.length} unique services\n• Avg unit price: **${fmt(va)}**\n• Services: ${vs.slice(0,5).join(', ')}${vs.length>5?' (+'+(vs.length-5)+' more)':''}\n\n**Strategy:** ${va<avg?`${matchVen} is below market average — good choice. Negotiate toward ${fmt(va*0.92)}/unit.`:`${matchVen} is above market average. Present competitors' quotes to drive toward ${fmt(avg*0.9)}/unit.`}`;
+  }
+  const matchSvc=SERVICES.find(s=>ql.includes(s.toLowerCase().substring(0,10)));
+  if(matchSvc){
+    const sr=DB.filter(r=>getServices(r).includes(matchSvc)&&getPrice(r)>0);
+    if(sr.length){const sp2=sr.map(r=>getPrice(r));const sm2=Math.min(...sp2),sa2=sp2.reduce((a,b)=>a+b,0)/sp2.length;return`**${matchSvc}:**\n\n• ${sr.length} quotes from ${[...new Set(sr.map(r=>r.vendor))].length} vendors\n• Best unit price: **${fmt(sm2)}**\n• Market average: **${fmt(sa2)}**\n• Target price: **${fmt(sa2*0.9)}/unit**\n\nUse the **Negotiation Centre** for full analysis.`;}
+  }
+  return `**IT Contracting Intelligence:**\n\nCatalog: **${DB.length} records** from **${VENDORS.length} vendors**.\n\nTry asking:\n• "Which services have the highest price spread?"\n• "Best vendor for Cybersecurity?"\n• "What budget should I set for M365?"\n• "Negotiation strategy for ServiceNow"\n\nOr configure an **API key** (top right) for GPT-4o powered responses.`;
+}
+
+/* ══════════════════════════════════════
+   AI CONFIG
+══════════════════════════════════════ */
+function aiTab(id,el){
+  document.querySelectorAll('.mtab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.mpanel').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('ai-'+id).classList.add('active');
+}
+
+function aiSave(){
+  aiCfg.prov=document.getElementById('ai-prov').value;
+  aiCfg.key=document.getElementById('ai-key').value;
+  aiCfg.mdl=document.getElementById('ai-mdl').value;
+  aiCfg.azEp=document.getElementById('az-ep').value;
+  aiCfg.azDep=document.getElementById('az-dep').value;
+  aiCfg.azVer=document.getElementById('az-ver').value;
+  aiCfg.beUrl=document.getElementById('be-url').value;
+  aiCfg.beKey=document.getElementById('be-key').value;
+  aiCfg.sysp=document.getElementById('ai-sysp').value;
+  try{localStorage.setItem('pwc_ai',JSON.stringify(aiCfg));}catch(e){}
+  const msg=document.getElementById('ai-msg');
+  if(msg){msg.className='mst ok';msg.textContent='✅ Configuration saved';setTimeout(()=>{msg.className='mst';},2500);}
+}
+
+async function aiTestConn(){
+  const key=document.getElementById('ai-key').value;
+  const msg=document.getElementById('ai-msg');
+  if(!key){if(msg){msg.className='mst er';msg.textContent='Enter an API key first';}return;}
+  if(msg){msg.className='mst ld';msg.textContent='Testing…';}
+  try{
+    const r=await fetch('https://api.openai.com/v1/models',{headers:{'Authorization':'Bearer '+key}});
+    if(r.ok){if(msg){msg.className='mst ok';msg.textContent='✅ Connection successful';}}
+    else{if(msg){msg.className='mst er';msg.textContent='❌ Invalid API key (HTTP '+r.status+')';}}
+  }catch(e){if(msg){msg.className='mst er';msg.textContent='❌ Network error: '+e.message;}}
+}
+
+/* ══════════════════════════════════════
+   CLOSE PANEL
+══════════════════════════════════════ */
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){
+    document.getElementById('fvp').classList.remove('on');
+    document.getElementById('chat').classList.remove('on');
+    document.getElementById('ai-ov').classList.remove('on');
+    document.getElementById('ai-mo').classList.remove('on');
+  }
+});
+</script>
+</body>
+</html>
