@@ -1,16 +1,14 @@
 # extractor/ai_extractor.py
-# Complete rewrite for per-license extraction
+# Uses Groq (FREE) for AI extraction
 
 import re
 import json
 import asyncio
-from anthropic import Anthropic
-from llama_cloud import AsyncLlamaCloud
+import os
+from groq import Groq
 from config import (
-    ANTHROPIC_API_KEY,
+    GROQ_API_KEY,
     LLAMA_API_KEY,
-    CLAUDE_MODEL,
-    CLAUDE_MAX_TOKENS,
     LLAMA_TIER,
     LLAMA_EXPAND,
     KNOWN_VENDORS,
@@ -19,31 +17,43 @@ from config import (
     MAX_VALID_PRICE,
 )
 
+# Groq client
+groq_client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
+
+# LlamaCloud client
+llama = None
+if LLAMA_API_KEY:
+    try:
+        from llama_cloud import AsyncLlamaCloud
+        llama = AsyncLlamaCloud(api_key=LLAMA_API_KEY)
+    except ImportError:
+        print("LlamaCloud not installed — PDF parsing will use fallback")
+
 
 class AIExtractor:
 
     def __init__(self):
-        self.claude = Anthropic(api_key=ANTHROPIC_API_KEY)
-        self.llama  = AsyncLlamaCloud(api_key=LLAMA_API_KEY)
-        self.stats  = {
+        self.stats = {
             "llama_success":  0,
             "llama_failed":   0,
-            "claude_success": 0,
-            "claude_failed":  0,
+            "groq_success":   0,
+            "groq_failed":    0,
             "regex_fallback": 0,
         }
 
     # ══════════════════════════════════════
-    #  LLAMACLOUD
+    #  LLAMACLOUD — PDF PARSING
     # ══════════════════════════════════════
     async def parse_pdf_with_llama(self, file_bytes, filename):
+        if not llama:
+            return ""
         try:
             print(f"    📄 LlamaCloud: {filename[:40]}...")
-            file_obj = await self.llama.files.create(
+            file_obj = await llama.files.create(
                 file=(filename, file_bytes, "application/pdf"),
                 purpose="parse"
             )
-            result = await self.llama.parsing.parse(
+            result = await llama.parsing.parse(
                 file_id=file_obj.id,
                 tier=LLAMA_TIER,
                 expand=LLAMA_EXPAND,
@@ -61,83 +71,94 @@ class AIExtractor:
             return ""
 
     # ══════════════════════════════════════
-    #  CLAUDE — PER LICENSE EXTRACTION
+    #  GROQ — FREE AI EXTRACTION
     # ══════════════════════════════════════
-    def extract_with_claude(self, text, filename, category):
-        """
-        Extract per-license/per-unit pricing.
-        Each service gets its own unit price.
-        """
-        text_truncated = text[:8000]
+    def extract_with_groq(self, text, filename, category):
+        if not groq_client:
+            print("    ⚠️  Groq not configured — using regex")
+            return self._empty_result()
+
+        text_truncated = text[:6000]
         vendor_hints   = ", ".join(KNOWN_VENDORS[:15])
         service_hints  = ", ".join(KNOWN_SERVICES[:20])
 
-        prompt = f"""You are a specialist IT contract pricing analyst at PwC.
-Extract per-unit/per-license pricing from this vendor quote.
+        prompt = f"""You are an IT contract pricing analyst at PwC.
+Extract per-unit/per-license pricing from this vendor quote document.
 
-DOCUMENT INFO:
 Filename: {filename}
 Category: {category}
+Known Vendors: {vendor_hints}
+Known Services: {service_hints}
 
-KNOWN VENDORS: {vendor_hints}
-KNOWN SERVICES: {service_hints}
-
-DOCUMENT:
+Document:
 {text_truncated}
 
-CRITICAL INSTRUCTIONS:
-1. Extract EACH service/product as a SEPARATE item
-2. For each item get the UNIT PRICE (price per license/seat/unit)
-   NOT the total line price
-3. If only total price exists divide by quantity to get unit price
-4. Identify vendor, category, year, quarter
+Extract EACH product or service as a SEPARATE item.
+For each item find the UNIT PRICE which means the price per
+one license, seat, or device. If only a total price exists,
+divide it by the quantity to get the unit price.
 
-Return ONLY valid JSON in this exact format:
+Return ONLY this JSON with no other text:
 {{
-  "vendor": "Exact Vendor Name",
-  "category": "one of: Cybersecurity / Network & Telecom / Hosting / M365 & Power Platform / IdAM / Service Management (SNow)",
+  "vendor": "Vendor Company Name",
+  "category": "one of: Cybersecurity / Network & Telecom / Hosting / M365 & Power Platform / IdAM / Service Management (SNow) / MSP",
   "year": 2025,
   "quarter": "Q2",
   "currency": "USD",
   "confidence": "high",
   "line_items": [
     {{
-      "service": "Exact Service/Product Name",
+      "service": "Exact Service or Product Name",
       "unit_price": 57.00,
       "quantity": 1000,
-      "unit": "per license/per seat/per device/per month/per year",
+      "unit": "per license",
       "total_line_price": 57000.00,
       "description": "brief description"
     }}
   ]
 }}
 
-RULES:
-- unit_price: price per ONE license/seat/device
-- quantity: number of licenses/seats/devices
-- unit: what the unit_price covers
-- If annual price divide by 12 for monthly
-- If cannot determine unit price use total and note unit as "per quote"
-- Return ONLY the JSON nothing else"""
+Rules:
+unit_price must be a number only with no dollar signs or commas.
+quantity is the number of licenses or seats.
+unit describes what the unit price covers such as per license or per seat.
+Return ONLY the JSON object and nothing else."""
 
         try:
-            response = self.claude.messages.create(
-                model=CLAUDE_MODEL,
-                max_tokens=CLAUDE_MAX_TOKENS,
-                messages=[{"role": "user", "content": prompt}]
+            response = groq_client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are an IT contract pricing analyst. Return only valid JSON."
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                temperature=0.1,
+                max_tokens=1500,
             )
-            raw    = response.content[0].text.strip()
+            raw    = response.choices[0].message.content.strip()
             result = self._parse_json_response(raw)
+
             if result and result.get("line_items"):
-                self.stats["claude_success"] += 1
+                self.stats["groq_success"] += 1
+                print(f"    ✅ Groq: {len(result['line_items'])} items")
                 return result
-            self.stats["claude_failed"] += 1
-            return self._empty_result()
-        except Exception as e:
-            self.stats["claude_failed"] += 1
-            print(f"    ⚠️  Claude failed: {e}")
+
+            self.stats["groq_failed"] += 1
             return self._empty_result()
 
+        except Exception as e:
+            self.stats["groq_failed"] += 1
+            print(f"    ⚠️  Groq failed: {e}")
+            return self._empty_result()
+
+    # ══════════════════════════════════════
+    #  JSON PARSER
+    # ══════════════════════════════════════
     def _parse_json_response(self, raw_text):
         try:
             return json.loads(raw_text)
@@ -211,12 +232,15 @@ RULES:
         return list(set(found))
 
     def extract_year_regex(self, text, filename):
-        years = re.findall(r'\b(202[0-9])\b', text + " " + filename)
+        years = re.findall(
+            r'\b(202[0-9])\b', text + " " + filename
+        )
         return int(max(years)) if years else 2025
 
     def extract_quarter_regex(self, text):
         months = re.findall(
-            r'\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*\b',
+            r'\b(jan|feb|mar|apr|may|jun|jul|'
+            r'aug|sep|oct|nov|dec)\w*\b',
             text.lower()
         )
         qmap = {
@@ -234,15 +258,9 @@ RULES:
         self, file_bytes, filename, category,
         text_from_processor=None
     ):
-        """
-        Returns LIST of records — one per line item.
-        Each record has per-unit price.
-        """
         print(f"\n  🔍 Extracting: {filename}")
-
         text = ""
 
-        # LlamaCloud for PDFs
         from pathlib import Path
         if Path(filename).suffix.lower() == ".pdf":
             llama_text = await self.parse_pdf_with_llama(
@@ -258,17 +276,14 @@ RULES:
             print(f"    ❌ No text extracted")
             return []
 
-        # Claude extraction
-        print(f"    🤖 Claude AI extraction...")
-        extracted = self.extract_with_claude(text, filename, category)
-
+        print(f"    🤖 Groq extraction...")
+        extracted  = self.extract_with_groq(text, filename, category)
         line_items = extracted.get("line_items", [])
         vendor     = extracted.get("vendor", "Unknown")
         cat        = extracted.get("category", "") or category
         year       = extracted.get("year", 0)
         quarter    = extracted.get("quarter", "Q1")
 
-        # Fill gaps with regex
         if vendor == "Unknown":
             vendor = self.extract_vendor_regex(text, filename)
         if not year or year < 2020:
@@ -276,68 +291,9 @@ RULES:
         if not quarter:
             quarter = self.extract_quarter_regex(text)
 
-        # If no line items from Claude use regex fallback
         if not line_items:
             total_price = self.extract_price_regex(text)
             services    = self.extract_services_regex(text)
             if total_price > 0:
                 if services:
-                    per_svc = total_price / len(services)
-                    for svc in services:
-                        line_items.append({
-                            "service":         svc,
-                            "unit_price":      round(per_svc, 2),
-                            "quantity":        1,
-                            "unit":            "per quote",
-                            "total_line_price": total_price,
-                            "description":     "",
-                        })
-                else:
-                    line_items.append({
-                        "service":         filename,
-                        "unit_price":      total_price,
-                        "quantity":        1,
-                        "unit":            "per quote",
-                        "total_line_price": total_price,
-                        "description":     "",
-                    })
-
-        if not line_items:
-            print(f"    ❌ No line items found")
-            return []
-
-        # Build one record per line item
-        records = []
-        for item in line_items:
-            unit_price = item.get("unit_price", 0)
-            if not unit_price or unit_price <= 0:
-                continue
-
-            record = {
-                "cat":             cat,
-                "vendor":          vendor,
-                "file":            filename,
-                "service":         item.get("service", "Unknown Service"),
-                "unit_price":      round(float(unit_price), 2),
-                "quantity":        item.get("quantity", 1),
-                "unit":            item.get("unit", "per license"),
-                "total_line_price": item.get("total_line_price", 0),
-                "description":     item.get("description", ""),
-                "year":            year,
-                "quarter":         quarter,
-                "currency":        extracted.get("currency", "USD"),
-                "confidence":      extracted.get("confidence", "medium"),
-                "source":          "sharepoint",
-            }
-            records.append(record)
-            print(
-                f"    ✅ {vendor} | "
-                f"{item.get('service','')[:30]} | "
-                f"${unit_price:,.2f}/{item.get('unit','unit')}"
-            )
-
-        print(f"    📦 {len(records)} line items extracted")
-        return records
-
-    def get_stats(self):
-        return self.stats
+                    per_s
