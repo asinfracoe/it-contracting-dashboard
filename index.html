@@ -1470,7 +1470,7 @@ function scoreIt(){
       <tr><td>Quoted Price</td><td style="font-family:monospace;font-weight:700;color:$${OR}">$${fmt(pr)}</td><td>${vn||'Vendor'}</td></tr>
       <tr><td>Historical Avg</td><td style="font-family:monospace">$${fmt(avg)}</td><td style="color:$${pct>=0?RD:GN};font-weight:600">$${pct>=0?'+':''}$${pct}%</td></tr>
       <tr><td>Historical Best</td><td style="font-family:monospace;color:$${GN};font-weight:700">$${fmt(mn)}</td><td style="color:${GN}">Floor</td></tr>
-      <tr><td>Target (−10%)</td><td style="font-family:monospace;font-weight:700;color:$${GN}">$${fmt(target)}</td><td style="color:${GN}">Open negot
+  
       <tr><td>Target (−10%)</td><td style="font-family:monospace;font-weight:700;color:${GN}">${fmt(target)}</td><td style="color:${GN}">Open negotiation here</td></tr>
       <tr><td>Ceiling</td><td style="font-family:monospace;font-weight:700;color:${RD}">${fmt(avg)}</td><td style="color:${RD}">Do not exceed</td></tr>
       <tr><td>Records</td><td>${hist.length}</td><td>${[...new Set(hRows.map(r=>r.vendor))].length} unique vendors</td></tr>
