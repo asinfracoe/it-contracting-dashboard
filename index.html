@@ -343,7 +343,7 @@ html,body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-siz
   <div class="top-right">
     <span class="status-pill" id="live-pill">48 Records</span>
     <button class="top-btn" onclick="openModal('sp')">📁 SharePoint</button>
-    <button class="top-btn grok" style="background:#000;color:#fff;border-color:#000" onclick="openModal('ai')">🤖 Grok AI</button>
+    <span class="status-pill" id="grok-status" style="background:#FEF3C7;color:#92400E">🤖 Grok: Connecting…</span>
   </div>
 </nav>
 
@@ -357,13 +357,73 @@ html,body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-siz
     <div class="ph-left">
       <div class="ph-kicker">Executive Dashboard</div>
       <div class="ph-title">Portfolio Overview</div>
-      <div class="ph-sub">Consolidated view of vendor quotes, services and pricing across all projects</div>
+      <div class="ph-sub">Categories · Services · Vendors · Prices — live from SharePoint repository</div>
     </div>
     <div class="filter-bar">
       <div class="proj-tabs" id="proj-tabs"></div>
       <div class="date-filter" id="date-tabs"></div>
     </div>
   </div>
+
+  <!-- KPI STRIP -->
+  <div class="kpi-row" id="ov-kpis"></div>
+
+  <!-- PROJECT CARDS -->
+  <div class="sec-lbl">Projects <span class="sec-lbl-sub">· click any card to drill in</span></div>
+  <div class="grid-3" id="ov-proj-cards"></div>
+
+  <!-- CATEGORY BREAKDOWN -->
+  <div class="sec-lbl">Categories &amp; Services <span class="sec-lbl-sub">· number of services and pricing per category</span></div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title"><span class="card-title-ico">🗂️</span>Services per Category</div>
+        <div class="card-meta or" id="ov-svc-meta">—</div>
+      </div>
+      <div class="chart-wrap"><canvas id="ov-svc-chart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title"><span class="card-title-ico">💰</span>Price Range per Category</div>
+        <div class="card-meta bl">Min · Avg · Max</div>
+      </div>
+      <div class="chart-wrap"><canvas id="ov-range-chart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- CATEGORY SUMMARY TABLE -->
+  <div class="card" style="padding:0;margin-bottom:20px">
+    <div class="card-head" style="padding:14px 18px"><div class="card-title"><span class="card-title-ico">📋</span>Category Summary</div><div class="card-meta nt" id="ov-tbl-meta">—</div></div>
+    <div style="overflow:auto">
+      <table class="cat-table" id="ov-cat-table">
+        <thead>
+          <tr>
+            <th>Category</th>
+            <th>Quote Files</th>
+            <th>Services Offered</th>
+            <th>Vendors</th>
+            <th>Min Price</th>
+            <th>Avg Price</th>
+            <th>Max Price</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- VENDORS + TOP SERVICES -->
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-head"><div class="card-title"><span class="card-title-ico">🏢</span>Vendors in Scope</div><div class="card-meta gn" id="ov-ven-meta">—</div></div>
+      <div class="blist" id="ov-top-vendors"></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="card-title"><span class="card-title-ico">📊</span>Top Services by Price</div><div class="card-meta or">Avg $</div></div>
+      <div class="blist" id="ov-top-services"></div>
+    </div>
+  </div>
+</div>
 
   <!-- KPI STRIP -->
   <div class="kpi-row" id="ov-kpis"></div>
@@ -454,12 +514,13 @@ html,body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-siz
 <div class="page" id="pg-selector">
   <div class="phead">
     <div class="ph-left">
-      <div class="ph-kicker">Interactive Price Matrix</div>
+      <div class="ph-kicker">Master Price Intelligence</div>
       <div class="ph-title">Vendor–Service Price Selector</div>
-      <div class="ph-sub">Pick any combination of services and see which vendors quote each one</div>
+      <div class="ph-sub">Compare quoted prices across all projects · see combinations · get sourcing verdict</div>
     </div>
     <div class="filter-bar">
-      <div class="proj-tabs" id="sel-proj-tabs"></div>
+      <span class="b nt" style="padding:7px 12px;font-size:.74rem">🗄️ Master Data · All Projects</span>
+      <button class="btn sec" onclick="selLoadDemo()">🎯 Load Demo</button>
     </div>
   </div>
 
@@ -467,24 +528,34 @@ html,body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-siz
     <!-- LEFT: SELECTORS -->
     <div>
       <div class="selector-panel">
-        <div class="card-head" style="padding-bottom:10px;margin-bottom:12px"><div class="card-title"><span class="card-title-ico">📂</span>Filter</div></div>
+        <div class="card-head" style="padding-bottom:10px;margin-bottom:12px"><div class="card-title"><span class="card-title-ico">📂</span>Filter Services</div></div>
         <div class="input-g">
           <label class="input-lbl">Category</label>
           <select class="select-f" id="sel-cat" onchange="selFilterChips()"><option value="All">All Categories</option></select>
         </div>
         <div class="input-g">
-          <label class="input-lbl">Search services</label>
-          <input type="text" class="input-f" id="sel-search" placeholder="Type to filter..." oninput="selFilterChips()">
+          <label class="input-lbl">Search</label>
+          <input type="text" class="input-f" id="sel-search" placeholder="Type service name..." oninput="selFilterChips()">
         </div>
       </div>
 
       <div class="selector-panel" style="margin-top:14px">
         <div class="card-head" style="padding-bottom:10px;margin-bottom:10px">
-          <div class="card-title"><span class="card-title-ico">✅</span>Services</div>
-          <button class="btn sm sec" onclick="selClear()">Reset</button>
+          <div class="card-title"><span class="card-title-ico">✅</span>Pick Services</div>
+          <div style="display:flex;gap:5px">
+            <button class="btn sm sec" onclick="selClear()">Clear</button>
+          </div>
         </div>
-        <div class="chip-row" id="sel-chips" style="max-height:360px"></div>
-        <div style="margin-top:10px;text-align:center;padding:7px;background:var(--ort);border-radius:var(--r);font-size:.72rem;color:var(--or);font-weight:700" id="sel-count">0 selected</div>
+        <div class="chip-row" id="sel-chips" style="max-height:420px"></div>
+      </div>
+
+      <!-- SELECTED SERVICES -->
+      <div class="selector-panel" style="margin-top:14px;background:var(--ort);border-color:var(--orl)">
+        <div class="card-head" style="padding-bottom:10px;margin-bottom:10px;border-bottom-color:rgba(208,74,2,.2)">
+          <div class="card-title" style="color:var(--or)"><span class="card-title-ico">🎯</span>Selected</div>
+          <span class="b or" id="sel-count">0 services</span>
+        </div>
+        <div id="sel-picked" style="min-height:60px;font-size:.78rem;color:var(--mid);text-align:center;padding:10px">No services selected yet</div>
       </div>
     </div>
 
@@ -493,33 +564,74 @@ html,body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-siz
       <div id="sel-empty" class="card">
         <div class="empty">
           <div class="empty-ico">🗂️</div>
-          <div class="empty-t">Select services to see prices</div>
-          <div class="empty-s">Pick one or more services on the left. The matrix will show which vendors quote them and the best prices.</div>
+          <div class="empty-t">Select services to begin</div>
+          <div class="empty-s">Click any services on the left. The system will instantly show you all past quotes, best prices, and tell you whom to source each service from.</div>
+          <button class="btn" onclick="selLoadDemo()">🎯 Load Demo Combination</button>
         </div>
       </div>
+
       <div id="sel-results" style="display:none">
-        <!-- KPI cards -->
+        <!-- TOP VERDICT -->
+        <div id="sel-verdict"></div>
+
+        <!-- KPI ROW -->
         <div class="grid-4" id="sel-kpis"></div>
-        <!-- Matrix -->
+
+        <!-- COMBINATION ANALYSIS -->
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title"><span class="card-title-ico">🔀</span>Combination Analysis</div>
+            <div class="card-meta or" id="sel-combo-meta">—</div>
+          </div>
+          <div id="sel-combo-body"></div>
+        </div>
+
+        <!-- PRICE MATRIX -->
         <div class="card" style="padding:0">
           <div class="card-head" style="padding:14px 18px">
-            <div class="card-title"><span class="card-title-ico">🗂️</span>Price Matrix</div>
+            <div class="card-title"><span class="card-title-ico">🗂️</span>Vendor × Service Price Matrix</div>
             <div style="display:flex;gap:8px;align-items:center">
               <span class="card-meta or" id="sel-mtx-meta">—</span>
               <button class="btn sm" onclick="selExport()">📥 Export</button>
             </div>
           </div>
           <div class="mtx-wrap" id="sel-mtx-wrap" style="border:none;border-top:1px solid var(--line);border-radius:0"></div>
-        </div>
-        <!-- Strategy -->
-        <div class="grid-2">
-          <div class="card">
-            <div class="card-head"><div class="card-title"><span class="card-title-ico">🥇</span>Best Vendor per Service</div><div class="card-meta gn">Lowest</div></div>
-            <div id="sel-best"></div>
+          <div style="padding:12px 18px;border-top:1px solid var(--line);font-size:.72rem;color:var(--mid);display:flex;gap:14px;flex-wrap:wrap">
+            <span><span style="display:inline-block;width:10px;height:10px;background:rgba(16,185,129,.18);border:1px solid #10B981;border-radius:2px;vertical-align:middle;margin-right:4px"></span>BEST price</span>
+            <span><span style="display:inline-block;width:10px;height:10px;background:rgba(239,68,68,.08);border:1px solid #EF4444;border-radius:2px;vertical-align:middle;margin-right:4px"></span>Highest</span>
+            <span style="color:var(--or);font-weight:700;margin-left:auto">💡 Click any cell to see source quotes</span>
           </div>
-          <div class="card">
-            <div class="card-head"><div class="card-title"><span class="card-title-ico">🎯</span>Strategy</div><div class="card-meta bl">Analysis</div></div>
-            <div id="sel-strategy"></div>
+        </div>
+
+        <!-- SOURCING VERDICT (per service) -->
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title"><span class="card-title-ico">🎯</span>Sourcing Verdict</div>
+            <div class="card-meta gn">Whom to source each service</div>
+          </div>
+          <div id="sel-sourcing"></div>
+        </div>
+
+        <!-- QUOTE FILES -->
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title"><span class="card-title-ico">📄</span>Source Quote Files</div>
+            <div class="card-meta bl" id="sel-files-meta">—</div>
+          </div>
+          <div id="sel-files"></div>
+        </div>
+
+        <!-- ACTION BAR -->
+        <div class="card" style="background:var(--ink);color:var(--white);border-color:var(--ink)">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
+            <div>
+              <div style="font-family:var(--serif);font-size:1.1rem;font-weight:700;margin-bottom:3px">Ready to Source?</div>
+              <div style="font-size:.80rem;opacity:.7">Push this selection to the RFQ Builder to generate budget targets and vendor shortlist</div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn" onclick="selExport()">📥 Export Matrix</button>
+              <button class="btn" style="background:var(--or)" onclick="selBuildRFQ()">📋 Build RFQ →</button>
+            </div>
           </div>
         </div>
       </div>
@@ -734,21 +846,6 @@ html,body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-siz
   </div>
 </div>
 
-<div class="ov" id="ai-ov" onclick="closeModal('ai')"></div>
-<div class="modal" id="ai-modal">
-  <div class="modal-h"><div class="modal-t">🤖 Grok AI Configuration</div><button class="chat-x" onclick="closeModal('ai')">×</button></div>
-  <div class="modal-b">
-    <div style="background:var(--bll);border-left:3px solid var(--bl);border-radius:var(--r);padding:11px 14px;margin-bottom:14px;font-size:.78rem;color:var(--bld)">
-      <strong>Grok API (xAI):</strong> Get your key at <code>console.x.ai</code>. The chatbot uses it to answer questions with full knowledge of your catalog data.
-    </div>
-    <div class="mf"><label>xAI API Key</label><input type="password" id="grok-key" placeholder="xai-..."></div>
-    <div class="mf"><label>Model</label><select id="grok-mdl"><option value="grok-2-latest">grok-2-latest</option><option value="grok-beta">grok-beta</option><option value="grok-2-mini">grok-2-mini</option></select></div>
-    <div class="mf"><label>System Prompt (optional)</label><textarea id="grok-sysp" placeholder="You are an IT procurement assistant..."></textarea></div>
-    <button class="btn" onclick="saveGrok()" style="width:100%;justify-content:center">💾 Save Configuration</button>
-    <div id="ai-msg" style="margin-top:10px;font-size:.78rem"></div>
-  </div>
-</div>
-
 <!-- ═══ SIDE PANEL ═══ -->
 <div class="sp" id="sp-panel">
   <div class="sp-h"><div class="sp-t" id="sp-title">Details</div><button class="chat-x" onclick="document.getElementById('sp-panel').classList.remove('on')">×</button></div>
@@ -898,12 +995,31 @@ document.addEventListener('DOMContentLoaded',()=>{
   rqFilterSvc();
   inFilterSvc();
   initChatChips();
-  try{const s=localStorage.getItem('grok_cfg');if(s)Object.assign(grokCfg,JSON.parse(s));}catch(e){}
-  if(grokCfg.key){set('chat-sts','Connected to xAI');}
-  else{set('chat-sts','Local knowledge mode');}
+  checkBackendStatus();
   tryLoadJSON();
 });
 
+async function checkBackendStatus(){
+  const BACKEND_URL = window.AI_BACKEND_URL || 'https://your-api.onrender.com';
+  const pill=document.getElementById('grok-status');
+  try{
+    const r=await fetch(BACKEND_URL+'/api/health',{method:'GET'});
+    if(r.ok){
+      pill.textContent='🤖 Grok: Ready';
+      pill.style.background='#D1FAE5';
+      pill.style.color='#065F46';
+      set('chat-sts','Connected via secrets');
+      grokCfg.available=true;
+    }else{throw new Error('offline');}
+  }catch(e){
+    pill.textContent='🤖 Grok: Local mode';
+    pill.style.background='#FEF3C7';
+    pill.style.color='#92400E';
+    set('chat-sts','Local knowledge mode');
+    grokCfg.available=false;
+  }
+}
+  
 async function tryLoadJSON(){
   for(const u of ['./catalog_data.json','catalog_data.json']){
     try{
@@ -935,7 +1051,7 @@ function initTabs(){
 
 function initProjTabs(){
   const projs=['All','Idemia','Tenneco','Panasonic'];
-  ['proj-tabs','sel-proj-tabs'].forEach(id=>{
+  ['proj-tabs'].forEach(id=>{
     const el=document.getElementById(id);
     el.innerHTML=projs.map(p=>{
       const cnt=p==='All'?DB.length:DB.filter(r=>r.proj===p).length;
@@ -990,7 +1106,7 @@ function populateDropdowns(){
 // ═══════════════════════════════════
 function renderOverview(){
   const data=filteredDB();
-  const cats=[...new Set(data.map(r=>r.cat))];
+  const cats=[...new Set(data.map(r=>r.cat))].sort();
   const vens=[...new Set(data.map(r=>r.vendor))];
   const svcs=[...new Set(data.flatMap(r=>r.services||[]))];
   const prices=data.map(r=>r.price).filter(p=>p>0);
@@ -999,11 +1115,11 @@ function renderOverview(){
 
   // KPIs
   document.getElementById('ov-kpis').innerHTML=[
-    {lbl:'Total Quotes',val:data.length,sub:CUR_PROJ==='All'?'All projects':CUR_PROJ,ico:'📄'},
-    {lbl:'Total Value',val:fmt(tot),sub:'Contract pipeline',ico:'💰'},
+    {lbl:'Quote Files',val:data.length,sub:CUR_PROJ==='All'?'All projects':CUR_PROJ,ico:'📄'},
     {lbl:'Categories',val:cats.length,sub:'Tech domains',ico:'🗂️'},
+    {lbl:'Services',val:svcs.length,sub:'Line items',ico:'🧩'},
     {lbl:'Vendors',val:vens.length,sub:'Active suppliers',ico:'🏢'},
-    {lbl:'Avg Quote',val:fmt(avg),sub:data.length+' records',ico:'📊'}
+    {lbl:'Total Value',val:fmt(tot),sub:'Avg '+fmt(avg),ico:'💰'}
   ].map(k=>`<div class="kpi"><div class="kpi-ico">${k.ico}</div><div class="kpi-lbl">${k.lbl}</div><div class="kpi-val">${k.val}</div><div class="kpi-sub">${k.sub}</div></div>`).join('');
 
   // Project cards
@@ -1011,42 +1127,47 @@ function renderOverview(){
   document.getElementById('ov-proj-cards').innerHTML=projs.map(p=>{
     const pd=DB.filter(r=>r.proj===p);
     const pc=[...new Set(pd.map(r=>r.cat))];
+    const psv=[...new Set(pd.flatMap(r=>r.services||[]))];
     const ps=pd.map(r=>r.price).filter(x=>x>0);
     const pa=ps.length?ps.reduce((a,b)=>a+b,0)/ps.length:0;
-    const pt=ps.reduce((a,b)=>a+b,0);
     const col=PROJ_COL[p];
     return `<div class="proj-card" style="border-left-color:${col}" onclick="drillProject('${p}')">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
         <div>
           <div class="proj-name">${p}</div>
-          <div class="proj-sub">${pc.length} categories · ${[...new Set(pd.map(r=>r.vendor))].length} vendors</div>
+          <div class="proj-sub">${pc.length} categories · ${psv.length} services</div>
         </div>
         <span class="b" style="background:${col}15;color:${col}">${pd.length} files</span>
       </div>
       <div class="proj-stats">
         <div class="proj-stat"><div class="proj-stat-val">${pd.length}</div><div class="proj-stat-lbl">Quotes</div></div>
-        <div class="proj-stat"><div class="proj-stat-val or">${fmt(pa)}</div><div class="proj-stat-lbl">Avg</div></div>
-        <div class="proj-stat"><div class="proj-stat-val">${fmt(pt)}</div><div class="proj-stat-lbl">Total</div></div>
+        <div class="proj-stat"><div class="proj-stat-val or">${fmt(pa)}</div><div class="proj-stat-lbl">Avg Price</div></div>
+        <div class="proj-stat"><div class="proj-stat-val">${[...new Set(pd.map(r=>r.vendor))].length}</div><div class="proj-stat-lbl">Vendors</div></div>
       </div>
     </div>`;
   }).join('');
-  // Also replace project cards with style
-  document.querySelectorAll('.proj-card').forEach(c=>{c.style.borderLeftColor=c.style.borderLeftColor;});
 
-  // Chart: Category distribution
-  drawDoughnut('ov-cat-chart',cats.map(c=>({label:c,value:data.filter(r=>r.cat===c).length,color:CAT_COL[c]||MID})));
-  set('ov-cat-meta',cats.length+' categories');
+  // Chart 1: Services per category (bar chart)
+  const catSvcData=cats.map(c=>{
+    const cs=[...new Set(data.filter(r=>r.cat===c).flatMap(r=>r.services||[]))];
+    return {label:c,value:cs.length,color:CAT_COL[c]||MID};
+  }).sort((a,b)=>b.value-a.value);
+  drawBarH('ov-svc-chart',catSvcData);
+  set('ov-svc-meta',svcs.length+' total services');
 
-  // Chart: Avg price by cat
-  drawBarH('ov-price-chart',cats.map(c=>{
+  // Chart 2: Price range per category (grouped bar - min/avg/max)
+  drawPriceRange('ov-range-chart',cats.map(c=>{
     const ps=data.filter(r=>r.cat===c).map(r=>r.price).filter(p=>p>0);
-    const a=ps.length?ps.reduce((a,b)=>a+b,0)/ps.length:0;
-    return {label:c,value:Math.round(a),color:CAT_COL[c]||MID};
-  }).sort((a,b)=>b.value-a.value));
+    return {
+      label:c,
+      min:ps.length?Math.min(...ps):0,
+      avg:ps.length?ps.reduce((a,b)=>a+b,0)/ps.length:0,
+      max:ps.length?Math.max(...ps):0
+    };
+  }).filter(d=>d.avg>0).sort((a,b)=>b.avg-a.avg));
 
-  // Category table
-  const tbody=document.querySelector('#ov-cat-table tbody');
-  tbody.innerHTML=cats.map(c=>{
+  // Category summary table
+  document.querySelector('#ov-cat-table tbody').innerHTML=cats.map(c=>{
     const rs=data.filter(r=>r.cat===c);
     const cs=[...new Set(rs.flatMap(r=>r.services||[]))];
     const cv=[...new Set(rs.map(r=>r.vendor))];
@@ -1054,7 +1175,6 @@ function renderOverview(){
     const mn=cps.length?Math.min(...cps):0;
     const mx=cps.length?Math.max(...cps):0;
     const av=cps.length?cps.reduce((a,b)=>a+b,0)/cps.length:0;
-    const sp=mn>0?Math.round((mx-mn)/mn*100):0;
     return `<tr>
       <td><span class="cat-chip"><span class="cat-dot" style="background:${CAT_COL[c]||MID}"></span>${esc(c)}</span></td>
       <td><span class="num">${rs.length}</span></td>
@@ -1063,52 +1183,48 @@ function renderOverview(){
       <td><span class="num" style="color:${GN}">${fmt(mn)}</span></td>
       <td><span class="num">${fmt(av)}</span></td>
       <td><span class="num" style="color:${RD}">${fmt(mx)}</span></td>
-      <td><span class="b ${sp>30?'rd':sp>15?'am':'gn'}">${sp}%</span></td>
     </tr>`;
   }).join('');
+  set('ov-tbl-meta',cats.length+' categories');
 
-  // Timeline chart
-  const yrQ={};data.forEach(r=>{const k=r.year+' '+r.quarter;yrQ[k]=(yrQ[k]||0)+1;});
-  const yrK=Object.keys(yrQ).sort();
-  drawLine('ov-time-chart',yrK,yrK.map(k=>yrQ[k]));
-
-  // Top vendors
-  const venC={};data.forEach(r=>{venC[r.vendor]=(venC[r.vendor]||0)+1;});
-  const topV=Object.entries(venC).sort((a,b)=>b[1]-a[1]).slice(0,7);
-  const maxV=topV.length?topV[0][1]:1;
-  document.getElementById('ov-top-vendors').innerHTML=topV.map(([v,c])=>`
+  // Vendors list
+  const venStats={};
+  data.forEach(r=>{
+    if(!venStats[r.vendor])venStats[r.vendor]={count:0,svcs:new Set(),prices:[]};
+    venStats[r.vendor].count++;
+    (r.services||[]).forEach(s=>venStats[r.vendor].svcs.add(s));
+    if(r.price>0)venStats[r.vendor].prices.push(r.price);
+  });
+  const topV=Object.entries(venStats).sort((a,b)=>b[1].count-a[1].count).slice(0,8);
+  const maxV=topV.length?topV[0][1].count:1;
+  document.getElementById('ov-top-vendors').innerHTML=topV.map(([v,d])=>`
     <div class="blist-row">
-      <div class="blist-lbl">${esc(v)}</div>
-      <div class="blist-bar"><div class="blist-fill" style="width:${c/maxV*100}%;background:${vcol(v)}"></div></div>
-      <div class="blist-val">${c}</div>
+      <div class="blist-lbl">${esc(v)}<div style="font-size:.68rem;color:${MID};font-weight:500;margin-top:1px">${d.svcs.size} services</div></div>
+      <div class="blist-bar"><div class="blist-fill" style="width:${d.count/maxV*100}%;background:${vcol(v)}"></div></div>
+      <div class="blist-val">${d.count}</div>
     </div>
   `).join('');
+  set('ov-ven-meta',vens.length+' vendors');
 
-  // Top services table
+  // Top services by avg price
   const svcMap={};
   data.forEach(r=>{(r.services||[]).forEach(s=>{
-    if(!svcMap[s])svcMap[s]={cat:r.cat,vens:new Set(),prices:[],count:0};
-    svcMap[s].vens.add(r.vendor);
+    if(!svcMap[s])svcMap[s]={cat:r.cat,prices:[],count:0};
     if(r.price>0)svcMap[s].prices.push(r.price);
     svcMap[s].count++;
   });});
-  const topS=Object.entries(svcMap).sort((a,b)=>b[1].count-a[1].count).slice(0,10);
-  document.querySelector('#ov-svc-table tbody').innerHTML=topS.map(([s,d])=>{
-    const mn=d.prices.length?Math.min(...d.prices):0;
-    const mx=d.prices.length?Math.max(...d.prices):0;
-    const av=d.prices.length?d.prices.reduce((a,b)=>a+b,0)/d.prices.length:0;
-    return `<tr>
-      <td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600">${esc(s)}</td>
-      <td><span class="cat-chip" style="justify-content:flex-end"><span class="cat-dot" style="background:${CAT_COL[d.cat]||MID}"></span>${esc(d.cat)}</span></td>
-      <td><span class="num">${d.vens.size}</span></td>
-      <td><span class="num">${d.count}</span></td>
-      <td><span class="num" style="color:${GN}">${fmt(mn)}</span></td>
-      <td><span class="num">${fmt(av)}</span></td>
-      <td><span class="num" style="color:${RD}">${fmt(mx)}</span></td>
-    </tr>`;
-  }).join('');
+  const topS=Object.entries(svcMap).map(([s,d])=>({s,cat:d.cat,avg:d.prices.length?d.prices.reduce((a,b)=>a+b,0)/d.prices.length:0,count:d.count})).sort((a,b)=>b.avg-a.avg).slice(0,8);
+  const maxSvc=topS.length?topS[0].avg:1;
+  document.getElementById('ov-top-services').innerHTML=topS.map(s=>`
+    <div class="blist-row">
+      <div class="blist-lbl">${esc(s.s.length>24?s.s.substring(0,24)+'…':s.s)}<div style="font-size:.68rem;color:${MID};font-weight:500;margin-top:1px">${esc(s.cat)}</div></div>
+      <div class="blist-bar"><div class="blist-fill" style="width:${s.avg/maxSvc*100}%;background:${CAT_COL[s.cat]||OR}"></div></div>
+      <div class="blist-val">${fmt(s.avg)}</div>
+    </div>
+  `).join('');
 }
 
+  
 function drillProject(p){
   CUR_PROJ=p;
   document.querySelectorAll('.proj-tab').forEach(t=>{
@@ -1161,22 +1277,115 @@ function drawLine(id,labels,data){
   });
 }
 
+function drawPriceRange(id,data){
+  destroyChart(id);
+  const ctx=document.getElementById(id);if(!ctx)return;
+  CHARTS[id]=new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels:data.map(d=>d.label.length>16?d.label.substring(0,16)+'…':d.label),
+      datasets:[
+        {label:'Min',data:data.map(d=>d.min),backgroundColor:GN,borderRadius:3},
+        {label:'Avg',data:data.map(d=>d.avg),backgroundColor:OR,borderRadius:3},
+        {label:'Max',data:data.map(d=>d.max),backgroundColor:RD,borderRadius:3}
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{position:'bottom',labels:{font:{size:10,family:'Inter'},boxWidth:10,padding:8,color:INK}},
+        tooltip:{callbacks:{label:(c)=>c.dataset.label+': '+fmt(c.parsed.y)}}
+      },
+      scales:{
+        x:{ticks:{font:{size:10,family:'Inter'},color:MID},grid:{display:false}},
+        y:{ticks:{font:{size:10,family:'Inter'},color:MID,callback:(v)=>fmt(v)},grid:{color:'#F3F4F6'}}
+      }
+    }
+  });
+}
+
 // ═══════════════════════════════════
 // SELECTOR PAGE
 // ═══════════════════════════════════
 function selFilterChips(){
-  const data=filteredDB();
+  // MASTER DATA — no project filter
+  const data=DB;
   const s=(document.getElementById('sel-search').value||'').toLowerCase();
   const c=document.getElementById('sel-cat').value;
   const svcs=[...new Set(data.flatMap(r=>r.services||[]))].sort();
   let sv=svcs.filter(x=>!s||x.toLowerCase().includes(s));
-  if(c!=='All'){const cs=new Set(data.filter(r=>r.cat===c).flatMap(r=>r.services||[]));sv=sv.filter(x=>cs.has(x));}
+  if(c!=='All'){
+    const cs=new Set(data.filter(r=>r.cat===c).flatMap(r=>r.services||[]));
+    sv=sv.filter(x=>cs.has(x));
+  }
   document.getElementById('sel-chips').innerHTML=sv.map(x=>{
-    const cnt=data.filter(r=>r.services&&r.services.includes(x)).length;
+    const cnt=data.filter(r=>(r.services||[]).includes(x)).length;
+    const vens=new Set(data.filter(r=>(r.services||[]).includes(x)).map(r=>r.vendor));
     const on=selSvcs.has(x);
-    return `<div class="chip ${on?'on':''}" onclick="togSelSvc(${JSON.stringify(x)},this)">${esc(x.length>28?x.substring(0,28)+'…':x)}<span class="chip-cnt">${cnt}</span></div>`;
+    const catOf=data.find(r=>(r.services||[]).includes(x))?.cat||'';
+    return `<div class="chip ${on?'on':''}" data-svc="${esc(x)}" onclick="togSelSvc(this)" title="${esc(x)} · ${vens.size} vendors · ${cnt} quotes">
+      <span class="cat-dot" style="background:${CAT_COL[catOf]||MID}"></span>
+      <span>${esc(x.length>30?x.substring(0,30)+'…':x)}</span>
+      <span class="chip-cnt">${cnt}</span>
+    </div>`;
   }).join('');
-  set('sel-count',selSvcs.size+' selected');
+  selRenderPicked();
+}
+
+function togSelSvc(el){
+  const s=el.dataset.svc;
+  if(selSvcs.has(s)){
+    selSvcs.delete(s);
+    el.classList.remove('on');
+  }else{
+    selSvcs.add(s);
+    el.classList.add('on');
+  }
+  selRenderPicked();
+  selRender();
+}
+
+function selRenderPicked(){
+  const el=document.getElementById('sel-picked');
+  set('sel-count',selSvcs.size+(selSvcs.size===1?' service':' services'));
+  if(selSvcs.size===0){
+    el.innerHTML='No services selected yet';
+    el.style.color='var(--mid)';
+    el.style.textAlign='center';
+    return;
+  }
+  el.style.color='';el.style.textAlign='left';
+  el.innerHTML=[...selSvcs].map(s=>{
+    const catOf=DB.find(r=>(r.services||[]).includes(s))?.cat||'';
+    return `<div style="display:flex;align-items:center;gap:6px;padding:5px 8px;background:#fff;border-radius:var(--r);margin-bottom:5px;font-size:.74rem;font-weight:600;color:var(--ink);border:1px solid var(--orl)">
+      <span class="cat-dot" style="background:${CAT_COL[catOf]||MID}"></span>
+      <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s)}</span>
+      <span style="color:var(--or);cursor:pointer;font-weight:700" onclick="removeSelSvc('${esc(s)}')">×</span>
+    </div>`;
+  }).join('');
+}
+
+function removeSelSvc(s){
+  selSvcs.delete(s);
+  document.querySelectorAll('#sel-chips .chip').forEach(c=>{
+    if(c.dataset.svc===s)c.classList.remove('on');
+  });
+  selRenderPicked();
+  selRender();
+}
+
+function selClear(){
+  selSvcs.clear();
+  document.querySelectorAll('#sel-chips .chip').forEach(c=>c.classList.remove('on'));
+  selRenderPicked();
+  selRender();
+}
+
+function selLoadDemo(){
+  selSvcs.clear();
+  ['Cisco Catalyst C8300','Cisco Catalyst 9800-L','Cisco SMARTnet'].forEach(s=>selSvcs.add(s));
+  selFilterChips();
+  selRender();
 }
 
 function togSelSvc(s,el){
@@ -1195,11 +1404,21 @@ function selRender(){
   if(sel.length===0){emp.style.display='block';res.style.display='none';return;}
   emp.style.display='none';res.style.display='block';
 
-  const data=filteredDB();
-  const matches=data.filter(r=>(r.services||[]).some(s=>sel.includes(s)));
-  const vens=[...new Set(matches.map(r=>r.vendor))].sort();
+  // MASTER DATA
+  const data=DB;
 
-  // Build matrix
+  // ─── 1. FIND EXACT COMBO MATCHES ───
+  // A "combo match" = single quote file that covers ALL selected services
+  const comboMatches=data.filter(r=>{
+    const rs=new Set(r.services||[]);
+    return sel.every(s=>rs.has(s));
+  });
+
+  // All quotes that cover AT LEAST ONE selected service
+  const partialMatches=data.filter(r=>(r.services||[]).some(s=>sel.includes(s)));
+  const vens=[...new Set(partialMatches.map(r=>r.vendor))].sort();
+
+  // Build per-service vendor pricing
   const svcVenPrice={};
   sel.forEach(s=>{
     svcVenPrice[s]={};
@@ -1212,7 +1431,45 @@ function selRender(){
     });
   });
 
-  // KPIs
+  // ─── 2. TOP VERDICT ───
+  let verdHTML='';
+  if(comboMatches.length>0){
+    // EXACT COMBO EXISTS
+    const best=comboMatches.reduce((a,b)=>a.price<b.price?a:b);
+    const avgCombo=comboMatches.reduce((a,b)=>a+b.price,0)/comboMatches.length;
+    verdHTML=`<div class="verdict gn">
+      <div class="verdict-ico">✅</div>
+      <div style="flex:1">
+        <div class="verdict-t">Exact Combination Found — ${comboMatches.length} quote${comboMatches.length>1?'s':''} match${comboMatches.length>1?'':'es'} all ${sel.length} services</div>
+        <div class="verdict-b">
+          <strong>Best single-vendor quote:</strong> ${vbadge(best.vendor)} at <strong>${fmt(best.price)}</strong> (${best.proj} · ${best.year} ${best.quarter})<br>
+          <strong>Average across ${comboMatches.length} matching quotes:</strong> ${fmt(avgCombo)}<br>
+          <strong>Source file:</strong> <span style="font-family:monospace;font-size:.76rem">${esc(best.file)}</span>
+        </div>
+      </div>
+    </div>`;
+  }else{
+    // NO EXACT COMBO — fall back to split analysis
+    const splitMin=sel.reduce((sum,s)=>{
+      const entries=Object.values(svcVenPrice[s]);
+      return sum+(entries.length?Math.min(...entries.map(x=>x.min)):0);
+    },0);
+    const missing=sel.filter(s=>Object.keys(svcVenPrice[s]).length===0);
+    verdHTML=`<div class="verdict am">
+      <div class="verdict-ico">🔀</div>
+      <div style="flex:1">
+        <div class="verdict-t">No Exact Combination Found — Split Sourcing Recommended</div>
+        <div class="verdict-b">
+          ${missing.length?`<strong style="color:var(--rdd)">⚠️ ${missing.length} service${missing.length>1?'s have':' has'} no prior quotes:</strong> ${missing.slice(0,3).map(s=>esc(s)).join(', ')}${missing.length>3?'…':''}<br>`:''}
+          <strong>Best split-buy total (cherry-pick per service):</strong> ${fmt(splitMin)}<br>
+          <strong>Strategy:</strong> See individual service breakdown below to identify the best vendor per line item.
+        </div>
+      </div>
+    </div>`;
+  }
+  document.getElementById('sel-verdict').innerHTML=verdHTML;
+
+  // ─── 3. KPIs ───
   const allMins=sel.map(s=>{const v=Object.values(svcVenPrice[s]);return v.length?Math.min(...v.map(x=>x.min)):0;}).filter(x=>x>0);
   const splitTotal=allMins.reduce((a,b)=>a+b,0);
   const fullCovVens=vens.filter(v=>sel.every(s=>svcVenPrice[s][v]));
@@ -1220,13 +1477,51 @@ function selRender(){
   fullCovVens.forEach(v=>{const t=sel.reduce((sum,s)=>sum+svcVenPrice[s][v].min,0);if(!singleMin||t<singleMin)singleMin=t;});
 
   document.getElementById('sel-kpis').innerHTML=[
-    {lbl:'Services',val:sel.length,sub:'selected'},
-    {lbl:'Vendors',val:vens.length,sub:'with matches'},
-    {lbl:'Split Best',val:fmt(splitTotal),sub:'cherry-pick'},
-    {lbl:'Single Best',val:singleMin?fmt(singleMin):'—',sub:fullCovVens.length+' cover all'}
+    {lbl:'Services Selected',val:sel.length,sub:'in scope'},
+    {lbl:'Vendors Quoting',val:vens.length,sub:'with history'},
+    {lbl:'Split Best',val:fmt(splitTotal),sub:'cherry-pick per service'},
+    {lbl:'Single-Vendor Best',val:singleMin?fmt(singleMin):'—',sub:fullCovVens.length?fullCovVens.length+' cover all':'no full coverage'}
   ].map(k=>`<div class="kpi"><div class="kpi-lbl">${k.lbl}</div><div class="kpi-val">${k.val}</div><div class="kpi-sub">${k.sub}</div></div>`).join('');
 
-  // Matrix
+  // ─── 4. COMBINATION ANALYSIS ───
+  let comboBodyHTML='';
+  if(comboMatches.length>0){
+    comboBodyHTML=`<div style="font-size:.80rem;color:var(--ink2);margin-bottom:10px">✅ The exact combination of these ${sel.length} services has been quoted <strong>${comboMatches.length} time${comboMatches.length>1?'s':''}</strong> in the past.</div>
+    <table class="cat-table">
+      <thead><tr><th>Vendor</th><th>Project</th><th>Price</th><th>Quarter</th><th>File</th></tr></thead>
+      <tbody>
+        ${comboMatches.sort((a,b)=>a.price-b.price).map((r,i)=>`
+          <tr onclick="selShowFile(${DB.indexOf(r)})" style="cursor:pointer">
+            <td>${vbadge(r.vendor)}${i===0?' <span class="b gn">★ BEST</span>':''}</td>
+            <td>${esc(r.proj)}</td>
+            <td><span class="num" style="color:${i===0?GN:INK}">${fmt(r.price)}</span></td>
+            <td>${r.year} ${r.quarter}</td>
+            <td style="font-family:monospace;font-size:.74rem;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--mid)">${esc(r.file)}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>`;
+    set('sel-combo-meta',comboMatches.length+' exact matches');
+  }else{
+    comboBodyHTML=`<div style="background:var(--aml);border-left:3px solid var(--am);border-radius:var(--r);padding:12px 14px;font-size:.80rem;color:var(--amd);margin-bottom:12px">
+      <strong>⚠️ No single quote covers all ${sel.length} selected services together.</strong><br>
+      The matrix below shows individual service pricing per vendor. Use "Sourcing Verdict" section for split-buy guidance.
+    </div>
+    <div style="font-size:.80rem;color:var(--ink2)">
+      ${sel.map(s=>{
+        const vendorCount=Object.keys(svcVenPrice[s]||{}).length;
+        const quoteCount=data.filter(r=>(r.services||[]).includes(s)).length;
+        return `<div style="padding:8px 12px;background:var(--bg);border-radius:var(--r);margin-bottom:6px;display:flex;justify-content:space-between;align-items:center">
+          <span style="font-weight:600">${esc(s)}</span>
+          <span style="font-size:.74rem;color:${vendorCount>0?'var(--gn)':'var(--rd)'}">${vendorCount>0?`✓ ${vendorCount} vendors, ${quoteCount} quotes`:'✗ No prior quotes'}</span>
+        </div>`;
+      }).join('')}
+    </div>`;
+    set('sel-combo-meta','Split analysis');
+  }
+  document.getElementById('sel-combo-body').innerHTML=comboBodyHTML;
+
+  // ─── 5. MATRIX ───
   let mtx=`<table class="mtx"><thead><tr><th class="sh">Service</th>`;
   vens.forEach(v=>{mtx+=`<th class="vh">${vbadge(v)}</th>`;});
   mtx+=`</tr></thead><tbody>`;
@@ -1240,68 +1535,152 @@ function selRender(){
       const d=row[v];
       if(d){
         const cls=d.min===rMin&&rMin<rMax?'bc':d.min===rMax&&rMin<rMax?'wc':'';
-        mtx+=`<td class="pc ${cls}" onclick="showSelDet('${esc(s)}','${esc(v)}')">${fmt(d.min)}</td>`;
+        mtx+=`<td class="pc ${cls}" onclick="selShowCell('${esc(s).replace(/'/g,"\\'")}','${esc(v).replace(/'/g,"\\'")}')">${fmt(d.min)}<div style="font-size:.62rem;color:var(--mid);margin-top:2px;font-weight:500">${d.count} quote${d.count>1?'s':''}</div></td>`;
       }else{mtx+=`<td class="nc">—</td>`;}
     });
     mtx+=`</tr>`;
   });
   mtx+=`</tbody></table>`;
   document.getElementById('sel-mtx-wrap').innerHTML=mtx;
-  set('sel-mtx-meta',vens.length+' × '+sel.length);
+  set('sel-mtx-meta',vens.length+' vendors × '+sel.length+' services');
 
-  // Best vendor per service
-  document.getElementById('sel-best').innerHTML=sel.map(s=>{
+  // ─── 6. SOURCING VERDICT (per service) ───
+  document.getElementById('sel-sourcing').innerHTML=sel.map(s=>{
     const ents=Object.entries(svcVenPrice[s]);
-    if(!ents.length)return `<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line2);font-size:.78rem"><span style="color:${MID}">${esc(s.length>28?s.substring(0,28)+'…':s)}</span><span style="color:${MID}">No quote</span></div>`;
-    const best=ents.sort((a,b)=>a[1].min-b[1].min)[0];
-    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--line2);font-size:.78rem"><span style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.length>28?s.substring(0,28)+'…':s)}</span><div>${vbadge(best[0])} <strong style="color:${GN};margin-left:6px;font-variant-numeric:tabular-nums">${fmt(best[1].min)}</strong></div></div>`;
+    if(!ents.length){
+      return `<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--rdl);border-left:3px solid var(--rd);border-radius:var(--r);margin-bottom:8px">
+        <div style="flex:1">
+          <div style="font-weight:700;color:var(--rdd);font-size:.86rem">${esc(s)}</div>
+          <div style="font-size:.74rem;color:var(--rdd);opacity:.8;margin-top:2px">⚠️ No historical quotes — include in RFQ for fresh pricing</div>
+        </div>
+        <span class="b rd">ACTION: RFQ</span>
+      </div>`;
+    }
+    const sorted=ents.sort((a,b)=>a[1].min-b[1].min);
+    const best=sorted[0];
+    const worst=sorted[sorted.length-1];
+    const savingPct=worst[1].min>0?Math.round((worst[1].min-best[1].min)/worst[1].min*100):0;
+    return `<div style="padding:12px 14px;background:var(--gnl);border-left:3px solid var(--gn);border-radius:var(--r);margin-bottom:8px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <div style="flex:1;min-width:200px">
+          <div style="font-weight:700;color:var(--ink);font-size:.86rem">${esc(s)}</div>
+          <div style="font-size:.74rem;color:var(--mid);margin-top:2px">Source from ${vbadge(best[0])} at <strong style="color:var(--gn)">${fmt(best[1].min)}</strong> ${ents.length>1?` · avoid ${esc(worst[0])} (${fmt(worst[1].min)}, ${savingPct}% higher)`:''}</div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <span class="b gn">★ BEST: ${esc(best[0])}</span>
+          <span class="b nt">${ents.length} vendor${ents.length>1?'s':''}</span>
+        </div>
+      </div>
+    </div>`;
   }).join('');
 
-  // Strategy
-  let strat;
-  if(fullCovVens.length){
-    const prem=singleMin-splitTotal;
-    const premPct=splitTotal>0?Math.round(prem/splitTotal*100):0;
-    strat=`<div class="verdict gn"><div class="verdict-ico">🥇</div><div><div class="verdict-t">${fullCovVens.length} vendor${fullCovVens.length>1?'s':''} cover all services</div><div class="verdict-b">Single-vendor premium: <strong>+${fmt(Math.abs(prem))} (+${premPct}%)</strong> over cherry-pick. ${premPct<10?'Consider consolidating for simplicity.':premPct<20?'Negotiate a bundle discount.':'Split-buy is clearly cheaper.'}</div></div></div>`;
-  }else{
-    strat=`<div class="verdict am"><div class="verdict-ico">🔀</div><div><div class="verdict-t">Multi-vendor required</div><div class="verdict-b">No single vendor covers all ${sel.length} services. Best split-buy cost: <strong>${fmt(splitTotal)}</strong> across multiple vendors.</div></div></div>`;
-  }
-  document.getElementById('sel-strategy').innerHTML=strat;
+  // ─── 7. SOURCE FILES ───
+  const uniqueFiles=[...new Set(partialMatches.map(r=>r.file))];
+  document.getElementById('sel-files').innerHTML=uniqueFiles.slice(0,20).map(f=>{
+    const r=partialMatches.find(x=>x.file===f);
+    const matchedSvcs=(r.services||[]).filter(s=>sel.includes(s));
+    return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg);border-radius:var(--r);margin-bottom:6px;cursor:pointer;transition:background .12s" onmouseover="this.style.background='var(--ort)'" onmouseout="this.style.background='var(--bg)'" onclick="selShowFile(${DB.indexOf(r)})">
+      <span style="font-size:1rem">📄</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:600;color:var(--ink);font-size:.80rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(f)}</div>
+        <div style="font-size:.70rem;color:var(--mid);margin-top:1px">${vbadge(r.vendor)} · ${esc(r.proj)} · ${r.year} ${r.quarter} · <span style="color:var(--or);font-weight:600">${matchedSvcs.length}/${sel.length} services matched</span></div>
+      </div>
+      <span style="color:var(--or);font-family:var(--serif);font-weight:700;font-size:1rem">${fmt(r.price)}</span>
+      <span style="color:var(--mid)">→</span>
+    </div>`;
+  }).join('')+(uniqueFiles.length>20?`<div style="text-align:center;padding:10px;color:var(--mid);font-size:.74rem">+${uniqueFiles.length-20} more files</div>`:'');
+  set('sel-files-meta',uniqueFiles.length+' files');
 }
 
-function showSelDet(svc,ven){
+function selShowCell(svc,ven){
   const rs=DB.filter(r=>r.vendor===ven&&(r.services||[]).includes(svc)&&r.price>0);
   if(!rs.length)return;
   const p=document.getElementById('sp-panel');
   p.classList.add('on');
   set('sp-title',svc+' @ '+ven);
-  document.getElementById('sp-body').innerHTML=rs.map(r=>`
-    <div style="background:var(--bg);border-radius:var(--r);padding:11px 13px;margin-bottom:8px">
-      <div style="font-weight:700;color:${INK};font-size:.84rem;margin-bottom:4px">${esc(r.file)}</div>
-      <div style="display:flex;justify-content:space-between;font-size:.76rem;color:${MID}"><span>${r.proj} · ${r.year} ${r.quarter}</span><span style="color:${OR};font-weight:700;font-family:var(--serif);font-size:1.02rem">${fmt(r.price)}</span></div>
+  document.getElementById('sp-body').innerHTML=`
+    <div style="background:var(--ort);border-radius:var(--r);padding:12px 14px;margin-bottom:12px;border-left:3px solid var(--or)">
+      <div style="font-size:.68rem;font-weight:700;color:var(--or);text-transform:uppercase;letter-spacing:.6px;margin-bottom:3px">Service</div>
+      <div style="font-weight:700;color:var(--ink);font-size:.88rem">${esc(svc)}</div>
     </div>
-  `).join('');
+    <div class="sec-lbl" style="margin:4px 0 10px">All quotes from ${esc(ven)}</div>
+    ${rs.sort((a,b)=>a.price-b.price).map((r,i)=>`
+      <div style="background:var(--bg);border-radius:var(--r);padding:11px 13px;margin-bottom:8px;border-left:3px solid ${i===0?'var(--gn)':'var(--line)'}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:6px">
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:700;color:${INK};font-size:.82rem;overflow:hidden;text-overflow:ellipsis">${esc(r.file)}</div>
+            <div style="font-size:.72rem;color:var(--mid);margin-top:3px">${esc(r.proj)} · ${r.year} ${r.quarter}</div>
+          </div>
+          <div style="text-align:right">
+            <div style="color:${i===0?'var(--gn)':'var(--or)'};font-family:var(--serif);font-weight:700;font-size:1.1rem">${fmt(r.price)}</div>
+            ${i===0?'<span class="b gn" style="margin-top:2px;display:inline-block">★ BEST</span>':''}
+          </div>
+        </div>
+        <div style="font-size:.70rem;color:var(--mid);border-top:1px dashed var(--line);padding-top:6px;margin-top:6px">
+          <strong style="color:var(--ink2)">Includes:</strong> ${(r.services||[]).map(s=>esc(s)).join(', ')}
+        </div>
+      </div>
+    `).join('')}
+  `;
+}
+function selShowFile(idx){
+  const r=DB[idx];if(!r)return;
+  const p=document.getElementById('sp-panel');
+  p.classList.add('on');
+  set('sp-title',r.file);
+  document.getElementById('sp-body').innerHTML=`
+    <div class="sp-row"><span class="sp-k">Vendor</span><span class="sp-v">${vbadge(r.vendor)}</span></div>
+    <div class="sp-row"><span class="sp-k">Project</span><span class="sp-v">${esc(r.proj)}</span></div>
+    <div class="sp-row"><span class="sp-k">Category</span><span class="sp-v">${esc(r.cat)}</span></div>
+    <div class="sp-row"><span class="sp-k">Price</span><span class="sp-v pr">${fmt(r.price)}</span></div>
+    <div class="sp-row"><span class="sp-k">Period</span><span class="sp-v">${r.year} ${r.quarter}</span></div>
+    <div class="sp-row" style="flex-direction:column;align-items:flex-start;gap:5px"><span class="sp-k">File Name</span><span class="sp-v" style="font-family:monospace;font-size:.72rem;text-align:left;word-break:break-all">${esc(r.file)}</span></div>
+    <div class="sec-lbl" style="margin:16px 0 10px">Services (${(r.services||[]).length})</div>
+    ${(r.services||[]).map(s=>`<div style="padding:7px 10px;background:var(--bg);border-radius:var(--r);margin-bottom:5px;font-size:.78rem;border-left:3px solid ${CAT_COL[r.cat]||OR}">${esc(s)}</div>`).join('')}
+  `;
 }
 
+function selBuildRFQ(){
+  if(selSvcs.size===0){toast('Select services first','warn');return;}
+  // Push selected services into RFQ builder
+  rqSvcs=new Set(selSvcs);
+  // Switch to RFQ tab
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelector('.tab[data-page="rfq"]').classList.add('active');
+  document.getElementById('pg-rfq').classList.add('active');
+  rqCat='All';
+  rqBuildCatList();
+  rqFilterSvc();
+  rqRender();
+  toast(selSvcs.size+' services pushed to RFQ Builder','ok');
+}
+  
 function selExport(){
   const sel=[...selSvcs];
-  const data=filteredDB();
+  if(!sel.length){toast('Select services first','warn');return;}
+  const data=DB; // MASTER DATA
   const matches=data.filter(r=>(r.services||[]).some(s=>sel.includes(s)));
   const vens=[...new Set(matches.map(r=>r.vendor))].sort();
-  let csv='Service,'+vens.join(',')+',Min,Max\r\n';
+  let csv='Service,'+vens.join(',')+',Min,Max,Best Vendor\r\n';
   sel.forEach(s=>{
     const row=[s];
     const vals=[];
+    let bestV='';let bestP=Infinity;
     vens.forEach(v=>{
       const rs=data.filter(r=>r.vendor===v&&(r.services||[]).includes(s)&&r.price>0);
-      if(rs.length){const mn=Math.min(...rs.map(r=>r.price));row.push(mn);vals.push(mn);}
-      else row.push('');
+      if(rs.length){
+        const mn=Math.min(...rs.map(r=>r.price));
+        row.push(mn);vals.push(mn);
+        if(mn<bestP){bestP=mn;bestV=v;}
+      }else row.push('');
     });
     row.push(vals.length?Math.min(...vals):'');
     row.push(vals.length?Math.max(...vals):'');
+    row.push(bestV);
     csv+=row.map(x=>typeof x==='string'?'"'+x+'"':x).join(',')+'\r\n';
   });
-  dlCSV(csv,'price_matrix.csv');
+  dlCSV(csv,'price_matrix_'+Date.now()+'.csv');
 }
 
 // ═══════════════════════════════════
@@ -1660,9 +2039,9 @@ async function chatSend(){
   body.scrollTop=body.scrollHeight;
 
   let ans='';
-  if(grokCfg.key){
+  if(grokCfg.available){
     try{ans=await callGrok(q);}
-    catch(e){ans=localAnswer(q)+'\n\n*(Grok API failed: '+e.message+')*';}
+    catch(e){ans=localAnswer(q)+'\n\n*(Backend unreachable — using local knowledge)*';}
   }else{
     ans=localAnswer(q);
   }
@@ -1676,17 +2055,25 @@ async function chatSend(){
 }
 
 async function callGrok(q){
+  // Backend URL — set this to your deployed API endpoint
+  // The backend reads GROQ_API_KEY (or xAI key) from GitHub secrets / env vars
+  const BACKEND_URL = window.AI_BACKEND_URL || 'https://your-api.onrender.com';
+  
   const ctx=buildGrokContext();
-  const sysp=grokCfg.sysp||`You are Grok, an AI procurement assistant with full knowledge of the PwC IT Contracting catalog data below. Answer concisely with bullet points and dollar figures. Reference specific projects (Idemia, Tenneco, Panasonic), vendors and services from the data.\n\nCATALOG DATA:\n${ctx}`;
+  const sysp=`You are Grok, an AI procurement assistant for PwC with full knowledge of the IT Contracting catalog. Answer concisely with bullets and dollar figures. Reference specific projects (Idemia, Tenneco, Panasonic), vendors and services from the data.\n\nCATALOG DATA:\n${ctx}`;
   const msgs=[{role:'system',content:sysp},...chatHist.slice(-10),{role:'user',content:q}];
-  const r=await fetch('https://api.x.ai/v1/chat/completions',{
+  
+  const r=await fetch(BACKEND_URL+'/api/chat',{
     method:'POST',
-    headers:{'Content-Type':'application/json','Authorization':'Bearer '+grokCfg.key},
-    body:JSON.stringify({model:grokCfg.mdl,messages:msgs,max_tokens:600,temperature:0.3})
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({messages:msgs,max_tokens:600,temperature:0.3})
   });
-  if(!r.ok){const e=await r.text();throw new Error('HTTP '+r.status+': '+e.substring(0,100));}
+  if(!r.ok){
+    const e=await r.text();
+    throw new Error('Backend error '+r.status+': '+e.substring(0,100));
+  }
   const d=await r.json();
-  return d.choices?.[0]?.message?.content||'No response from Grok';
+  return d.reply||d.choices?.[0]?.message?.content||'No response';
 }
 
 function buildGrokContext(){
