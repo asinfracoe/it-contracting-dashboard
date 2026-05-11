@@ -886,6 +886,14 @@ html,body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-siz
 <script>
 'use strict';
 
+// ─── BACKEND CONFIG ───
+const GITHUB_CONFIG = {
+  owner: 'asinfracoe',
+  repo: 'it-contracting-dashboard',
+  token: 'PASTE_YOUR_PAT_HERE', // ⚠️ fine-grained PAT, Actions+Contents scope only
+  pages_url: 'https://asinfracoe.github.io/it-contracting-dashboard'
+};
+  
 // ═══ PALETTE ═══
 const OR='#D04A02',ORD='#A33A00',INK='#1F2937',MID='#6B7280';
 const GN='#10B981',AM='#F59E0B',RD='#EF4444',BL='#3B82F6',PP='#8B5CF6';
@@ -1019,24 +1027,20 @@ async function checkLlamaStatus(){
   }
 }
   
-async function checkBackendStatus(){
-  const BACKEND_URL = window.AI_BACKEND_URL || 'https://your-api.onrender.com';
-  const pill=document.getElementById('grok-status');
-  try{
-    const r=await fetch(BACKEND_URL+'/api/health',{method:'GET'});
-    if(r.ok){
-      pill.textContent='🤖 Grok: Ready';
-      pill.style.background='#D1FAE5';
-      pill.style.color='#065F46';
-      set('chat-sts','Connected via secrets');
-      grokCfg.available=true;
-    }else{throw new Error('offline');}
-  }catch(e){
-    pill.textContent='🤖 Grok: Local mode';
-    pill.style.background='#FEF3C7';
-    pill.style.color='#92400E';
-    set('chat-sts','Local knowledge mode');
-    grokCfg.available=false;
+async function checkBackendStatus() {
+  const pill = document.getElementById('grok-status');
+  if (GITHUB_CONFIG.token && GITHUB_CONFIG.token !== 'PASTE_YOUR_PAT_HERE') {
+    pill.textContent = '🤖 Grok: Ready (via Actions)';
+    pill.style.background = '#D1FAE5';
+    pill.style.color = '#065F46';
+    set('chat-sts', 'Via GitHub Actions');
+    grokCfg.available = true;
+  } else {
+    pill.textContent = '🤖 Grok: Local mode';
+    pill.style.background = '#FEF3C7';
+    pill.style.color = '#92400E';
+    set('chat-sts', 'Local knowledge mode');
+    grokCfg.available = false;
   }
 }
   
@@ -2378,34 +2382,119 @@ function initChatChips(){
 
 function chatAsk(q){document.getElementById('chat-inp').value=q;chatSend();}
 
-async function chatSend(){
-  if(chatBusy)return;
-  const inp=document.getElementById('chat-inp');
-  const q=inp.value.trim();if(!q)return;
-  const body=document.getElementById('chat-body');
-  body.insertAdjacentHTML('beforeend',`<div class="msg u"><div class="bbl">${esc(q)}</div></div>`);
-  inp.value='';
-  body.scrollTop=body.scrollHeight;
-  chatBusy=true;
-  document.getElementById('chat-send').disabled=true;
-  const tid='t'+Date.now();
-  body.insertAdjacentHTML('beforeend',`<div class="msg b" id="${tid}"><div class="bbl"><div class="typing"><div></div><div></div><div></div></div></div></div>`);
-  body.scrollTop=body.scrollHeight;
+async function chatSend() {
+  if (chatBusy) return;
+  const inp = document.getElementById('chat-inp');
+  const q = inp.value.trim();
+  if (!q) return;
 
-  let ans='';
-  if(grokCfg.available){
-    try{ans=await callGrok(q);}
-    catch(e){ans=localAnswer(q)+'\n\n*(Backend unreachable — using local knowledge)*';}
-  }else{
-    ans=localAnswer(q);
+  const body = document.getElementById('chat-body');
+  body.insertAdjacentHTML('beforeend',
+    `<div class="msg u"><div class="bbl">${esc(q)}</div></div>`);
+  inp.value = '';
+  body.scrollTop = body.scrollHeight;
+  chatBusy = true;
+  document.getElementById('chat-send').disabled = true;
+
+  const tid = 't' + Date.now();
+  body.insertAdjacentHTML('beforeend', `
+    <div class="msg b" id="${tid}">
+      <div class="bbl">
+        <div class="typing"><div></div><div></div><div></div></div>
+        <div style="font-size:.68rem;color:var(--mid);margin-top:6px" id="${tid}-sts">
+          Triggering Groq via GitHub Actions... (may take 20-60s)
+        </div>
+      </div>
+    </div>
+  `);
+  body.scrollTop = body.scrollHeight;
+
+  let ans = '';
+  try {
+    ans = await callGrokViaActions(q, tid);
+  } catch (e) {
+    ans = localAnswer(q) + '\n\n*(Backend unreachable: ' + e.message + ')*';
   }
 
-  document.getElementById(tid).outerHTML=`<div class="msg b"><div class="bbl">${fmtHtml(ans)}</div></div>`;
-  body.scrollTop=body.scrollHeight;
-  chatHist.push({role:'user',content:q},{role:'assistant',content:ans});
-  if(chatHist.length>20)chatHist=chatHist.slice(-20);
-  chatBusy=false;
-  document.getElementById('chat-send').disabled=false;
+  document.getElementById(tid).outerHTML =
+    `<div class="msg b"><div class="bbl">${fmtHtml(ans)}</div></div>`;
+  body.scrollTop = body.scrollHeight;
+  chatHist.push({ role: 'user', content: q }, { role: 'assistant', content: ans });
+  if (chatHist.length > 20) chatHist = chatHist.slice(-20);
+  chatBusy = false;
+  document.getElementById('chat-send').disabled = false;
+}
+
+async function callGrokViaActions(q, tid) {
+  const reqId = 'req_' + Date.now() + '_' + Math.random().toString(36).substring(2, 10);
+  const ctx = buildGrokContext();
+  const sysp = `You are Grok, an AI procurement assistant for PwC with full knowledge of the IT Contracting catalog. Answer concisely with bullets and dollar figures. Reference specific projects (Idemia, Tenneco, Panasonic), vendors and services from the data.\n\nCATALOG:\n${ctx}`;
+  const messages = [
+    { role: 'system', content: sysp },
+    ...chatHist.slice(-8),
+    { role: 'user', content: q }
+  ];
+
+  // Step 1: Trigger workflow
+  const updateStatus = (msg) => {
+    const el = document.getElementById(tid + '-sts');
+    if (el) el.textContent = msg;
+  };
+
+  updateStatus('Dispatching to GitHub Actions...');
+
+  const dispatchRes = await fetch(
+    `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/dispatches`,
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${GITHUB_CONFIG.token}`,
+        'Accept': 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        event_type: 'chat-request',
+        client_payload: {
+          request_id: reqId,
+          messages: messages
+        }
+      })
+    }
+  );
+
+  if (!dispatchRes.ok) {
+    const err = await dispatchRes.text();
+    throw new Error('Dispatch failed: ' + err.substring(0, 100));
+  }
+
+  // Step 2: Poll for response
+  updateStatus('Queued. Waiting for Groq response...');
+  const startTime = Date.now();
+  const maxWait = 90000; // 90 seconds
+
+  while (Date.now() - startTime < maxWait) {
+    await new Promise(r => setTimeout(r, 3000));
+    const elapsed = Math.round((Date.now() - startTime) / 1000);
+    updateStatus(`Waiting for response... ${elapsed}s elapsed`);
+
+    try {
+      const pollRes = await fetch(
+        `${GITHUB_CONFIG.pages_url}/chat-responses/${reqId}.json?t=${Date.now()}`,
+        { cache: 'no-store' }
+      );
+      if (pollRes.ok) {
+        const data = await pollRes.json();
+        if (data.status === 'complete' && data.reply) {
+          return data.reply;
+        }
+      }
+    } catch (e) {
+      // 404 expected while action runs
+    }
+  }
+
+  throw new Error('Timed out waiting for response (90s)');
 }
 
 async function callGrok(q){
