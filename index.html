@@ -645,11 +645,12 @@ html,body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-siz
 <div class="page" id="pg-extractor">
   <div class="phead">
     <div class="ph-left">
-      <div class="ph-kicker">AI Quote Evaluator</div>
+      <div class="ph-kicker">AI-Powered Quote Evaluator</div>
       <div class="ph-title">Quote Extractor &amp; Verdict</div>
-      <div class="ph-sub">Drop a vendor quote · extract fields · benchmark against 48 records · get verdict</div>
+      <div class="ph-sub">Upload quote · LlamaParse extracts fields · benchmark against 48+ records · actionable verdict</div>
     </div>
     <div class="filter-bar">
+      <span class="status-pill" id="llama-status">🦙 LLAMA: Checking...</span>
       <button class="btn sec" onclick="loadDemoQuote()">🎯 Load Demo</button>
     </div>
   </div>
@@ -658,35 +659,45 @@ html,body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-siz
     <!-- LEFT: Upload & Form -->
     <div>
       <div class="card">
-        <div class="card-head"><div class="card-title"><span class="card-title-ico">📤</span>Upload Quote</div></div>
+        <div class="card-head"><div class="card-title"><span class="card-title-ico">📤</span>Upload Quote File</div><div class="card-meta or">LLAMA AI</div></div>
         <div class="dz" id="dz" onclick="document.getElementById('fi').click()" ondragover="event.preventDefault();this.classList.add('on')" ondragleave="this.classList.remove('on')" ondrop="event.preventDefault();this.classList.remove('on');handleFile(event.dataTransfer.files[0])">
           <div class="dz-ico">📄</div>
-          <div class="dz-t">Drop file or click</div>
-          <div class="dz-s">AI extracts fields automatically</div>
-          <div class="dz-fmt"><span>PDF</span><span>XLSX</span><span>DOCX</span></div>
+          <div class="dz-t">Drop file or click to browse</div>
+          <div class="dz-s">LlamaParse extracts vendor · price · services automatically</div>
+          <div class="dz-fmt"><span>PDF</span><span>XLSX</span><span>DOCX</span><span>CSV</span></div>
           <input type="file" id="fi" style="display:none" accept=".pdf,.xlsx,.xls,.csv,.docx,.txt" onchange="handleFile(this.files[0])">
         </div>
         <div class="prog" id="prog">
           <div class="prog-txt"><span id="prog-t">Processing</span><span id="prog-p">0%</span></div>
           <div class="prog-bar"><div class="prog-fill" id="prog-f"></div></div>
+          <div style="display:flex;gap:6px;margin-top:8px">
+            <div class="prog-step" id="ps-1" style="flex:1;height:3px;background:var(--line);border-radius:2px"></div>
+            <div class="prog-step" id="ps-2" style="flex:1;height:3px;background:var(--line);border-radius:2px"></div>
+            <div class="prog-step" id="ps-3" style="flex:1;height:3px;background:var(--line);border-radius:2px"></div>
+            <div class="prog-step" id="ps-4" style="flex:1;height:3px;background:var(--line);border-radius:2px"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:.66rem;color:var(--mid);font-weight:600">
+            <span>Upload</span><span>Parse</span><span>Extract</span><span>Match</span>
+          </div>
         </div>
         <div class="ext" id="ext">
-          <div class="ext-head"><div class="ext-head-t">✨ Extracted</div><span class="b gn" id="ext-conf">High</span></div>
+          <div class="ext-head"><div class="ext-head-t">✨ Extracted via LlamaParse</div><span class="b gn" id="ext-conf">High</span></div>
           <div class="ext-row"><span class="ext-k">File</span><span class="ext-v" id="ext-file">—</span></div>
           <div class="ext-row"><span class="ext-k">Vendor</span><span class="ext-v" id="ext-ven">—</span></div>
           <div class="ext-row"><span class="ext-k">Price</span><span class="ext-v pr" id="ext-price">—</span></div>
           <div class="ext-row"><span class="ext-k">Category</span><span class="ext-v" id="ext-cat">—</span></div>
+          <div class="ext-row"><span class="ext-k">Services Found</span><span class="ext-v" id="ext-svc-count">—</span></div>
         </div>
       </div>
 
       <div class="card" style="margin-top:14px">
-        <div class="card-head"><div class="card-title"><span class="card-title-ico">✏️</span>Enter / Confirm</div></div>
+        <div class="card-head"><div class="card-title"><span class="card-title-ico">✏️</span>Confirm / Override</div></div>
         <div class="input-g"><label class="input-lbl">Vendor</label><input class="input-f" id="in-ven" placeholder="e.g. NTT Data" oninput="scoreQuote()"></div>
         <div class="input-g"><label class="input-lbl">Price (USD)</label><input class="input-f" type="number" id="in-price" placeholder="e.g. 71300" oninput="scoreQuote()"></div>
         <div class="input-g"><label class="input-lbl">Project</label><select class="select-f" id="in-proj" onchange="scoreQuote()"><option value="All">All Projects</option></select></div>
         <div class="input-g"><label class="input-lbl">Category</label><select class="select-f" id="in-cat" onchange="inFilterSvc();scoreQuote()"><option value="All">All</option></select></div>
         <div class="input-g">
-          <label class="input-lbl">Services <span id="in-svc-cnt" style="color:var(--or);float:right">0</span></label>
+          <label class="input-lbl">Services <span id="in-svc-cnt" style="color:var(--or);float:right;text-transform:none">0</span></label>
           <input type="text" class="input-f" id="in-svc-s" placeholder="Search..." oninput="inFilterSvc()" style="margin-bottom:6px">
           <div class="chip-row" id="in-svcs" style="max-height:180px"></div>
         </div>
@@ -698,14 +709,36 @@ html,body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-siz
       <div id="ex-empty" class="card">
         <div class="empty">
           <div class="empty-ico">⚖️</div>
-          <div class="empty-t">Enter a quote to evaluate</div>
-          <div class="empty-s">Upload a file or manually enter vendor, price and services. We'll benchmark it instantly.</div>
-          <button class="btn" onclick="loadDemoQuote()">🎯 Load Demo</button>
+          <div class="empty-t">Upload a quote to evaluate</div>
+          <div class="empty-s">Drop any PDF, Excel or Word quote. LlamaParse extracts vendor, price and services; we benchmark against 48+ historical records; you get a clear verdict.</div>
+          <button class="btn" onclick="loadDemoQuote()">🎯 Load Demo Quote</button>
         </div>
       </div>
       <div id="ex-results" style="display:none">
+        <!-- TOP VERDICT -->
         <div id="ex-verdict"></div>
+
+        <!-- KPIs -->
         <div class="grid-4" id="ex-kpis"></div>
+
+        <!-- COMBINATION ANALYSIS -->
+        <div class="card" id="ex-combo-card">
+          <div class="card-head"><div class="card-title"><span class="card-title-ico">🔀</span>Combination Analysis</div><div class="card-meta or" id="ex-combo-meta">—</div></div>
+          <div id="ex-combo-body"></div>
+        </div>
+
+        <!-- COMPARISON TABLE -->
+        <div class="card" style="padding:0">
+          <div class="card-head" style="padding:14px 18px"><div class="card-title"><span class="card-title-ico">📜</span>Comparable Prior Quotes</div><span class="card-meta bl" id="ex-prior-meta">—</span></div>
+          <div style="overflow:auto;max-height:320px">
+            <table class="cat-table" id="ex-prior-table">
+              <thead><tr><th>Vendor</th><th>Project</th><th>Matched</th><th>Price</th><th>vs Your Quote</th><th>Year</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- CHARTS -->
         <div class="grid-2">
           <div class="card">
             <div class="card-head"><div class="card-title"><span class="card-title-ico">📊</span>Market Position</div></div>
@@ -716,12 +749,15 @@ html,body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-siz
             <div class="chart-wrap sm"><canvas id="ex-vendor-chart"></canvas></div>
           </div>
         </div>
+
+        <!-- ACTION PLAN -->
         <div class="card">
           <div class="card-head"><div class="card-title"><span class="card-title-ico">🎯</span>Action Plan</div><div class="card-meta gn">Recommendation</div></div>
           <div id="ex-rec"></div>
-          <div style="display:flex;gap:8px;margin-top:14px">
+          <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
             <button class="btn" onclick="exExport()">📥 Export Report</button>
-            <button class="btn sec" onclick="exAskGrok()">🤖 Ask Grok</button>
+            <button class="btn dark" onclick="exAskGrok()">🤖 Ask Grok</button>
+            <button class="btn sec" onclick="exPushRFQ()">📋 Build Counter-RFQ</button>
           </div>
         </div>
       </div>
@@ -737,36 +773,47 @@ html,body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-siz
     <div class="ph-left">
       <div class="ph-kicker">Procurement Planning</div>
       <div class="ph-title">RFQ Builder</div>
-      <div class="ph-sub">Size your requirements · build budget targets · generate vendor shortlist</div>
+      <div class="ph-sub">Select services · see prior quotes · generate budget targets &amp; vendor shortlist</div>
     </div>
     <div class="filter-bar">
-      <button class="btn sec" onclick="loadDemoRFQ()">🎯 Demo</button>
+      <button class="btn sec" onclick="loadDemoRFQ()">🎯 Load Demo</button>
       <button class="btn" onclick="rqExport()">📥 Export RFQ</button>
     </div>
   </div>
 
-  <!-- Filters -->
-  <div class="card" style="padding:14px 18px;margin-bottom:16px">
-    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px">
+  <!-- OPTIONS PANEL with CLEAR EXPLANATIONS -->
+  <div class="card" style="padding:16px 18px;margin-bottom:16px">
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px">
       <div class="input-g" style="margin-bottom:0">
-        <label class="input-lbl">Project</label>
-        <select class="select-f" id="rq-proj" onchange="rqRender()"><option value="All">All Projects</option></select>
+        <label class="input-lbl">Project <span style="color:var(--mid);text-transform:none;letter-spacing:0;font-weight:500" data-tip="Which project/client this RFQ is for. Filters historical quotes to that project. Use 'All' for master data.">ⓘ</span></label>
+        <select class="select-f" id="rq-proj" onchange="rqRender()">
+          <option value="All">All Projects (master data)</option>
+        </select>
+        <div style="font-size:.68rem;color:var(--mid);margin-top:4px;line-height:1.4">Scopes quotes to this project's history</div>
       </div>
       <div class="input-g" style="margin-bottom:0">
-        <label class="input-lbl">Company Size</label>
-        <select class="select-f" id="rq-size" onchange="rqApplySize()"><option value="small">Small (1–500)</option><option value="mid" selected>Mid (501–2K)</option><option value="large">Large (2K–10K)</option><option value="ent">Enterprise (10K+)</option></select>
+        <label class="input-lbl">Company Size <span style="color:var(--mid);text-transform:none;letter-spacing:0;font-weight:500" data-tip="Auto-fills user count. Small=250, Mid=2000, Large=6000, Enterprise=25000. Affects per-user pricing calculation.">ⓘ</span></label>
+        <select class="select-f" id="rq-size" onchange="rqApplySize()">
+          <option value="small">Small (1–500)</option>
+          <option value="mid" selected>Mid-Market (501–2K)</option>
+          <option value="large">Large (2K–10K)</option>
+          <option value="ent">Enterprise (10K+)</option>
+        </select>
+        <div style="font-size:.68rem;color:var(--mid);margin-top:4px;line-height:1.4">Auto-scales user count &amp; unit economics</div>
       </div>
       <div class="input-g" style="margin-bottom:0">
-        <label class="input-lbl">Users</label>
-        <input class="input-f" type="number" id="rq-users" value="2000" oninput="rqRender()">
+        <label class="input-lbl">User Count <span style="color:var(--mid);text-transform:none;letter-spacing:0;font-weight:500" data-tip="Total number of end users/seats for the contract. Drives per-user cost normalisation.">ⓘ</span></label>
+        <input class="input-f" type="number" id="rq-users" value="2000" min="1" oninput="rqRender()">
+        <div style="font-size:.68rem;color:var(--mid);margin-top:4px;line-height:1.4">Seats/licences in the contract</div>
       </div>
       <div class="input-g" style="margin-bottom:0">
-        <label class="input-lbl">Term (years)</label>
-        <select class="select-f" id="rq-term" onchange="rqRender()"><option value="1">1</option><option value="3" selected>3</option><option value="5">5</option></select>
-      </div>
-      <div class="input-g" style="margin-bottom:0">
-        <label class="input-lbl">Persona</label>
-        <select class="select-f" id="rq-persona" onchange="rqRender()"><option value="manager">IT Manager</option><option value="exec">Executive</option><option value="audit">Audit</option><option value="vendor">Vendor Outreach</option></select>
+        <label class="input-lbl">Contract Term <span style="color:var(--mid);text-transform:none;letter-spacing:0;font-weight:500" data-tip="Contract length in years. Uses 5% growth per year to project Year 2 and Year 3 costs.">ⓘ</span></label>
+        <select class="select-f" id="rq-term" onchange="rqRender()">
+          <option value="1">1 Year (pilot)</option>
+          <option value="3" selected>3 Years (standard)</option>
+          <option value="5">5 Years (strategic)</option>
+        </select>
+        <div style="font-size:.68rem;color:var(--mid);margin-top:4px;line-height:1.4">Projects total spend across term</div>
       </div>
     </div>
   </div>
@@ -783,9 +830,17 @@ html,body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-siz
           <div class="card-title"><span class="card-title-ico">✅</span>Services</div>
           <div style="display:flex;gap:5px"><button class="btn sm" onclick="rqSelectAll()">All</button><button class="btn sm sec" onclick="rqClear()">Clear</button></div>
         </div>
-        <input type="text" class="input-f" id="rq-svc-s" placeholder="Search..." oninput="rqFilterSvc()" style="margin-bottom:10px">
-        <div class="chip-row" id="rq-svcs" style="max-height:300px"></div>
-        <div style="margin-top:10px;text-align:center;padding:7px;background:var(--ort);border-radius:var(--r);font-size:.72rem;color:var(--or);font-weight:700" id="rq-count">0 selected</div>
+        <input type="text" class="input-f" id="rq-svc-s" placeholder="Search services..." oninput="rqFilterSvc()" style="margin-bottom:10px">
+        <div class="chip-row" id="rq-svcs" style="max-height:320px"></div>
+      </div>
+
+      <!-- SELECTED -->
+      <div class="selector-panel" style="margin-top:14px;background:var(--ort);border-color:var(--orl)">
+        <div class="card-head" style="padding-bottom:10px;margin-bottom:10px;border-bottom-color:rgba(208,74,2,.2)">
+          <div class="card-title" style="color:var(--or)"><span class="card-title-ico">🎯</span>Selected</div>
+          <span class="b or" id="rq-count">0 services</span>
+        </div>
+        <div id="rq-picked" style="min-height:50px;font-size:.76rem;color:var(--mid);text-align:center;padding:10px">Pick services to begin</div>
       </div>
     </div>
 
@@ -795,37 +850,67 @@ html,body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-siz
         <div class="empty">
           <div class="empty-ico">📋</div>
           <div class="empty-t">Build your RFQ</div>
-          <div class="empty-s">Pick a category and select services on the left to see budget estimates, vendor shortlist and multi-year projections.</div>
-          <button class="btn" onclick="loadDemoRFQ()">🎯 Load Demo</button>
+          <div class="empty-s">Select services on the left. The dashboard will instantly surface all prior quotes, vendor pricing history, and budget targets for your RFQ.</div>
+          <button class="btn" onclick="loadDemoRFQ()">🎯 Load Demo RFQ</button>
         </div>
       </div>
+
       <div id="rq-results" style="display:none">
+        <!-- TOP VERDICT -->
+        <div id="rq-verdict"></div>
+
         <!-- KPIs -->
         <div class="grid-4" id="rq-kpis"></div>
-        <!-- Breakdown table -->
+
+        <!-- PRIOR QUOTES TABLE (new!) -->
         <div class="card" style="padding:0">
-          <div class="card-head" style="padding:14px 18px"><div class="card-title"><span class="card-title-ico">📊</span>Service Breakdown</div><div class="card-meta or">Historical</div></div>
-          <div style="overflow:auto;max-height:380px">
-            <table class="cat-table" id="rq-table">
-              <thead><tr><th>Service</th><th>Min</th><th>Avg</th><th>Max</th><th>Target</th><th>Best Vendor</th></tr></thead>
+          <div class="card-head" style="padding:14px 18px">
+            <div class="card-title"><span class="card-title-ico">📜</span>Prior Quotes for Selected Services</div>
+            <span class="card-meta or" id="rq-prior-meta">—</span>
+          </div>
+          <div style="overflow:auto;max-height:340px">
+            <table class="cat-table" id="rq-prior-table">
+              <thead>
+                <tr>
+                  <th>Vendor</th>
+                  <th>Project</th>
+                  <th>Matched</th>
+                  <th>Price</th>
+                  <th>Year</th>
+                  <th>File</th>
+                </tr>
+              </thead>
               <tbody></tbody>
             </table>
           </div>
         </div>
-        <!-- Multi-year chart -->
+
+        <!-- SERVICE BREAKDOWN -->
+        <div class="card" style="padding:0">
+          <div class="card-head" style="padding:14px 18px"><div class="card-title"><span class="card-title-ico">📊</span>Service-Level Pricing</div><div class="card-meta bl">Historical ranges</div></div>
+          <div style="overflow:auto;max-height:380px">
+            <table class="cat-table" id="rq-table">
+              <thead><tr><th>Service</th><th>Quotes</th><th>Min</th><th>Avg</th><th>Max</th><th>Target (−10%)</th><th>Best Vendor</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- CHARTS -->
         <div class="grid-2">
           <div class="card">
-            <div class="card-head"><div class="card-title"><span class="card-title-ico">📅</span>Multi-Year Projection</div><div class="card-meta am">Scaled</div></div>
+            <div class="card-head"><div class="card-title"><span class="card-title-ico">📅</span>Multi-Year Projection</div><div class="card-meta am">5% YoY growth</div></div>
             <div class="chart-wrap sm"><canvas id="rq-year-chart"></canvas></div>
           </div>
           <div class="card">
-            <div class="card-head"><div class="card-title"><span class="card-title-ico">🏢</span>Vendor Coverage</div><div class="card-meta gn">Shortlist</div></div>
+            <div class="card-head"><div class="card-title"><span class="card-title-ico">🏢</span>Vendor Coverage</div><div class="card-meta gn">Top shortlist</div></div>
             <div class="chart-wrap sm"><canvas id="rq-vendor-chart"></canvas></div>
           </div>
         </div>
-        <!-- Strategy -->
+
+        <!-- STRATEGY & VENDOR SHORTLIST -->
         <div class="card">
-          <div class="card-head"><div class="card-title"><span class="card-title-ico">🎯</span>Strategy &amp; Vendor Shortlist</div></div>
+          <div class="card-head"><div class="card-title"><span class="card-title-ico">🎯</span>RFQ Strategy &amp; Vendor Shortlist</div><div class="card-meta or">Recommendation</div></div>
           <div id="rq-strategy"></div>
         </div>
       </div>
@@ -996,9 +1081,28 @@ document.addEventListener('DOMContentLoaded',()=>{
   inFilterSvc();
   initChatChips();
   checkBackendStatus();
+  checkLlamaStatus();
   tryLoadJSON();
 });
 
+async function checkLlamaStatus(){
+  const BACKEND_URL=window.AI_BACKEND_URL||'https://your-api.onrender.com';
+  const pill=document.getElementById('llama-status');
+  if(!pill)return;
+  try{
+    const r=await fetch(BACKEND_URL+'/api/llama-health',{method:'GET'});
+    if(r.ok){
+      pill.textContent='🦙 LLAMA: Ready';
+      pill.style.background='#D1FAE5';
+      pill.style.color='#065F46';
+    }else{throw new Error('offline');}
+  }catch(e){
+    pill.textContent='🦙 LLAMA: Local mode';
+    pill.style.background='#FEF3C7';
+    pill.style.color='#92400E';
+  }
+}
+  
 async function checkBackendStatus(){
   const BACKEND_URL = window.AI_BACKEND_URL || 'https://your-api.onrender.com';
   const pill=document.getElementById('grok-status');
@@ -1722,15 +1826,96 @@ function togInSvc(s,el){
   scoreQuote();
 }
 
-function handleFile(f){
+async function handleFile(f){
   if(!f)return;
   document.getElementById('prog').classList.add('on');
+  document.getElementById('ext').classList.remove('on');
+
+  // Reset steps
+  ['ps-1','ps-2','ps-3','ps-4'].forEach(id=>{document.getElementById(id).style.background='var(--line)';});
+
+  const BACKEND_URL=window.AI_BACKEND_URL||'https://your-api.onrender.com';
+
+  try{
+    // Step 1: Upload
+    updateExtractStep(1,'active','Uploading file...',20);
+    const formData=new FormData();formData.append('file',f);
+
+    // Step 2: Parse
+    updateExtractStep(2,'active','LlamaParse extracting...',50);
+    const r=await fetch(BACKEND_URL+'/api/extract',{method:'POST',body:formData});
+    if(!r.ok)throw new Error('LLAMA backend error '+r.status);
+    const result=await r.json();
+
+    // Step 3: Extract
+    updateExtractStep(3,'active','Matching services...',80);
+    await new Promise(r=>setTimeout(r,300));
+
+    // Step 4: Done
+    updateExtractStep(4,'done','Complete',100);
+
+    setTimeout(()=>{
+      document.getElementById('prog').classList.remove('on');
+      const ext=result.extracted||result;
+      displayExtracted(f.name,ext,result.confidence||'high');
+      fillFormFromExtract(ext);
+      scoreQuote();
+      toast('Extracted via LlamaParse','ok');
+    },400);
+  }catch(err){
+    console.warn('LLAMA backend unavailable:',err.message);
+    toast('Backend offline — using local extraction','warn');
+    // Fallback to local
+    localExtractFallback(f);
+  }
+}
+
+function updateExtractStep(step,state,msg,progress){
+  for(let i=1;i<=step-1;i++){document.getElementById('ps-'+i).style.background=GN;}
+  document.getElementById('ps-'+step).style.background=state==='done'?GN:OR;
+  set('prog-t',msg);
+  document.getElementById('prog-f').style.width=progress+'%';
+  set('prog-p',progress+'%');
+}
+
+function displayExtracted(fileName,ext,confidence){
+  curExtract={fileName,...ext,confidence};
+  document.getElementById('ext').classList.add('on');
+  set('ext-file',fileName);
+  set('ext-ven',ext.vendor||'—');
+  set('ext-price',ext.price?fmt(ext.price):'—');
+  set('ext-cat',ext.category||'—');
+  set('ext-svc-count',(ext.services||[]).length+' services');
+  const conf=document.getElementById('ext-conf');
+  conf.textContent=confidence==='high'?'✓ High confidence':confidence==='med'?'⚠ Medium':'✗ Low';
+  conf.className='b '+(confidence==='high'?'gn':confidence==='med'?'am':'rd');
+}
+
+function fillFormFromExtract(ext){
+  if(ext.price>0)document.getElementById('in-price').value=ext.price;
+  if(ext.vendor)document.getElementById('in-ven').value=ext.vendor;
+  if(ext.category)document.getElementById('in-cat').value=ext.category;
+  if(ext.project||ext.proj)document.getElementById('in-proj').value=ext.project||ext.proj;
+  if(ext.services&&ext.services.length){
+    inSvcs.clear();
+    ext.services.forEach(s=>{
+      // Match to known services
+      const known=[...new Set(DB.flatMap(r=>r.services||[]))];
+      const match=known.find(k=>k.toLowerCase()===s.toLowerCase())||known.find(k=>k.toLowerCase().includes(s.toLowerCase())||s.toLowerCase().includes(k.toLowerCase()));
+      if(match)inSvcs.add(match);
+      else inSvcs.add(s);
+    });
+    inFilterSvc();
+  }
+}
+
+function localExtractFallback(f){
   let p=0;
   const iv=setInterval(()=>{
-    p=Math.min(p+12,90);
+    p=Math.min(p+15,90);
     document.getElementById('prog-f').style.width=p+'%';
     set('prog-p',Math.round(p)+'%');
-  },120);
+  },100);
   const rd=new FileReader();
   rd.onload=e=>{
     clearInterval(iv);
@@ -1740,18 +1925,11 @@ function handleFile(f){
       document.getElementById('prog').classList.remove('on');
       let content='';try{content=new TextDecoder('utf-8',{fatal:false}).decode(new Uint8Array(e.target.result));}catch(er){}
       const ext=extractFields(content,f.name);
-      document.getElementById('ext').classList.add('on');
-      set('ext-file',f.name);
-      set('ext-ven',ext.vendor||'—');
-      set('ext-price',ext.price?fmt(ext.price):'—');
-      set('ext-cat',ext.category||'—');
-      if(ext.price>0)document.getElementById('in-price').value=ext.price;
-      if(ext.vendor)document.getElementById('in-ven').value=ext.vendor;
-      if(ext.category)document.getElementById('in-cat').value=ext.category;
-      if(ext.services&&ext.services.length){ext.services.forEach(s=>inSvcs.add(s));inFilterSvc();}
+      const conf=ext.price>0&&ext.vendor&&ext.services.length?'high':ext.price>0||ext.vendor?'med':'low';
+      displayExtracted(f.name,ext,conf);
+      fillFormFromExtract(ext);
       scoreQuote();
-      toast('Quote extracted','ok');
-    },350);
+    },300);
   };
   rd.readAsArrayBuffer(f);
 }
@@ -1780,53 +1958,202 @@ function scoreQuote(){
   const res=document.getElementById('ex-results');
   if(!pr||pr<=0||inSvcs.size===0){emp.style.display='block';res.style.display='none';return;}
   const sel=[...inSvcs];
+
+  // MASTER DATA
   const data=DB;
-  const hRows=data.filter(r=>sel.some(s=>(r.services||[]).includes(s))&&r.price>0);
-  const prices=hRows.map(r=>r.price);
-  if(!prices.length){emp.style.display='block';res.style.display='none';return;}
+
+  // Exact combo matches = quotes that include ALL selected services
+  const exactMatches=data.filter(r=>{
+    const rs=new Set(r.services||[]);
+    return sel.every(s=>rs.has(s))&&r.price>0;
+  });
+
+  // Partial — at least one service
+  const partialMatches=data.filter(r=>(r.services||[]).some(s=>sel.includes(s))&&r.price>0);
+
+  if(!partialMatches.length){emp.style.display='block';res.style.display='none';return;}
   emp.style.display='none';res.style.display='block';
 
-  const avg=prices.reduce((a,b)=>a+b,0)/prices.length;
-  const mn=Math.min(...prices),mx=Math.max(...prices);
-  const pct=avg>0?Math.round((pr-avg)/avg*100):0;
-  const target=avg*0.9;
-  let sc;
-  if(mx===mn)sc=50;else sc=Math.max(0,Math.min(100,Math.round((1-(pr-mn)/(mx-mn))*100)));
-  const vd=sc>=70?{c:'gn',t:'✅ PROCEED — Competitive',ico:'🎯'}:sc>=40?{c:'am',t:'⚠️ NEGOTIATE — Above Target',ico:'⚠️'}:{c:'rd',t:'🔴 RE-TENDER — Overpriced',ico:'🚨'};
+  // ─── VERDICT ───
+  let verdHTML='',kind='';
+  if(exactMatches.length>0){
+    kind='exact';
+    const ps=exactMatches.map(r=>r.price);
+    const mn=Math.min(...ps),mx=Math.max(...ps),av=ps.reduce((a,b)=>a+b,0)/ps.length;
+    const pct=av>0?Math.round((pr-av)/av*100):0;
+    let vCls,vT,vIco;
+    if(pr<=av*.95){vCls='gn';vT='✅ EXCELLENT — Below Historical Average';vIco='🎯';}
+    else if(pr<=av*1.05){vCls='gn';vT='✅ PROCEED — In Line with History';vIco='✅';}
+    else if(pr<=av*1.15){vCls='am';vT='⚠️ NEGOTIATE — Above Historical Average';vIco='⚠️';}
+    else{vCls='rd';vT='🔴 RE-TENDER — Significantly Overpriced';vIco='🚨';}
+    verdHTML=`<div class="verdict ${vCls}">
+      <div class="verdict-ico">${vIco}</div>
+      <div style="flex:1">
+        <div class="verdict-t">${vT}</div>
+        <div class="verdict-b">
+          <strong>${exactMatches.length} exact combination match${exactMatches.length>1?'es':''} found.</strong> 
+          Your quote of <strong>${fmt(pr)}</strong> is <strong>${Math.abs(pct)}% ${pct>0?'above':'below'}</strong> historical avg of <strong>${fmt(av)}</strong> 
+          (range ${fmt(mn)} – ${fmt(mx)}). Best prior: ${vbadge(exactMatches.reduce((a,b)=>a.price<b.price?a:b).vendor)} at ${fmt(mn)}.
+        </div>
+      </div>
+    </div>`;
+  }else{
+    // No exact combo — analyse per service
+    kind='split';
+    const svcAnalysis=sel.map(s=>{
+      const rs=data.filter(r=>(r.services||[]).includes(s)&&r.price>0);
+      const ps=rs.map(r=>r.price);
+      return{svc:s,count:rs.length,min:ps.length?Math.min(...ps):0,avg:ps.length?ps.reduce((a,b)=>a+b,0)/ps.length:0,max:ps.length?Math.max(...ps):0};
+    });
+    const estimatedAvg=svcAnalysis.reduce((a,b)=>a+b.avg,0);
+    const estimatedMin=svcAnalysis.reduce((a,b)=>a+b.min,0);
+    const pct=estimatedAvg>0?Math.round((pr-estimatedAvg)/estimatedAvg*100):0;
+    const noCoverage=svcAnalysis.filter(a=>a.count===0);
+    let vCls=pr<=estimatedAvg*1.05?'gn':pr<=estimatedAvg*1.20?'am':'rd';
+    verdHTML=`<div class="verdict ${vCls}">
+      <div class="verdict-ico">🔀</div>
+      <div style="flex:1">
+        <div class="verdict-t">No Exact Combination — Split Analysis Applied</div>
+        <div class="verdict-b">
+          No single prior quote covers all ${sel.length} services. Estimated fair price by summing individual averages: <strong>${fmt(estimatedAvg)}</strong>.
+          Your quote of <strong>${fmt(pr)}</strong> is <strong>${Math.abs(pct)}% ${pct>0?'above':'below'}</strong> the estimate (best-case split: ${fmt(estimatedMin)}).
+          ${noCoverage.length?`<br><strong style="color:var(--rdd)">⚠️ ${noCoverage.length} service${noCoverage.length>1?'s have':' has'} no prior pricing data.</strong>`:''}
+        </div>
+      </div>
+    </div>`;
+  }
+  document.getElementById('ex-verdict').innerHTML=verdHTML;
 
-  document.getElementById('ex-verdict').innerHTML=`<div class="verdict ${vd.c}"><div class="verdict-ico">${vd.ico}</div><div><div class="verdict-t">${vd.t}</div><div class="verdict-b">${vn?`<strong>${esc(vn)}</strong> `:''}quoted <strong>${fmt(pr)}</strong> — <strong>${Math.abs(pct)}% ${pct<0?'below':'above'}</strong> historical avg ${fmt(avg)} (${prices.length} records). ${sc>=70?`Best: ${fmt(mn)}.`:sc>=40?`Target: ${fmt(target)}. Potential saving: ${fmt(pr-target)}.`:`Best recorded: ${fmt(mn)}. Ceiling: ${fmt(avg)}.`}</div></div></div>`;
+  // ─── KPIs ───
+  let avg,mn,mx,target;
+  if(kind==='exact'){
+    const ps=exactMatches.map(r=>r.price);
+    avg=ps.reduce((a,b)=>a+b,0)/ps.length;
+    mn=Math.min(...ps);mx=Math.max(...ps);
+  }else{
+    const svcAnalysis=sel.map(s=>{const rs=data.filter(r=>(r.services||[]).includes(s)&&r.price>0);const ps=rs.map(r=>r.price);return ps.length?ps.reduce((a,b)=>a+b,0)/ps.length:0;});
+    avg=svcAnalysis.reduce((a,b)=>a+b,0);
+    const mns=sel.map(s=>{const rs=data.filter(r=>(r.services||[]).includes(s)&&r.price>0);return rs.length?Math.min(...rs.map(r=>r.price)):0;});
+    const mxs=sel.map(s=>{const rs=data.filter(r=>(r.services||[]).includes(s)&&r.price>0);return rs.length?Math.max(...rs.map(r=>r.price)):0;});
+    mn=mns.reduce((a,b)=>a+b,0);mx=mxs.reduce((a,b)=>a+b,0);
+  }
+  target=avg*0.9;
+  const pct=avg>0?Math.round((pr-avg)/avg*100):0;
 
   document.getElementById('ex-kpis').innerHTML=[
-    {lbl:'Quoted',val:fmt(pr),sub:vn||'Vendor'},
-    {lbl:'vs Avg',val:(pct>=0?'+':'')+pct+'%',sub:fmt(avg)},
-    {lbl:pct<0?'Saved':'Overpay',val:fmt(Math.abs(avg-pr)),sub:'Difference'},
-    {lbl:'Target',val:fmt(target),sub:'−10% avg'}
+    {lbl:'Your Quote',val:fmt(pr),sub:vn||'Vendor'},
+    {lbl:kind==='exact'?'Historical Avg':'Estimated Avg',val:fmt(avg),sub:(pct>=0?'+':'')+pct+'%'},
+    {lbl:pct<0?'Saved':'Over Market',val:fmt(Math.abs(avg-pr)),sub:'Difference'},
+    {lbl:'Target Price',val:fmt(target),sub:'−10% from avg'}
   ].map(k=>`<div class="kpi"><div class="kpi-lbl">${k.lbl}</div><div class="kpi-val">${k.val}</div><div class="kpi-sub">${k.sub}</div></div>`).join('');
 
-  // Position chart
+  // ─── COMBINATION ANALYSIS BODY ───
+  let comboBody='';
+  if(kind==='exact'){
+    comboBody=`<div style="font-size:.82rem;color:var(--ink2);margin-bottom:10px">
+      ✅ <strong>${exactMatches.length} prior quote${exactMatches.length>1?'s':''}</strong> with the <em>exact same combination</em> of ${sel.length} services found.
+    </div>
+    <table class="cat-table">
+      <thead><tr><th>Vendor</th><th>Project</th><th>Price</th><th>vs Yours</th><th>Year</th></tr></thead>
+      <tbody>
+        ${exactMatches.sort((a,b)=>a.price-b.price).map(r=>{
+          const d=pr-r.price;const p=r.price>0?Math.round(d/r.price*100):0;
+          return `<tr onclick="selShowFile(${DB.indexOf(r)})" style="cursor:pointer">
+            <td>${vbadge(r.vendor)}</td>
+            <td>${esc(r.proj)}</td>
+            <td><span class="num">${fmt(r.price)}</span></td>
+            <td><span class="b ${d>0?'rd':'gn'}">${d>0?'+':''}${p}%</span></td>
+            <td>${r.year} ${r.quarter}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
+    set('ex-combo-meta',exactMatches.length+' exact matches');
+  }else{
+    const svcAnalysis=sel.map(s=>{
+      const rs=data.filter(r=>(r.services||[]).includes(s)&&r.price>0);
+      const ps=rs.map(r=>r.price);
+      return{svc:s,count:rs.length,min:ps.length?Math.min(...ps):0,avg:ps.length?ps.reduce((a,b)=>a+b,0)/ps.length:0,max:ps.length?Math.max(...ps):0,bestV:rs.length?rs.reduce((a,b)=>a.price<b.price?a:b).vendor:''};
+    });
+    comboBody=`<div style="background:var(--aml);border-left:3px solid var(--am);border-radius:var(--r);padding:12px 14px;font-size:.80rem;color:var(--amd);margin-bottom:12px">
+      <strong>⚠️ Exact combination not seen before.</strong> Evaluating each service individually against historical quotes.
+    </div>
+    <table class="cat-table">
+      <thead><tr><th>Service</th><th>Prior Quotes</th><th>Min</th><th>Avg</th><th>Max</th><th>Best Vendor</th></tr></thead>
+      <tbody>
+        ${svcAnalysis.map(a=>a.count===0?
+          `<tr style="background:var(--rdl)"><td>${esc(a.svc)}</td><td colspan="5" style="text-align:center;color:var(--rdd);font-weight:600">⚠️ No prior quotes</td></tr>`:
+          `<tr>
+            <td style="font-weight:600">${esc(a.svc)}</td>
+            <td><span class="num">${a.count}</span></td>
+            <td><span class="num" style="color:${GN}">${fmt(a.min)}</span></td>
+            <td><span class="num">${fmt(a.avg)}</span></td>
+            <td><span class="num" style="color:${RD}">${fmt(a.max)}</span></td>
+            <td>${a.bestV?vbadge(a.bestV):'—'}</td>
+          </tr>`
+        ).join('')}
+      </tbody>
+    </table>`;
+    set('ex-combo-meta','Split analysis');
+  }
+  document.getElementById('ex-combo-body').innerHTML=comboBody;
+
+  // ─── PRIOR QUOTES TABLE ───
+  const priorSorted=partialMatches.sort((a,b)=>a.price-b.price).slice(0,12);
+  document.querySelector('#ex-prior-table tbody').innerHTML=priorSorted.map(r=>{
+    const matched=(r.services||[]).filter(s=>sel.includes(s));
+    const d=pr-r.price;const p=r.price>0?Math.round(d/r.price*100):0;
+    return `<tr onclick="selShowFile(${DB.indexOf(r)})" style="cursor:pointer">
+      <td>${vbadge(r.vendor)}</td>
+      <td>${esc(r.proj)}</td>
+      <td><span class="b ${matched.length===sel.length?'gn':'nt'}">${matched.length}/${sel.length}</span></td>
+      <td><span class="num">${fmt(r.price)}</span></td>
+      <td><span class="b ${d>0?'rd':'gn'}">${d>0?'+':''}${p}%</span></td>
+      <td>${r.year} ${r.quarter}</td>
+    </tr>`;
+  }).join('');
+  set('ex-prior-meta',partialMatches.length+' comparable quotes');
+
+  // ─── CHARTS ───
   const buckets=[mn,mn+(mx-mn)*.25,mn+(mx-mn)*.5,mn+(mx-mn)*.75,mx];
   const bLabels=['Min','Q1','Median','Q3','Max'];
-  drawBarV('ex-pos-chart',bLabels,buckets.map(b=>Math.round(b)),buckets.map((b,i)=>{const d=Math.abs(b-pr);return i===bLabels.length-1?RD:d<(mx-mn)*.1?OR:'#E5E7EB';}));
+  drawBarV('ex-pos-chart',bLabels,buckets.map(b=>Math.round(b)),buckets.map(()=>INK));
 
-  // Vendor comparison
-  const vrows=hRows.slice(0,7).concat([{vendor:'★ '+(vn||'YOU'),price:pr}]).sort((a,b)=>a.price-b.price);
+  const vrows=priorSorted.slice(0,6).concat([{vendor:'★ '+(vn||'YOU'),price:pr}]).sort((a,b)=>a.price-b.price);
   drawBarV('ex-vendor-chart',vrows.map(r=>r.vendor.length>12?r.vendor.substring(0,12)+'…':r.vendor),vrows.map(r=>r.price),vrows.map(r=>r.vendor.startsWith('★')?OR:INK));
 
+  // ─── RECOMMENDATION ───
+  let rec='';
+  if(pr<=avg*0.95){rec=`<strong>✅ PROCEED at ${fmt(pr)}.</strong> Competitive quote — well below historical average. Optionally ask for 3-5% volume discount → ${fmt(pr*0.95)}.`;}
+  else if(pr<=avg*1.05){rec=`<strong>✅ PROCEED with minor negotiation.</strong> Target <strong>${fmt(target)}</strong> (−10% from avg). Potential saving: ${fmt(pr-target)}.`;}
+  else if(pr<=avg*1.15){rec=`<strong>⚠️ NEGOTIATE HARD.</strong> Quote is ${pct}% above average. Counter at <strong>${fmt(target)}</strong> using historical data as evidence. Walk away above <strong>${fmt(avg)}</strong>.`;}
+  else{rec=`<strong>🚨 RE-TENDER.</strong> Quote is ${pct}% above market. Best recorded: ${fmt(mn)}. Invite alternate vendors and reset pricing.`;}
+
   document.getElementById('ex-rec').innerHTML=`
-    <div style="font-size:.84rem;line-height:1.6;color:${INK}">
-      ${sc>=70?`<strong>✅ Proceed at ${fmt(pr)}.</strong> Request 5% volume discount → ${fmt(pr*0.95)}.`:sc>=40?`<strong>⚠️ Negotiate to ${fmt(target)}.</strong> Use historical avg ${fmt(avg)} as justification. Potential saving: <strong>${fmt(pr-target)}</strong>.`:`<strong>🚨 Reject and re-tender.</strong> ${Math.abs(pct)}% above market. Ceiling: <strong>${fmt(target)}</strong>. Best: <strong>${fmt(mn)}</strong>.`}
-    </div>
-    <table class="cat-table" style="margin-top:14px">
+    <div style="font-size:.86rem;line-height:1.7;color:var(--ink);padding:12px 14px;background:var(--bg);border-radius:var(--r);margin-bottom:12px">${rec}</div>
+    <table class="cat-table">
       <thead><tr><th>Metric</th><th>Value</th><th>Note</th></tr></thead>
       <tbody>
-        <tr><td>Quoted Price</td><td><span class="num" style="color:${OR}">${fmt(pr)}</span></td><td>${esc(vn||'Vendor')}</td></tr>
-        <tr><td>Historical Avg</td><td><span class="num">${fmt(avg)}</span></td><td>${pct>=0?'+':''}${pct}%</td></tr>
-        <tr><td>Historical Best</td><td><span class="num" style="color:${GN}">${fmt(mn)}</span></td><td>Floor</td></tr>
-        <tr><td>Target (−10%)</td><td><span class="num" style="color:${AM}">${fmt(target)}</span></td><td>Open negotiation</td></tr>
-        <tr><td>Records</td><td><span class="num">${prices.length}</span></td><td>${[...new Set(hRows.map(r=>r.vendor))].length} vendors</td></tr>
+        <tr><td>Your Quote</td><td><span class="num" style="color:${OR}">${fmt(pr)}</span></td><td>${esc(vn||'Vendor')}</td></tr>
+        <tr><td>${kind==='exact'?'Historical Avg':'Estimated Avg'}</td><td><span class="num">${fmt(avg)}</span></td><td>${pct>=0?'+':''}${pct}%</td></tr>
+        <tr><td>Historical Floor</td><td><span class="num" style="color:${GN}">${fmt(mn)}</span></td><td>Best ever</td></tr>
+        <tr><td>Opening Ask</td><td><span class="num" style="color:${AM}">${fmt(target)}</span></td><td>−10% from avg</td></tr>
+        <tr><td>Walk-Away</td><td><span class="num" style="color:${RD}">${fmt(avg)}</span></td><td>Ceiling</td></tr>
+        <tr><td>Comparable Quotes</td><td><span class="num">${partialMatches.length}</span></td><td>${[...new Set(partialMatches.map(r=>r.vendor))].length} vendors</td></tr>
       </tbody>
     </table>
   `;
+}
+
+function exPushRFQ(){
+  if(inSvcs.size===0){toast('No services selected','warn');return;}
+  rqSvcs=new Set(inSvcs);
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelector('.tab[data-page="rfq"]').classList.add('active');
+  document.getElementById('pg-rfq').classList.add('active');
+  rqCat='All';rqBuildCatList();rqFilterSvc();rqRender();
+  toast('Pushed to RFQ Builder','ok');
 }
 
 function exExport(){
@@ -1879,25 +2206,41 @@ function rqFilterSvc(){
   if(rqCat!=='All'){const cs=new Set(DB.filter(r=>r.cat===rqCat).flatMap(r=>r.services||[]));sv=sv.filter(x=>cs.has(x));}
   document.getElementById('rq-svcs').innerHTML=sv.map(x=>{
     const on=rqSvcs.has(x);
-    return `<div class="chip ${on?'on':''}" onclick="togRqSvc(${JSON.stringify(x)},this)">${esc(x.length>26?x.substring(0,26)+'…':x)}</div>`;
+    const cnt=DB.filter(r=>(r.services||[]).includes(x)).length;
+    const catOf=DB.find(r=>(r.services||[]).includes(x))?.cat||'';
+    return `<div class="chip ${on?'on':''}" data-svc="${esc(x)}" onclick="togRqSvc(this)">
+      <span class="cat-dot" style="background:${CAT_COL[catOf]||MID}"></span>
+      <span>${esc(x.length>26?x.substring(0,26)+'…':x)}</span>
+      <span class="chip-cnt">${cnt}</span>
+    </div>`;
   }).join('');
-  set('rq-count',rqSvcs.size+' selected');
+  rqRenderPicked();
 }
 
-function togRqSvc(s,el){
+function togRqSvc(el){
+  const s=el.dataset.svc;
   if(rqSvcs.has(s)){rqSvcs.delete(s);el.classList.remove('on');}
   else{rqSvcs.add(s);el.classList.add('on');}
-  set('rq-count',rqSvcs.size+' selected');rqRender();
+  rqRender();
 }
 
-function rqSelectAll(){document.querySelectorAll('#rq-svcs .chip').forEach(c=>{const lbl=c.textContent;rqSvcs.add(lbl);c.classList.add('on');});set('rq-count',rqSvcs.size+' selected');rqRender();}
-function rqClear(){rqSvcs.clear();document.querySelectorAll('#rq-svcs .chip').forEach(c=>c.classList.remove('on'));set('rq-count','0 selected');rqRender();}
+function rqSelectAll(){
+  document.querySelectorAll('#rq-svcs .chip').forEach(c=>{rqSvcs.add(c.dataset.svc);c.classList.add('on');});
+  rqRender();
+}
+
+function rqClear(){
+  rqSvcs.clear();
+  document.querySelectorAll('#rq-svcs .chip').forEach(c=>c.classList.remove('on'));
+  rqRender();
+}
 
 function rqRender(){
   const emp=document.getElementById('rq-empty');
   const res=document.getElementById('rq-results');
-  if(rqSvcs.size===0){emp.style.display='block';res.style.display='none';return;}
+  if(rqSvcs.size===0){emp.style.display='block';res.style.display='none';rqRenderPicked();return;}
   emp.style.display='none';res.style.display='block';
+  rqRenderPicked();
 
   const users=parseInt(document.getElementById('rq-users').value)||2000;
   const term=parseInt(document.getElementById('rq-term').value)||3;
@@ -1905,12 +2248,61 @@ function rqRender(){
   const sel=[...rqSvcs];
   const data=proj==='All'?DB:DB.filter(r=>r.proj===proj);
 
+  // Prior quotes — any quote that covers at least one selected service
+  const priorQuotes=data.filter(r=>(r.services||[]).some(s=>sel.includes(s)));
+  // Exact combo matches
+  const exactMatches=data.filter(r=>{const rs=new Set(r.services||[]);return sel.every(s=>rs.has(s));});
+
+  // ─── TOP VERDICT ───
+  let verdHTML='';
+  const svcWithQuotes=sel.filter(s=>data.some(r=>(r.services||[]).includes(s)&&r.price>0));
+  const svcNoQuotes=sel.filter(s=>!data.some(r=>(r.services||[]).includes(s)&&r.price>0));
+
+  if(exactMatches.length>0){
+    const best=exactMatches.reduce((a,b)=>a.price<b.price?a:b);
+    verdHTML=`<div class="verdict gn">
+      <div class="verdict-ico">✅</div>
+      <div style="flex:1">
+        <div class="verdict-t">Strong Historical Baseline — ${exactMatches.length} exact combination match${exactMatches.length>1?'es':''}</div>
+        <div class="verdict-b">
+          <strong>Best prior quote:</strong> ${vbadge(best.vendor)} at <strong>${fmt(best.price)}</strong> (${best.proj}, ${best.year} ${best.quarter}). 
+          Open your RFQ ask at <strong>${fmt(best.price*0.95)}</strong> (−5% from best) and walk away above <strong>${fmt(exactMatches.reduce((a,b)=>a+b.price,0)/exactMatches.length)}</strong> (historical avg).
+        </div>
+      </div>
+    </div>`;
+  }else if(svcWithQuotes.length===sel.length){
+    const splitMin=sel.reduce((sum,s)=>{const ps=data.filter(r=>(r.services||[]).includes(s)&&r.price>0).map(r=>r.price);return sum+(ps.length?Math.min(...ps):0);},0);
+    verdHTML=`<div class="verdict am">
+      <div class="verdict-ico">🔀</div>
+      <div style="flex:1">
+        <div class="verdict-t">No Exact Bundle — All Services Have Individual History</div>
+        <div class="verdict-b">
+          ${priorQuotes.length} prior quote${priorQuotes.length>1?'s':''} cover individual services. 
+          <strong>Best split-buy cost:</strong> ${fmt(splitMin)}. Ask vendors to quote the full bundle at this target.
+        </div>
+      </div>
+    </div>`;
+  }else{
+    verdHTML=`<div class="verdict rd">
+      <div class="verdict-ico">⚠️</div>
+      <div style="flex:1">
+        <div class="verdict-t">Partial Coverage — ${svcNoQuotes.length} of ${sel.length} Services Have No Prior Quotes</div>
+        <div class="verdict-b">
+          <strong>Unpriced services:</strong> ${svcNoQuotes.slice(0,3).map(s=>esc(s)).join(', ')}${svcNoQuotes.length>3?`, +${svcNoQuotes.length-3} more`:''}<br>
+          Include these in your RFQ to establish fresh market pricing. Known services: ${svcWithQuotes.length}.
+        </div>
+      </div>
+    </div>`;
+  }
+  document.getElementById('rq-verdict').innerHTML=verdHTML;
+
+  // Service data
   const svcData=sel.map(s=>{
     const rs=data.filter(r=>(r.services||[]).includes(s)&&r.price>0);
     const ps=rs.map(r=>r.price);
-    if(!ps.length)return{svc:s,min:0,avg:0,max:0,target:0,bestVen:'—',rows:[]};
+    if(!ps.length)return{svc:s,count:0,min:0,avg:0,max:0,target:0,bestVen:'—'};
     const mn=Math.min(...ps),mx=Math.max(...ps),av=ps.reduce((a,b)=>a+b,0)/ps.length;
-    return{svc:s,min:mn,avg:av,max:mx,target:av*.9,bestVen:rs.find(r=>r.price===mn)?.vendor||'—',rows:rs};
+    return{svc:s,count:rs.length,min:mn,avg:av,max:mx,target:av*.9,bestVen:rs.find(r=>r.price===mn)?.vendor||'—'};
   });
 
   const totAvg=svcData.reduce((a,b)=>a+b.avg,0);
@@ -1919,24 +2311,50 @@ function rqRender(){
   const totTgt=svcData.reduce((a,b)=>a+b.target,0);
   const puMo=users>0?totAvg/users/12:0;
 
+  // KPIs
   document.getElementById('rq-kpis').innerHTML=[
-    {lbl:'Budget',val:fmt(totAvg),sub:sel.length+' services'},
-    {lbl:'Floor',val:fmt(totMn),sub:'Best case'},
-    {lbl:'Target',val:fmt(totTgt),sub:'−10% avg'},
-    {lbl:'$/User/Mo',val:'$'+puMo.toFixed(2),sub:users.toLocaleString()+' users'}
+    {lbl:'Budget Estimate',val:fmt(totAvg),sub:sel.length+' services'},
+    {lbl:'Best Case',val:fmt(totMn),sub:'historical floor'},
+    {lbl:'Opening Ask',val:fmt(totTgt),sub:'−10% from avg'},
+    {lbl:'$ / User / Mo',val:'$'+puMo.toFixed(2),sub:users.toLocaleString()+' users'}
   ].map(k=>`<div class="kpi"><div class="kpi-lbl">${k.lbl}</div><div class="kpi-val">${k.val}</div><div class="kpi-sub">${k.sub}</div></div>`).join('');
 
-  // Table
-  document.querySelector('#rq-table tbody').innerHTML=svcData.map(d=>`
-    <tr>
+  // PRIOR QUOTES TABLE
+  const sortedPrior=priorQuotes.sort((a,b)=>a.price-b.price).slice(0,15);
+  document.querySelector('#rq-prior-table tbody').innerHTML=sortedPrior.length?sortedPrior.map((r,i)=>{
+    const matched=(r.services||[]).filter(s=>sel.includes(s));
+    const pct=Math.round(matched.length/sel.length*100);
+    return `<tr onclick="selShowFile(${DB.indexOf(r)})" style="cursor:pointer">
+      <td>${vbadge(r.vendor)}${i===0?' <span class="b gn" style="margin-left:4px">★</span>':''}</td>
+      <td>${esc(r.proj)}</td>
+      <td><span class="b ${pct===100?'gn':pct>=50?'am':'nt'}">${matched.length}/${sel.length}</span></td>
+      <td><span class="num" style="color:${i===0?GN:INK}">${fmt(r.price)}</span></td>
+      <td>${r.year} ${r.quarter}</td>
+      <td style="font-family:monospace;font-size:.72rem;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--mid)">${esc(r.file)}</td>
+    </tr>`;
+  }).join(''):`<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--mid)">No prior quotes found for selected services in this project scope</td></tr>`;
+  set('rq-prior-meta',priorQuotes.length+' quotes found');
+
+  // Service breakdown table
+  document.querySelector('#rq-table tbody').innerHTML=svcData.map(d=>{
+    if(d.count===0){
+      return `<tr style="background:var(--rdl)">
+        <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600">${esc(d.svc)}</td>
+        <td><span class="b rd">0</span></td>
+        <td colspan="4" style="text-align:center;color:var(--rdd);font-weight:600;font-size:.76rem">⚠️ No prior quotes — new RFQ required</td>
+        <td>—</td>
+      </tr>`;
+    }
+    return `<tr>
       <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600">${esc(d.svc)}</td>
+      <td><span class="num">${d.count}</span></td>
       <td><span class="num" style="color:${GN}">${fmt(d.min)}</span></td>
       <td><span class="num">${fmt(d.avg)}</span></td>
       <td><span class="num" style="color:${RD}">${fmt(d.max)}</span></td>
-      <td><span class="num" style="color:${AM}">${fmt(d.target)}</span></td>
+      <td><span class="num" style="color:${AM};font-weight:700">${fmt(d.target)}</span></td>
       <td>${d.bestVen!=='—'?vbadge(d.bestVen):'—'}</td>
-    </tr>
-  `).join('');
+    </tr>`;
+  }).join('');
 
   // Multi-year chart
   const yrs=[];const vals={min:[],tgt:[],avg:[],max:[]};
@@ -1956,12 +2374,12 @@ function rqRender(){
       {label:'Floor',data:vals.min,backgroundColor:GN,borderRadius:4},
       {label:'Target',data:vals.tgt,backgroundColor:AM,borderRadius:4},
       {label:'Avg',data:vals.avg,backgroundColor:OR,borderRadius:4},
-      {label:'Max',data:vals.max,backgroundColor:RD,borderRadius:4}
+      {label:'Ceiling',data:vals.max,backgroundColor:RD,borderRadius:4}
     ]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:10,family:'Inter'},boxWidth:10,padding:8}},tooltip:{callbacks:{label:(c)=>c.dataset.label+': '+fmt(c.parsed.y)}}},scales:{x:{ticks:{font:{size:10,family:'Inter'}}},y:{ticks:{callback:(v)=>fmt(v),font:{size:10,family:'Inter'}}}}}
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:10,family:'Inter'},boxWidth:10,padding:8,color:INK}},tooltip:{callbacks:{label:(c)=>c.dataset.label+': '+fmt(c.parsed.y)}}},scales:{x:{ticks:{font:{size:10,family:'Inter'},color:MID}},y:{ticks:{callback:(v)=>fmt(v),font:{size:10,family:'Inter'},color:MID}}}}
   });
 
-  // Vendor coverage chart
+  // Vendor chart
   const venCov={};
   sel.forEach(s=>{
     data.filter(r=>(r.services||[]).includes(s)&&r.price>0).forEach(r=>{
@@ -1974,44 +2392,64 @@ function rqRender(){
   drawBarV('rq-vendor-chart',venList.map(v=>v.v.length>10?v.v.substring(0,10)+'…':v.v),venList.map(v=>v.cov),venList.map(v=>vcol(v.v)));
 
   // Strategy
-  const top3=venList.slice(0,3).map(v=>v.v).join(', ');
+  const top3=venList.slice(0,3).map(v=>v.v);
+  const totalTerm=vals.avg.reduce((a,b)=>a+b,0);
   document.getElementById('rq-strategy').innerHTML=`
-    <div class="verdict or">
-      <div class="verdict-ico">🎯</div>
-      <div>
-        <div class="verdict-t">RFQ Strategy for ${users.toLocaleString()} users · ${term} years</div>
-        <div class="verdict-b">
-          <strong>Opening ask:</strong> ${fmt(totTgt)} (−10% from historical avg)<br>
-          <strong>Expected settle:</strong> ${fmt((totTgt+totAvg)/2)} — ${fmt(totAvg)}<br>
-          <strong>Walk-away ceiling:</strong> ${fmt(totMx)}<br>
-          <strong>Invite vendors:</strong> ${top3||'No matching vendors'}<br>
-          <strong>Per-user basis:</strong> $${puMo.toFixed(2)}/user/mo
-        </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">
+      <div style="background:var(--gnl);border-left:3px solid var(--gn);border-radius:var(--r);padding:12px 14px">
+        <div style="font-size:.70rem;font-weight:700;color:var(--gnd);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px">Opening Position</div>
+        <div style="font-family:var(--serif);font-size:1.4rem;font-weight:700;color:var(--gnd)">${fmt(totTgt)}</div>
+        <div style="font-size:.74rem;color:var(--gnd);opacity:.85;margin-top:3px">First-offer price (−10% from avg)</div>
+      </div>
+      <div style="background:var(--rdl);border-left:3px solid var(--rd);border-radius:var(--r);padding:12px 14px">
+        <div style="font-size:.70rem;font-weight:700;color:var(--rdd);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px">Walk-Away Ceiling</div>
+        <div style="font-family:var(--serif);font-size:1.4rem;font-weight:700;color:var(--rdd)">${fmt(totMx)}</div>
+        <div style="font-size:.74rem;color:var(--rdd);opacity:.85;margin-top:3px">Never exceed this price</div>
       </div>
     </div>
-    <table class="cat-table" style="margin-top:14px">
-      <thead><tr><th>Vendor</th><th>Coverage</th><th>Avg Quote</th><th>Records</th></tr></thead>
+
+    <div style="font-size:.86rem;line-height:1.7;color:var(--ink);margin-bottom:14px">
+      <strong>Recommended RFQ flow:</strong><br>
+      1️⃣ Invite <strong>${top3.join(', ')||'minimum 3 vendors'}</strong> (highest historical coverage)<br>
+      2️⃣ Open ask at <strong>${fmt(totTgt)}</strong> · expected settle <strong>${fmt((totTgt+totAvg)/2)} – ${fmt(totAvg)}</strong><br>
+      3️⃣ Contract total over ${term} years: <strong>${fmt(totalTerm)}</strong><br>
+      4️⃣ Per-user basis: <strong>$${puMo.toFixed(2)}/user/month</strong> at ${users.toLocaleString()} users
+    </div>
+
+    <table class="cat-table">
+      <thead><tr><th>Vendor</th><th>Coverage</th><th>Avg Quote</th><th>Records</th><th>Recommend</th></tr></thead>
       <tbody>
-        ${venList.map(v=>`<tr><td>${vbadge(v.v)}</td><td><span class="num">${v.cov}/${sel.length} (${Math.round(v.pct)}%)</span></td><td><span class="num" style="color:${OR}">${fmt(v.avg)}</span></td><td><span class="num">${venCov[v.v].ps.length}</span></td></tr>`).join('')}
+        ${venList.map((v,i)=>`<tr>
+          <td>${vbadge(v.v)}</td>
+          <td><span class="num">${v.cov}/${sel.length} (${Math.round(v.pct)}%)</span></td>
+          <td><span class="num" style="color:${OR}">${fmt(v.avg)}</span></td>
+          <td><span class="num">${venCov[v.v].ps.length}</span></td>
+          <td>${i<3?'<span class="b gn">Invite</span>':'<span class="b nt">Optional</span>'}</td>
+        </tr>`).join('')}
       </tbody>
     </table>
   `;
 }
 
-function rqExport(){
-  const users=parseInt(document.getElementById('rq-users').value)||2000;
-  const term=parseInt(document.getElementById('rq-term').value)||3;
-  let csv='RFQ Report\r\nUsers,'+users+'\r\nTerm,'+term+'\r\n\r\nService,Min,Avg,Max,Target,Best Vendor\r\n';
-  [...rqSvcs].forEach(s=>{
-    const rs=DB.filter(r=>(r.services||[]).includes(s)&&r.price>0);
-    const ps=rs.map(r=>r.price);
-    if(ps.length){
-      const mn=Math.min(...ps),mx=Math.max(...ps),av=ps.reduce((a,b)=>a+b,0)/ps.length;
-      const bv=rs.find(r=>r.price===mn)?.vendor||'';
-      csv+='"'+s+'",'+mn+','+Math.round(av)+','+mx+','+Math.round(av*.9)+',"'+bv+'"\r\n';
-    }
-  });
-  dlCSV(csv,'rfq_'+Date.now()+'.csv');
+function rqRenderPicked(){
+  const el=document.getElementById('rq-picked');
+  set('rq-count',rqSvcs.size+(rqSvcs.size===1?' service':' services'));
+  if(rqSvcs.size===0){el.innerHTML='Pick services to begin';el.style.color='var(--mid)';el.style.textAlign='center';return;}
+  el.style.color='';el.style.textAlign='left';
+  el.innerHTML=[...rqSvcs].map(s=>{
+    const catOf=DB.find(r=>(r.services||[]).includes(s))?.cat||'';
+    return `<div style="display:flex;align-items:center;gap:6px;padding:5px 8px;background:#fff;border-radius:var(--r);margin-bottom:5px;font-size:.74rem;font-weight:600;color:var(--ink);border:1px solid var(--orl)">
+      <span class="cat-dot" style="background:${CAT_COL[catOf]||MID}"></span>
+      <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s)}</span>
+      <span style="color:var(--or);cursor:pointer;font-weight:700" onclick="removeRqSvc('${esc(s).replace(/'/g,"\\'")}')">×</span>
+    </div>`;
+  }).join('');
+}
+
+function removeRqSvc(s){
+  rqSvcs.delete(s);
+  document.querySelectorAll('#rq-svcs .chip').forEach(c=>{if(c.dataset.svc===s)c.classList.remove('on');});
+  rqRender();
 }
 
 // ═══════════════════════════════════
