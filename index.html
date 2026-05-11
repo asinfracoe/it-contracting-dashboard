@@ -6,7 +6,40 @@
 <title>IT Contracting Intelligence | PwC</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1"></script>
 <style>
+/* Info icon with tooltip */
+.info-ico{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:18px;height:18px;border-radius:50%;
+  background:var(--line2);color:var(--mid);
+  font-size:.70rem;font-weight:700;
+  cursor:help;font-style:normal;font-family:var(--sans);
+  transition:all .15s;border:1px solid var(--line);
+  position:relative;flex-shrink:0;
+}
+.info-ico:hover{background:var(--or);color:var(--white);border-color:var(--or);}
+.info-ico[data-tip]::after{
+  content:attr(data-tip);
+  position:absolute;bottom:calc(100% + 8px);right:-4px;
+  background:var(--ink);color:var(--white);
+  padding:9px 12px;border-radius:var(--r);
+  font-size:.72rem;font-weight:500;line-height:1.45;
+  width:260px;white-space:normal;text-align:left;
+  opacity:0;pointer-events:none;
+  transition:opacity .15s;
+  z-index:100;
+  box-shadow:0 6px 20px rgba(0,0,0,.2);
+}
+.info-ico[data-tip]::before{
+  content:'';position:absolute;bottom:calc(100% + 2px);right:4px;
+  border:6px solid transparent;border-top-color:var(--ink);
+  opacity:0;pointer-events:none;transition:opacity .15s;
+  z-index:101;
+}
+.info-ico[data-tip]:hover::after,
+.info-ico[data-tip]:hover::before{opacity:1;}
+  
 :root{
   --or:#D04A02;--ord:#A33A00;--orm:#E8703A;--orl:#FAD4C0;--ort:#FDF3ED;
   --ink:#1F2937;--ink2:#374151;--mid:#6B7280;--soft:#9CA3AF;
@@ -386,21 +419,49 @@ html,body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-siz
   <div class="sec-lbl">Project Portfolio <span class="sec-lbl-sub">· click to drill in</span></div>
   <div class="grid-3" id="ov-proj-cards"></div>
 
-  <!-- ROW 1: HEATMAP + RADAR -->
+
+  <!-- ROW 1: SIMPLE EXECUTIVE SUMMARY -->
+  <div class="sec-lbl">At a Glance <span class="sec-lbl-sub">· simple metrics for quick understanding</span></div>
+  <div class="grid-3">
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title"><span class="card-title-ico">📊</span>Categories vs Quote Volume</div>
+        <span class="info-ico" data-tip="Shows how many quote files exist in each category. Tallest bars = categories with most negotiation history and data to benchmark against.">ⓘ</span>
+      </div>
+      <div class="chart-wrap sm"><canvas id="ov-simple1-chart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title"><span class="card-title-ico">🧩</span>Services per Category</div>
+        <span class="info-ico" data-tip="How many distinct service line-items each category contains. High counts = broad category scope. Use this to understand category complexity.">ⓘ</span>
+      </div>
+      <div class="chart-wrap sm"><canvas id="ov-simple2-chart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title"><span class="card-title-ico">🏢</span>Vendors by Quote Volume</div>
+        <span class="info-ico" data-tip="Which vendors appear most frequently in your quote history. Top vendors = strongest negotiation leverage due to repeat business.">ⓘ</span>
+      </div>
+      <div class="chart-wrap sm"><canvas id="ov-simple3-chart"></canvas></div>
+    </div>
+  </div>
+  
+  <!-- ROW 2: DETAILED INSIGHTS -->
+  <div class="sec-lbl">Detailed Insights <span class="sec-lbl-sub">· deeper analysis for strategic decisions</span></div>
   <div class="grid-2">
     <div class="card">
       <div class="card-head">
         <div class="card-title"><span class="card-title-ico">🔥</span>Vendor × Category Spend Heatmap</div>
-        <div class="card-meta or">Intensity = $</div>
+        <span class="info-ico" data-tip="Shows where each vendor concentrates their business. Dark cells = heavy spend with that vendor in that category. Use to spot vendor specialization and negotiate better bundled deals.">ⓘ</span>
       </div>
       <div id="ov-heatmap" style="padding:10px 0"></div>
     </div>
     <div class="card">
       <div class="card-head">
-        <div class="card-title"><span class="card-title-ico">🎯</span>Category Maturity Radar</div>
-        <div class="card-meta bl">Vendors · Services · Quotes</div>
+        <div class="card-title"><span class="card-title-ico">📊</span>Price Distribution &amp; Outliers</div>
+        <span class="info-ico" data-tip="Box plot showing min, 25th percentile, median, 75th percentile and max price per category. Long boxes = high price variation (negotiate harder). Short boxes = stable pricing.">ⓘ</span>
       </div>
-      <div class="chart-wrap"><canvas id="ov-radar-chart"></canvas></div>
+      <div class="chart-wrap"><canvas id="ov-box-chart"></canvas></div>
     </div>
   </div>
 
@@ -409,7 +470,7 @@ html,body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-siz
     <div class="card">
       <div class="card-head">
         <div class="card-title"><span class="card-title-ico">🗺️</span>Spend Treemap</div>
-        <div class="card-meta gn">Proportional</div>
+        <span class="info-ico" data-tip="Bigger tiles = categories where you spend more. Use this to understand your spending priorities and where to focus cost-reduction efforts.">ⓘ</span>
       </div>
       <div id="ov-treemap" style="min-height:260px;display:flex;flex-wrap:wrap;gap:3px;padding:4px"></div>
     </div>
@@ -457,8 +518,8 @@ html,body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-siz
     </div>
     <div class="card">
       <div class="card-head">
-        <div class="card-title"><span class="card-title-ico">💎</span>Highest-Value Services</div>
-        <div class="card-meta or">Avg contract $</div>
+        <div class="card-title"><span class="card-title-ico">🏢</span>Vendor Concentration Risk</div>
+        <span class="info-ico" data-tip="Shows what % of total spend goes to each vendor. If top 3 vendors have >60% share, you are dependent on them. Aim to diversify for better leverage.">ⓘ</span>
       </div>
       <div class="blist" id="ov-top-services"></div>
     </div>
@@ -698,15 +759,21 @@ html,body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-siz
 
         <!-- CHARTS -->
         <div class="grid-2">
-          <div class="card">
-            <div class="card-head"><div class="card-title"><span class="card-title-ico">📊</span>Market Position</div></div>
-            <div class="chart-wrap sm"><canvas id="ex-pos-chart"></canvas></div>
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title"><span class="card-title-ico">🎯</span>Your Quote vs Historical Range</div>
+            <span class="info-ico" data-tip="Shows where your quote sits compared to all past quotes for the same services. Green zone = below average (good). Red zone = above ceiling (bad). Orange marker = your quote.">ⓘ</span>
           </div>
-          <div class="card">
-            <div class="card-head"><div class="card-title"><span class="card-title-ico">🏢</span>Vendor Comparison</div></div>
-            <div class="chart-wrap sm"><canvas id="ex-vendor-chart"></canvas></div>
-          </div>
+          <div class="chart-wrap"><canvas id="ex-pos-chart"></canvas></div>
         </div>
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title"><span class="card-title-ico">🏆</span>Vendor Price Ranking</div>
+            <span class="info-ico" data-tip="Ranks all vendors who have quoted the same services by their best price. Your quote (highlighted orange) is placed in context. Lower = better.">ⓘ</span>
+          </div>
+          <div class="chart-wrap"><canvas id="ex-vendor-chart"></canvas></div>
+        </div>
+      </div>
 
         <!-- ACTION PLAN -->
         <div class="card">
@@ -927,7 +994,12 @@ html,body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-siz
 
 <script>
 'use strict';
-
+// Register Chart.js annotation plugin if available
+if (typeof ChartAnnotation !== 'undefined' && Chart) {
+  Chart.register(ChartAnnotation);
+} else if (window['chartjs-plugin-annotation']) {
+  Chart.register(window['chartjs-plugin-annotation']);
+}
 // ─── BACKEND CONFIG ───
 const GITHUB_CONFIG = {
   owner: 'asinfracoe',
@@ -1051,6 +1123,128 @@ document.addEventListener('DOMContentLoaded',()=>{
   tryLoadJSON();
 });
 
+// ═══ SIMPLE CHARTS: Categories & Quotes, Services per Category, Vendors by Quotes ═══
+function renderSimpleCharts(data,cats){
+  // Chart 1: Categories vs Number of Quotes (vertical bar)
+  destroyChart('ov-simple1-chart');
+  const ctx1=document.getElementById('ov-simple1-chart');
+  if(ctx1){
+    const catQuotes=cats.map(c=>({cat:c,count:data.filter(r=>r.cat===c).length})).sort((a,b)=>b.count-a.count);
+    CHARTS['ov-simple1-chart']=new Chart(ctx1,{
+      type:'bar',
+      data:{
+        labels:catQuotes.map(d=>d.cat.length>14?d.cat.substring(0,14)+'…':d.cat),
+        datasets:[{
+          label:'Quotes',
+          data:catQuotes.map(d=>d.count),
+          backgroundColor:catQuotes.map(d=>CAT_COL[d.cat]||OR),
+          borderRadius:6,
+          borderSkipped:false,
+          maxBarThickness:50
+        }]
+      },
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        plugins:{
+          legend:{display:false},
+          tooltip:{
+            callbacks:{
+              title:(items)=>catQuotes[items[0].dataIndex].cat,
+              label:(c)=>`${c.parsed.y} quote${c.parsed.y>1?'s':''}`
+            }
+          },
+          datalabels:{display:false}
+        },
+        scales:{
+          x:{ticks:{font:{size:10,family:'Inter'},color:INK,maxRotation:45,minRotation:30},grid:{display:false}},
+          y:{beginAtZero:true,ticks:{font:{size:10,family:'Inter'},color:MID,stepSize:1},grid:{color:'#F3F4F6'},title:{display:true,text:'Number of Quotes',font:{size:10,family:'Inter',weight:600},color:MID}}
+        }
+      }
+    });
+  }
+
+  // Chart 2: Number of Services per Category (horizontal bar)
+  destroyChart('ov-simple2-chart');
+  const ctx2=document.getElementById('ov-simple2-chart');
+  if(ctx2){
+    const catSvcs=cats.map(c=>{
+      const svcs=new Set(data.filter(r=>r.cat===c).flatMap(r=>r.services||[]));
+      return{cat:c,count:svcs.size};
+    }).sort((a,b)=>b.count-a.count);
+    CHARTS['ov-simple2-chart']=new Chart(ctx2,{
+      type:'bar',
+      data:{
+        labels:catSvcs.map(d=>d.cat.length>18?d.cat.substring(0,18)+'…':d.cat),
+        datasets:[{
+          label:'Services',
+          data:catSvcs.map(d=>d.count),
+          backgroundColor:catSvcs.map(d=>CAT_COL[d.cat]||OR),
+          borderRadius:6,
+          borderSkipped:false,
+          maxBarThickness:28
+        }]
+      },
+      options:{
+        indexAxis:'y',
+        responsive:true,maintainAspectRatio:false,
+        plugins:{
+          legend:{display:false},
+          tooltip:{
+            callbacks:{
+              title:(items)=>catSvcs[items[0].dataIndex].cat,
+              label:(c)=>`${c.parsed.x} service${c.parsed.x>1?'s':''}`
+            }
+          }
+        },
+        scales:{
+          x:{beginAtZero:true,ticks:{font:{size:10,family:'Inter'},color:MID,stepSize:1},grid:{color:'#F3F4F6'},title:{display:true,text:'Number of Services',font:{size:10,family:'Inter',weight:600},color:MID}},
+          y:{ticks:{font:{size:10,family:'Inter'},color:INK},grid:{display:false}}
+        }
+      }
+    });
+  }
+
+  // Chart 3: Vendors by Quote Volume (horizontal bar, top 8)
+  destroyChart('ov-simple3-chart');
+  const ctx3=document.getElementById('ov-simple3-chart');
+  if(ctx3){
+    const venCount={};
+    data.forEach(r=>{venCount[r.vendor]=(venCount[r.vendor]||0)+1;});
+    const topVens=Object.entries(venCount).sort((a,b)=>b[1]-a[1]).slice(0,8);
+    CHARTS['ov-simple3-chart']=new Chart(ctx3,{
+      type:'bar',
+      data:{
+        labels:topVens.map(([v])=>v.length>16?v.substring(0,16)+'…':v),
+        datasets:[{
+          label:'Quotes',
+          data:topVens.map(([,c])=>c),
+          backgroundColor:topVens.map(([v])=>vcol(v)),
+          borderRadius:6,
+          borderSkipped:false,
+          maxBarThickness:24
+        }]
+      },
+      options:{
+        indexAxis:'y',
+        responsive:true,maintainAspectRatio:false,
+        plugins:{
+          legend:{display:false},
+          tooltip:{
+            callbacks:{
+              title:(items)=>topVens[items[0].dataIndex][0],
+              label:(c)=>`${c.parsed.x} quote${c.parsed.x>1?'s':''}`
+            }
+          }
+        },
+        scales:{
+          x:{beginAtZero:true,ticks:{font:{size:10,family:'Inter'},color:MID,stepSize:1},grid:{color:'#F3F4F6'},title:{display:true,text:'Number of Quotes',font:{size:10,family:'Inter',weight:600},color:MID}},
+          y:{ticks:{font:{size:10,family:'Inter'},color:INK},grid:{display:false}}
+        }
+      }
+    });
+  }
+}
+  
 async function checkLlamaStatus(){
   const BACKEND_URL=window.AI_BACKEND_URL||'https://your-api.onrender.com';
   const pill=document.getElementById('llama-status');
@@ -1233,7 +1427,8 @@ function renderOverview(){
   renderHeatmap(data,cats,vens);
 
   // ─── RADAR: Category Maturity ───
-  renderRadar(data,cats);
+ // ─── SIMPLE CHARTS (At a Glance) ───
+  renderSimpleCharts(data,cats);
 
   // ─── TREEMAP ───
   renderTreemap(data);
@@ -1370,71 +1565,7 @@ function renderHeatmap(data,cats,vens){
   document.getElementById('ov-heatmap').innerHTML=html;
 }
 
-// ═══ RADAR: Category Maturity ═══
-function renderRadar(data,cats){
-  destroyChart('ov-radar-chart');
-  const ctx=document.getElementById('ov-radar-chart');
-  if(!ctx)return;
-  
-  // For each category, compute normalized scores (0-100) for: vendors, services, quotes, avg price, volatility
-  const maxVens=Math.max(...cats.map(c=>new Set(data.filter(r=>r.cat===c).map(r=>r.vendor)).size),1);
-  const maxSvcs=Math.max(...cats.map(c=>new Set(data.filter(r=>r.cat===c).flatMap(r=>r.services||[])).size),1);
-  const maxQuotes=Math.max(...cats.map(c=>data.filter(r=>r.cat===c).length),1);
-  
-  const dimensions=['Vendor Choice','Service Breadth','Quote Volume','Price Level','Competition'];
-  
-  const datasets=cats.slice(0,4).map((c,i)=>{
-    const rs=data.filter(r=>r.cat===c);
-    const vs=new Set(rs.map(r=>r.vendor)).size;
-    const ss=new Set(rs.flatMap(r=>r.services||[])).size;
-    const qs=rs.length;
-    const ps=rs.map(r=>r.price).filter(p=>p>0);
-    const avgP=ps.length?ps.reduce((a,b)=>a+b,0)/ps.length:0;
-    const mn=ps.length?Math.min(...ps):0;
-    const mx=ps.length?Math.max(...ps):0;
-    const volatility=mn>0?Math.min(100,(mx-mn)/mn*100):0;
-    const globalAvg=data.filter(r=>r.price>0).reduce((a,b)=>a+b.price,0)/(data.filter(r=>r.price>0).length||1);
-    
-    const col=CAT_COL[c]||MID;
-    return {
-      label:c,
-      data:[
-        Math.round((vs/maxVens)*100),
-        Math.round((ss/maxSvcs)*100),
-        Math.round((qs/maxQuotes)*100),
-        Math.round(Math.min(100,(avgP/globalAvg)*50)),
-        Math.round(volatility)
-      ],
-      borderColor:col,
-      backgroundColor:col+'22',
-      borderWidth:2,
-      pointBackgroundColor:col,
-      pointRadius:3,
-      pointHoverRadius:5
-    };
-  });
-  
-  CHARTS['ov-radar-chart']=new Chart(ctx,{
-    type:'radar',
-    data:{labels:dimensions,datasets},
-    options:{
-      responsive:true,maintainAspectRatio:false,
-      plugins:{
-        legend:{position:'bottom',labels:{font:{size:10,family:'Inter'},boxWidth:8,padding:8,color:INK}},
-        tooltip:{callbacks:{label:(c)=>c.dataset.label+' · '+c.parsed.r+'%'}}
-      },
-      scales:{
-        r:{
-          beginAtZero:true,max:100,
-          ticks:{stepSize:25,font:{size:9,family:'Inter'},color:MID,backdropColor:'transparent'},
-          grid:{color:'#E5E7EB'},
-          angleLines:{color:'#E5E7EB'},
-          pointLabels:{font:{size:10,family:'Inter',weight:600},color:INK}
-        }
-      }
-    }
-  });
-}
+
 
 // ═══ TREEMAP: Proportional Spend ═══
 function renderTreemap(data){
@@ -2428,12 +2559,114 @@ function scoreQuote(){
   set('ex-prior-meta',partialMatches.length+' comparable quotes');
 
   // ─── CHARTS ───
-  const buckets=[mn,mn+(mx-mn)*.25,mn+(mx-mn)*.5,mn+(mx-mn)*.75,mx];
-  const bLabels=['Min','Q1','Median','Q3','Max'];
-  drawBarV('ex-pos-chart',bLabels,buckets.map(b=>Math.round(b)),buckets.map(()=>INK));
+// ─── CHART 1: YOUR QUOTE vs HISTORICAL RANGE ───
+destroyChart('ex-pos-chart');
+const ctxP=document.getElementById('ex-pos-chart');
+if(ctxP){
+  // Build horizontal "gauge" using floating bars
+  const goodZone=[mn,avg*0.95];
+  const fairZone=[avg*0.95,avg*1.05];
+  const warnZone=[avg*1.05,avg*1.15];
+  const badZone=[avg*1.15,mx*1.1];
+  
+  CHARTS['ex-pos-chart']=new Chart(ctxP,{
+    type:'bar',
+    data:{
+      labels:['Price Position'],
+      datasets:[
+        {label:'Good Deal',data:[goodZone],backgroundColor:GN+'CC',borderRadius:0,barPercentage:.6},
+        {label:'Fair',data:[fairZone],backgroundColor:AM+'AA',borderRadius:0,barPercentage:.6},
+        {label:'Negotiate',data:[warnZone],backgroundColor:'#F97316CC',borderRadius:0,barPercentage:.6},
+        {label:'Overpriced',data:[badZone],backgroundColor:RD+'CC',borderRadius:0,barPercentage:.6}
+      ]
+    },
+    options:{
+      indexAxis:'y',
+      responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{position:'bottom',labels:{font:{size:10,family:'Inter'},boxWidth:12,padding:8,color:INK,usePointStyle:true}},
+        tooltip:{callbacks:{label:(c)=>c.dataset.label+': '+fmt(c.parsed._custom?.start||0)+' - '+fmt(c.parsed._custom?.end||0)}},
+        annotation:{
+          annotations:{
+            yourQuote:{type:'line',xMin:pr,xMax:pr,borderColor:OR,borderWidth:4,label:{display:true,content:'★ YOU: '+fmt(pr),position:'start',backgroundColor:OR,color:'#fff',font:{size:11,family:'Inter',weight:700},padding:6,yAdjust:-30}},
+            avgLine:{type:'line',xMin:avg,xMax:avg,borderColor:INK,borderWidth:1.5,borderDash:[4,4],label:{display:true,content:'Avg',position:'end',backgroundColor:INK,color:'#fff',font:{size:9,weight:600},padding:3,yAdjust:30}}
+          }
+        }
+      },
+      scales:{
+        x:{stacked:true,ticks:{callback:(v)=>fmt(v),font:{size:10,family:'Inter'},color:MID},grid:{color:'#F3F4F6'},title:{display:true,text:'Price (USD)',font:{size:10,weight:600},color:MID}},
+        y:{stacked:true,display:false}
+      }
+    }
+  });
+}
 
-  const vrows=priorSorted.slice(0,6).concat([{vendor:'★ '+(vn||'YOU'),price:pr}]).sort((a,b)=>a.price-b.price);
-  drawBarV('ex-vendor-chart',vrows.map(r=>r.vendor.length>12?r.vendor.substring(0,12)+'…':r.vendor),vrows.map(r=>r.price),vrows.map(r=>r.vendor.startsWith('★')?OR:INK));
+// ─── CHART 2: VENDOR PRICE RANKING ───
+  destroyChart('ex-vendor-chart');
+  const ctxV=document.getElementById('ex-vendor-chart');
+  if(ctxV){
+    // Aggregate best price per vendor for these services
+    const venBest={};
+    partialMatches.forEach(r=>{
+      if(!venBest[r.vendor]||r.price<venBest[r.vendor])venBest[r.vendor]=r.price;
+    });
+    
+    // Add YOUR quote
+    const rows=Object.entries(venBest).map(([v,p])=>({v,p,you:false}));
+    rows.push({v:'★ '+(vn||'YOUR QUOTE'),p:pr,you:true});
+    rows.sort((a,b)=>a.p-b.p);
+    
+    // Take best 8
+    const display=rows.slice(0,10);
+    
+    CHARTS['ex-vendor-chart']=new Chart(ctxV,{
+      type:'bar',
+      data:{
+        labels:display.map((r,i)=>`${i+1}. ${r.v.length>14?r.v.substring(0,14)+'…':r.v}`),
+        datasets:[{
+          label:'Best Price',
+          data:display.map(r=>r.p),
+          backgroundColor:display.map(r=>{
+            if(r.you)return OR;
+            if(r.p<=avg*0.95)return GN;
+            if(r.p<=avg*1.05)return AM;
+            return RD;
+          }),
+          borderColor:display.map(r=>r.you?OR:'transparent'),
+          borderWidth:display.map(r=>r.you?3:0),
+          borderRadius:4,
+          borderSkipped:false
+        }]
+      },
+      options:{
+        indexAxis:'y',
+        responsive:true,maintainAspectRatio:false,
+        plugins:{
+          legend:{display:false},
+          tooltip:{
+            callbacks:{
+              title:(items)=>display[items[0].dataIndex].v,
+              label:(c)=>{
+                const r=display[c.dataIndex];
+                const diff=r.p-avg;
+                const pct=avg>0?Math.round(diff/avg*100):0;
+                return [fmt(r.p),(pct>=0?'+':'')+pct+'% vs avg',r.you?'⭐ Your quote':''];
+              }
+            }
+          },
+          annotation:{
+            annotations:{
+              avg:{type:'line',xMin:avg,xMax:avg,borderColor:INK,borderWidth:2,borderDash:[6,4],label:{display:true,content:'Avg '+fmt(avg),position:'end',backgroundColor:INK,color:'#fff',font:{size:9,weight:600},padding:4}}
+            }
+          }
+        },
+        scales:{
+          x:{ticks:{callback:(v)=>fmt(v),font:{size:10,family:'Inter'},color:MID},grid:{color:'#F3F4F6'},title:{display:true,text:'Best Quoted Price',font:{size:10,weight:600},color:MID}},
+          y:{ticks:{font:{size:10,family:'Inter'},color:INK},grid:{display:false}}
+        }
+      }
+    });
+  }
 
   // ─── RECOMMENDATION ───
   let rec='';
@@ -2683,41 +2916,186 @@ function rqRender(){
     </tr>`;
   }).join('');
 
-  // Multi-year chart
-  const yrs=[];const vals={min:[],tgt:[],avg:[],max:[]};
-  const g=[1,1.05,1.1,1.14,1.18];
-  for(let y=1;y<=term;y++){
-    yrs.push('Year '+y);
-    vals.min.push(Math.round(totMn*g[y-1]));
-    vals.tgt.push(Math.round(totTgt*g[y-1]));
-    vals.avg.push(Math.round(totAvg*g[y-1]));
-    vals.max.push(Math.round(totMx*g[y-1]));
-  }
-  destroyChart('rq-year-chart');
-  const ctx1=document.getElementById('rq-year-chart');
-  CHARTS['rq-year-chart']=new Chart(ctx1,{
-    type:'bar',
-    data:{labels:yrs,datasets:[
-      {label:'Floor',data:vals.min,backgroundColor:GN,borderRadius:4},
-      {label:'Target',data:vals.tgt,backgroundColor:AM,borderRadius:4},
-      {label:'Avg',data:vals.avg,backgroundColor:OR,borderRadius:4},
-      {label:'Ceiling',data:vals.max,backgroundColor:RD,borderRadius:4}
-    ]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:10,family:'Inter'},boxWidth:10,padding:8,color:INK}},tooltip:{callbacks:{label:(c)=>c.dataset.label+': '+fmt(c.parsed.y)}}},scales:{x:{ticks:{font:{size:10,family:'Inter'},color:MID}},y:{ticks:{callback:(v)=>fmt(v),font:{size:10,family:'Inter'},color:MID}}}}
-  });
-
-  // Vendor chart
-  const venCov={};
+// ─── 1. VENDOR PRICE BENCHMARK ───
+destroyChart('rq-benchmark-chart');
+const ctxB=document.getElementById('rq-benchmark-chart');
+if(ctxB){
+  // Aggregate: per vendor, total price for selected services (best quote)
+  const venPrices={};
   sel.forEach(s=>{
     data.filter(r=>(r.services||[]).includes(s)&&r.price>0).forEach(r=>{
-      if(!venCov[r.vendor])venCov[r.vendor]={svcs:new Set(),ps:[]};
-      venCov[r.vendor].svcs.add(s);
-      venCov[r.vendor].ps.push(r.price);
+      if(!venPrices[r.vendor])venPrices[r.vendor]=0;
+      venPrices[r.vendor]+=r.price;
     });
   });
-  const venList=Object.entries(venCov).map(([v,d])=>({v,cov:d.svcs.size,pct:d.svcs.size/sel.length*100,avg:d.ps.reduce((a,b)=>a+b,0)/d.ps.length})).sort((a,b)=>b.cov-a.cov).slice(0,8);
-  drawBarV('rq-vendor-chart',venList.map(v=>v.v.length>10?v.v.substring(0,10)+'…':v.v),venList.map(v=>v.cov),venList.map(v=>vcol(v.v)));
+  const venEntries=Object.entries(venPrices).sort((a,b)=>a[1]-b[1]).slice(0,8);
+  
+  CHARTS['rq-benchmark-chart']=new Chart(ctxB,{
+    type:'bar',
+    data:{
+      labels:venEntries.map(([v])=>v.length>14?v.substring(0,14)+'…':v),
+      datasets:[{
+        label:'Quoted Total',
+        data:venEntries.map(([,p])=>p),
+        backgroundColor:venEntries.map(([v,p])=>{
+          if(p<=totTgt)return GN;
+          if(p<=totAvg)return AM;
+          return RD;
+        }),
+        borderRadius:6,
+        borderSkipped:false,
+        maxBarThickness:40
+      }]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{
+          callbacks:{
+            title:(items)=>venEntries[items[0].dataIndex][0],
+            label:(c)=>{
+              const v=c.parsed.y;
+              let status='';
+              if(v<=totTgt)status=' · ✓ Below target';
+              else if(v<=totAvg)status=' · ⚠ Above target';
+              else status=' · ✗ Above ceiling';
+              return fmt(v)+status;
+            }
+          }
+        },
+        annotation:{
+          annotations:{
+            target:{type:'line',yMin:totTgt,yMax:totTgt,borderColor:AM,borderWidth:2,borderDash:[6,4],label:{display:true,content:'Target '+fmt(totTgt),position:'end',backgroundColor:AM,color:'#fff',font:{size:10,family:'Inter',weight:600},padding:4}},
+            avg:{type:'line',yMin:totAvg,yMax:totAvg,borderColor:OR,borderWidth:2,borderDash:[6,4],label:{display:true,content:'Avg '+fmt(totAvg),position:'end',backgroundColor:OR,color:'#fff',font:{size:10,family:'Inter',weight:600},padding:4}},
+            ceiling:{type:'line',yMin:totMx,yMax:totMx,borderColor:RD,borderWidth:1.5,borderDash:[4,4],label:{display:true,content:'Ceiling '+fmt(totMx),position:'end',backgroundColor:RD,color:'#fff',font:{size:10,family:'Inter',weight:600},padding:4}}
+          }
+        }
+      },
+      scales:{
+        x:{ticks:{font:{size:10,family:'Inter'},color:INK,maxRotation:35,minRotation:25},grid:{display:false}},
+        y:{beginAtZero:true,ticks:{callback:(v)=>fmt(v),font:{size:10,family:'Inter'},color:MID},grid:{color:'#F3F4F6'},title:{display:true,text:'Total Price (USD)',font:{size:10,weight:600},color:MID}}
+      }
+    }
+  });
+}
 
+// ─── 2. BUDGET SCENARIOS (replaces multi-year) ───
+destroyChart('rq-scenario-chart');
+const ctxS=document.getElementById('rq-scenario-chart');
+if(ctxS){
+  const yrs=[];const best=[];const tgt=[];const worst=[];
+  const g=[1,1.05,1.10,1.14,1.18];
+  for(let y=1;y<=term;y++){
+    yrs.push('Year '+y);
+    best.push(Math.round(totMn*g[y-1]));
+    tgt.push(Math.round(totTgt*g[y-1]));
+    worst.push(Math.round(totMx*g[y-1]));
+  }
+  
+  CHARTS['rq-scenario-chart']=new Chart(ctxS,{
+    type:'line',
+    data:{
+      labels:yrs,
+      datasets:[
+        {label:'Best Case (floor)',data:best,borderColor:GN,backgroundColor:GN+'22',tension:.3,fill:'+1',pointRadius:4,pointBackgroundColor:GN,borderWidth:2.5},
+        {label:'Target (−10%)',data:tgt,borderColor:AM,backgroundColor:AM+'22',tension:.3,fill:'+1',pointRadius:4,pointBackgroundColor:AM,borderWidth:2.5},
+        {label:'Worst Case (ceiling)',data:worst,borderColor:RD,backgroundColor:RD+'11',tension:.3,fill:false,pointRadius:4,pointBackgroundColor:RD,borderWidth:2.5,borderDash:[5,3]}
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{position:'bottom',labels:{font:{size:10,family:'Inter'},boxWidth:14,padding:10,color:INK,usePointStyle:true}},
+        tooltip:{mode:'index',intersect:false,callbacks:{label:(c)=>c.dataset.label+': '+fmt(c.parsed.y)}}
+      },
+      scales:{
+        x:{ticks:{font:{size:10,family:'Inter'},color:INK},grid:{display:false}},
+        y:{beginAtZero:true,ticks:{callback:(v)=>fmt(v),font:{size:10,family:'Inter'},color:MID},grid:{color:'#F3F4F6'}}
+      }
+    }
+  });
+}
+
+// ─── 3. SERVICE-LEVEL PRICE SPREAD (horizontal ranges) ───
+destroyChart('rq-spread-chart');
+const ctxSp=document.getElementById('rq-spread-chart');
+if(ctxSp){
+  const validSvc=svcData.filter(d=>d.count>0).slice(0,8);
+  CHARTS['rq-spread-chart']=new Chart(ctxSp,{
+    type:'bar',
+    data:{
+      labels:validSvc.map(d=>d.svc.length>22?d.svc.substring(0,22)+'…':d.svc),
+      datasets:[
+        {label:'Min-Max Range',data:validSvc.map(d=>[d.min,d.max]),backgroundColor:OR+'44',borderColor:OR,borderWidth:1.5,borderRadius:4,borderSkipped:false}
+      ]
+    },
+    options:{
+      indexAxis:'y',
+      responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{
+          callbacks:{
+            title:(items)=>validSvc[items[0].dataIndex].svc,
+            label:(c)=>{
+              const d=validSvc[c.dataIndex];
+              return [`Min: ${fmt(d.min)}`,`Avg: ${fmt(d.avg)}`,`Max: ${fmt(d.max)}`,`Spread: ${fmt(d.max-d.min)} (${d.min>0?Math.round((d.max-d.min)/d.min*100):0}%)`];
+            }
+          }
+        }
+      },
+      scales:{
+        x:{ticks:{callback:(v)=>fmt(v),font:{size:10,family:'Inter'},color:MID},grid:{color:'#F3F4F6'},title:{display:true,text:'Price Range (USD)',font:{size:10,weight:600},color:MID}},
+        y:{ticks:{font:{size:10,family:'Inter'},color:INK},grid:{display:false}}
+      }
+    }
+  });
+}
+
+  // ─── 4. HISTORICAL PRICE TREND ───
+  destroyChart('rq-trend-chart');
+  const ctxT=document.getElementById('rq-trend-chart');
+  if(ctxT){
+    // For each year, compute avg price of selected services
+    const yearData={};
+    data.forEach(r=>{
+      if((r.services||[]).some(s=>sel.includes(s))&&r.price>0){
+        if(!yearData[r.year])yearData[r.year]={sum:0,count:0,min:Infinity,max:0};
+        yearData[r.year].sum+=r.price;
+        yearData[r.year].count++;
+        yearData[r.year].min=Math.min(yearData[r.year].min,r.price);
+        yearData[r.year].max=Math.max(yearData[r.year].max,r.price);
+      }
+    });
+    const sortedYears=Object.keys(yearData).sort();
+    const trendAvg=sortedYears.map(y=>Math.round(yearData[y].sum/yearData[y].count));
+    const trendMin=sortedYears.map(y=>yearData[y].min);
+    const trendMax=sortedYears.map(y=>yearData[y].max);
+    
+    CHARTS['rq-trend-chart']=new Chart(ctxT,{
+      type:'line',
+      data:{
+        labels:sortedYears,
+        datasets:[
+          {label:'Max',data:trendMax,borderColor:RD+'88',backgroundColor:'transparent',borderWidth:1.5,borderDash:[4,4],tension:.3,pointRadius:3},
+          {label:'Average',data:trendAvg,borderColor:OR,backgroundColor:OR+'22',borderWidth:3,tension:.3,fill:true,pointRadius:5,pointBackgroundColor:OR},
+          {label:'Min',data:trendMin,borderColor:GN+'88',backgroundColor:'transparent',borderWidth:1.5,borderDash:[4,4],tension:.3,pointRadius:3}
+        ]
+      },
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        plugins:{
+          legend:{position:'bottom',labels:{font:{size:10,family:'Inter'},boxWidth:14,padding:10,color:INK,usePointStyle:true}},
+          tooltip:{mode:'index',intersect:false,callbacks:{label:(c)=>c.dataset.label+': '+fmt(c.parsed.y)}}
+        },
+        scales:{
+          x:{ticks:{font:{size:10,family:'Inter'},color:INK},grid:{display:false},title:{display:true,text:'Year',font:{size:10,weight:600},color:MID}},
+          y:{beginAtZero:false,ticks:{callback:(v)=>fmt(v),font:{size:10,family:'Inter'},color:MID},grid:{color:'#F3F4F6'},title:{display:true,text:'Price (USD)',font:{size:10,weight:600},color:MID}}
+        }
+      }
+    });
+  }
   // Strategy
   const top3=venList.slice(0,3).map(v=>v.v);
   const totalTerm=vals.avg.reduce((a,b)=>a+b,0);
