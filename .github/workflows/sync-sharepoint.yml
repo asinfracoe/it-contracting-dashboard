@@ -1,0 +1,70 @@
+name: Sync SharePoint → Catalog
+
+on:
+  schedule:
+    - cron: '0 * * * *'  # every hour
+  workflow_dispatch:      # manual trigger button
+  push:
+    branches: [main]
+    paths:
+      - 'extractor/**'
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          cd extractor
+          pip install -r requirements.txt
+
+      - name: Run extractor (SharePoint → catalog_data.json)
+        env:
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          SHAREPOINT_SITE_URL: ${{ secrets.SHAREPOINT_SITE_URL }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          LLAMA_API_KEY: ${{ secrets.LLAMA_API_KEY }}
+          OPENAI_KEY: ${{ secrets.OPENAI_KEY }}
+        run: |
+          cd extractor
+          python main.py --output ../catalog_data.json
+
+      - name: Check for changes
+        id: changes
+        run: |
+          if git diff --quiet catalog_data.json; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "No changes"
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "Catalog updated"
+          fi
+
+      - name: Commit updated catalog
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add catalog_data.json
+          git commit -m "🔄 Auto-sync catalog from SharePoint [$(date -u +%Y-%m-%d\ %H:%M\ UTC)]"
+          git push origin main
+
+      - name: Trigger gh-pages deploy
+        if: steps.changes.outputs.changed == 'true'
+        run: echo "Main updated — deploy-pages.yml will auto-trigger"
