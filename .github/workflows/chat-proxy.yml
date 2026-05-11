@@ -1,0 +1,67 @@
+name: Chat Proxy
+
+on:
+  repository_dispatch:
+    types: [chat-request]
+
+permissions:
+  contents: write
+
+jobs:
+  respond:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout gh-pages
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          fetch-depth: 1
+
+      - name: Call Groq API
+        id: groq
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          MESSAGES: ${{ toJson(github.event.client_payload.messages) }}
+          REQUEST_ID: ${{ github.event.client_payload.request_id }}
+        run: |
+          echo "Processing request: $REQUEST_ID"
+          
+          # Call Groq
+          RESPONSE=$(curl -s https://api.groq.com/openai/v1/chat/completions \
+            -H "Authorization: Bearer $GROQ_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"model\": \"llama-3.3-70b-versatile\",
+              \"messages\": $MESSAGES,
+              \"max_tokens\": 600,
+              \"temperature\": 0.3
+            }")
+          
+          # Extract reply using jq
+          REPLY=$(echo "$RESPONSE" | jq -r '.choices[0].message.content // "Error: no response"')
+          
+          # Create response JSON
+          mkdir -p chat-responses
+          jq -n \
+            --arg id "$REQUEST_ID" \
+            --arg reply "$REPLY" \
+            --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            '{request_id: $id, reply: $reply, timestamp: $ts, status: "complete"}' \
+            > "chat-responses/$REQUEST_ID.json"
+          
+          echo "Response saved to chat-responses/$REQUEST_ID.json"
+
+      - name: Commit response to gh-pages
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add chat-responses/
+          git commit -m "Chat response: ${{ github.event.client_payload.request_id }}" || exit 0
+          git push origin gh-pages
+
+      - name: Cleanup old responses (older than 1 hour)
+        run: |
+          find chat-responses/ -name "*.json" -mmin +60 -delete 2>/dev/null || true
+          git add chat-responses/ || true
+          git commit -m "Cleanup old responses" || true
+          git push origin gh-pages || true
