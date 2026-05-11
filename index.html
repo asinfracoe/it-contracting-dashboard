@@ -162,10 +162,24 @@ html,body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-siz
 .input-f,.select-f{width:100%;border:1px solid var(--line);border-radius:var(--r);padding:9px 12px;font-size:.82rem;font-family:var(--sans);color:var(--ink);background:var(--white);outline:none;transition:all .15s;}
 .input-f:focus,.select-f:focus{border-color:var(--or);box-shadow:0 0 0 3px rgba(208,74,2,.10);}
 .chip-row{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px;max-height:240px;overflow-y:auto;padding:4px;}
-.chip{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:14px;cursor:pointer;font-size:.74rem;font-weight:600;border:1px solid var(--line);background:var(--white);color:var(--ink2);transition:all .12s;user-select:none;}
-.chip:hover{border-color:var(--or);color:var(--or);}
+.chip{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:6px 11px;border-radius:14px;
+  cursor:pointer;font-size:.74rem;font-weight:600;
+  border:1px solid var(--line);background:var(--white);
+  color:var(--ink2);transition:all .12s;
+  user-select:none;
+  position:relative;
+}
+.chip *{pointer-events:none;}  /* ← KEY FIX: children don't capture clicks */
+.chip:hover{border-color:var(--or);color:var(--or);background:var(--ort);}
 .chip.on{border-color:var(--or);background:var(--or);color:var(--white);}
-.chip-cnt{background:var(--line2);color:var(--mid);border-radius:8px;padding:1px 6px;font-size:.64rem;font-weight:700;}
+.chip.on:hover{background:var(--ord);}
+.chip .cat-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+.chip-cnt{
+  background:var(--line2);color:var(--mid);
+  border-radius:8px;padding:1px 6px;font-size:.62rem;font-weight:700;
+}
 .chip.on .chip-cnt{background:rgba(255,255,255,.25);color:var(--white);}
 
 /* ═══ MATRIX TABLE ═══ */
@@ -357,7 +371,7 @@ html,body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-siz
     <div class="ph-left">
       <div class="ph-kicker">Executive Dashboard</div>
       <div class="ph-title">Portfolio Overview</div>
-      <div class="ph-sub">Categories · Services · Vendors · Prices — live from SharePoint repository</div>
+      <div class="ph-sub">Strategic view of vendor spend, service coverage and pricing intelligence</div>
     </div>
     <div class="filter-bar">
       <div class="proj-tabs" id="proj-tabs"></div>
@@ -368,43 +382,63 @@ html,body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-siz
   <!-- KPI STRIP -->
   <div class="kpi-row" id="ov-kpis"></div>
 
-  <!-- PROJECT CARDS -->
-  <div class="sec-lbl">Projects <span class="sec-lbl-sub">· click any card to drill in</span></div>
+  <!-- PROJECT CARDS WITH MINI SPARKLINES -->
+  <div class="sec-lbl">Project Portfolio <span class="sec-lbl-sub">· click to drill in</span></div>
   <div class="grid-3" id="ov-proj-cards"></div>
 
-  <!-- CATEGORY BREAKDOWN -->
-  <div class="sec-lbl">Categories &amp; Services <span class="sec-lbl-sub">· number of services and pricing per category</span></div>
+  <!-- ROW 1: HEATMAP + RADAR -->
   <div class="grid-2">
     <div class="card">
       <div class="card-head">
-        <div class="card-title"><span class="card-title-ico">🗂️</span>Services per Category</div>
-        <div class="card-meta or" id="ov-svc-meta">—</div>
+        <div class="card-title"><span class="card-title-ico">🔥</span>Vendor × Category Spend Heatmap</div>
+        <div class="card-meta or">Intensity = $</div>
       </div>
-      <div class="chart-wrap"><canvas id="ov-svc-chart"></canvas></div>
+      <div id="ov-heatmap" style="padding:10px 0"></div>
     </div>
     <div class="card">
       <div class="card-head">
-        <div class="card-title"><span class="card-title-ico">💰</span>Price Range per Category</div>
-        <div class="card-meta bl">Min · Avg · Max</div>
+        <div class="card-title"><span class="card-title-ico">🎯</span>Category Maturity Radar</div>
+        <div class="card-meta bl">Vendors · Services · Quotes</div>
       </div>
-      <div class="chart-wrap"><canvas id="ov-range-chart"></canvas></div>
+      <div class="chart-wrap"><canvas id="ov-radar-chart"></canvas></div>
     </div>
   </div>
 
-  <!-- CATEGORY SUMMARY TABLE -->
+  <!-- ROW 2: TREEMAP + SCATTER -->
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title"><span class="card-title-ico">🗺️</span>Spend Treemap</div>
+        <div class="card-meta gn">Proportional</div>
+      </div>
+      <div id="ov-treemap" style="min-height:260px;display:flex;flex-wrap:wrap;gap:3px;padding:4px"></div>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title"><span class="card-title-ico">📊</span>Price Distribution &amp; Outliers</div>
+        <div class="card-meta am">Box Plot</div>
+      </div>
+      <div class="chart-wrap"><canvas id="ov-box-chart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- CATEGORY SUMMARY TABLE WITH INLINE BARS -->
   <div class="card" style="padding:0;margin-bottom:20px">
-    <div class="card-head" style="padding:14px 18px"><div class="card-title"><span class="card-title-ico">📋</span>Category Summary</div><div class="card-meta nt" id="ov-tbl-meta">—</div></div>
+    <div class="card-head" style="padding:14px 18px">
+      <div class="card-title"><span class="card-title-ico">📋</span>Category Deep-Dive</div>
+      <div class="card-meta nt" id="ov-tbl-meta">—</div>
+    </div>
     <div style="overflow:auto">
       <table class="cat-table" id="ov-cat-table">
         <thead>
           <tr>
             <th>Category</th>
-            <th>Quote Files</th>
-            <th>Services Offered</th>
+            <th>Files</th>
+            <th>Services</th>
             <th>Vendors</th>
-            <th>Min Price</th>
-            <th>Avg Price</th>
-            <th>Max Price</th>
+            <th style="min-width:160px">Price Range</th>
+            <th>Avg</th>
+            <th style="min-width:100px">Volatility</th>
           </tr>
         </thead>
         <tbody></tbody>
@@ -412,18 +446,26 @@ html,body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-siz
     </div>
   </div>
 
-  <!-- VENDORS + TOP SERVICES -->
+  <!-- ROW 3: VENDOR CONCENTRATION + TOP SERVICES -->
   <div class="grid-2">
     <div class="card">
-      <div class="card-head"><div class="card-title"><span class="card-title-ico">🏢</span>Vendors in Scope</div><div class="card-meta gn" id="ov-ven-meta">—</div></div>
-      <div class="blist" id="ov-top-vendors"></div>
+      <div class="card-head">
+        <div class="card-title"><span class="card-title-ico">🏢</span>Vendor Concentration Risk</div>
+        <div class="card-meta gn" id="ov-ven-meta">—</div>
+      </div>
+      <div id="ov-vendor-concentration"></div>
     </div>
     <div class="card">
-      <div class="card-head"><div class="card-title"><span class="card-title-ico">📊</span>Top Services by Price</div><div class="card-meta or">Avg $</div></div>
+      <div class="card-head">
+        <div class="card-title"><span class="card-title-ico">💎</span>Highest-Value Services</div>
+        <div class="card-meta or">Avg contract $</div>
+      </div>
       <div class="blist" id="ov-top-services"></div>
     </div>
   </div>
 </div>
+
+  
 <!-- ═══════════════════════════════════ -->
 <!-- PAGE 2: VENDOR-SERVICE PRICE SELECTOR -->
 <!-- ═══════════════════════════════════ -->
@@ -1136,17 +1178,18 @@ function renderOverview(){
   const prices=data.map(r=>r.price).filter(p=>p>0);
   const avg=prices.length?prices.reduce((a,b)=>a+b,0)/prices.length:0;
   const tot=prices.reduce((a,b)=>a+b,0);
+  const median=prices.length?[...prices].sort((a,b)=>a-b)[Math.floor(prices.length/2)]:0;
 
-  // KPIs
+  // ─── KPIs ───
   document.getElementById('ov-kpis').innerHTML=[
     {lbl:'Quote Files',val:data.length,sub:CUR_PROJ==='All'?'All projects':CUR_PROJ,ico:'📄'},
     {lbl:'Categories',val:cats.length,sub:'Tech domains',ico:'🗂️'},
     {lbl:'Services',val:svcs.length,sub:'Line items',ico:'🧩'},
     {lbl:'Vendors',val:vens.length,sub:'Active suppliers',ico:'🏢'},
-    {lbl:'Total Value',val:fmt(tot),sub:'Avg '+fmt(avg),ico:'💰'}
+    {lbl:'Total Value',val:fmt(tot),sub:'Median '+fmt(median),ico:'💰'}
   ].map(k=>`<div class="kpi"><div class="kpi-ico">${k.ico}</div><div class="kpi-lbl">${k.lbl}</div><div class="kpi-val">${k.val}</div><div class="kpi-sub">${k.sub}</div></div>`).join('');
 
-  // Project cards
+  // ─── PROJECT CARDS WITH SPARKLINES ───
   const projs=['Idemia','Tenneco','Panasonic'];
   document.getElementById('ov-proj-cards').innerHTML=projs.map(p=>{
     const pd=DB.filter(r=>r.proj===p);
@@ -1154,43 +1197,51 @@ function renderOverview(){
     const psv=[...new Set(pd.flatMap(r=>r.services||[]))];
     const ps=pd.map(r=>r.price).filter(x=>x>0);
     const pa=ps.length?ps.reduce((a,b)=>a+b,0)/ps.length:0;
+    const pTotal=ps.reduce((a,b)=>a+b,0);
     const col=PROJ_COL[p];
+    
+    // Build a tiny sparkline of quotes by year
+    const yrs=[...new Set(pd.map(r=>r.year))].sort();
+    const yrCounts=yrs.map(y=>pd.filter(r=>r.year===y).length);
+    const maxY=Math.max(...yrCounts,1);
+    const sparklineBars=yrCounts.map((c,i)=>{
+      const h=Math.max(4,(c/maxY)*28);
+      return `<div style="flex:1;background:${col};height:${h}px;border-radius:2px 2px 0 0;opacity:${0.4+(c/maxY)*0.6}" title="${yrs[i]}: ${c} quotes"></div>`;
+    }).join('');
+    
     return `<div class="proj-card" style="border-left-color:${col}" onclick="drillProject('${p}')">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
         <div>
           <div class="proj-name">${p}</div>
-          <div class="proj-sub">${pc.length} categories · ${psv.length} services</div>
+          <div class="proj-sub">${pc.length} categories · ${psv.length} services · ${[...new Set(pd.map(r=>r.vendor))].length} vendors</div>
         </div>
         <span class="b" style="background:${col}15;color:${col}">${pd.length} files</span>
       </div>
-      <div class="proj-stats">
-        <div class="proj-stat"><div class="proj-stat-val">${pd.length}</div><div class="proj-stat-lbl">Quotes</div></div>
-        <div class="proj-stat"><div class="proj-stat-val or">${fmt(pa)}</div><div class="proj-stat-lbl">Avg Price</div></div>
-        <div class="proj-stat"><div class="proj-stat-val">${[...new Set(pd.map(r=>r.vendor))].length}</div><div class="proj-stat-lbl">Vendors</div></div>
+      <div style="display:flex;align-items:flex-end;gap:3px;height:32px;margin-bottom:10px;padding:0 2px">${sparklineBars}</div>
+      <div style="display:flex;justify-content:space-between;font-size:.64rem;color:var(--mid);margin-bottom:8px;padding:0 2px">
+        ${yrs.map(y=>`<span>${y}</span>`).join('')}
+      </div>
+      <div class="proj-stats" style="border-top:1px solid var(--line2);padding-top:10px">
+        <div class="proj-stat"><div class="proj-stat-val">${fmt(pTotal)}</div><div class="proj-stat-lbl">Total Spend</div></div>
+        <div class="proj-stat"><div class="proj-stat-val or">${fmt(pa)}</div><div class="proj-stat-lbl">Avg Quote</div></div>
+        <div class="proj-stat"><div class="proj-stat-val">${pd.length?fmt(Math.min(...ps)):'—'}</div><div class="proj-stat-lbl">Best Price</div></div>
       </div>
     </div>`;
   }).join('');
 
-  // Chart 1: Services per category (bar chart)
-  const catSvcData=cats.map(c=>{
-    const cs=[...new Set(data.filter(r=>r.cat===c).flatMap(r=>r.services||[]))];
-    return {label:c,value:cs.length,color:CAT_COL[c]||MID};
-  }).sort((a,b)=>b.value-a.value);
-  drawBarH('ov-svc-chart',catSvcData);
-  set('ov-svc-meta',svcs.length+' total services');
+  // ─── HEATMAP: Vendor × Category ───
+  renderHeatmap(data,cats,vens);
 
-  // Chart 2: Price range per category (grouped bar - min/avg/max)
-  drawPriceRange('ov-range-chart',cats.map(c=>{
-    const ps=data.filter(r=>r.cat===c).map(r=>r.price).filter(p=>p>0);
-    return {
-      label:c,
-      min:ps.length?Math.min(...ps):0,
-      avg:ps.length?ps.reduce((a,b)=>a+b,0)/ps.length:0,
-      max:ps.length?Math.max(...ps):0
-    };
-  }).filter(d=>d.avg>0).sort((a,b)=>b.avg-a.avg));
+  // ─── RADAR: Category Maturity ───
+  renderRadar(data,cats);
 
-  // Category summary table
+  // ─── TREEMAP ───
+  renderTreemap(data);
+
+  // ─── BOX PLOT ───
+  renderBoxPlot(data,cats);
+
+  // ─── CATEGORY DEEP-DIVE TABLE ───
   document.querySelector('#ov-cat-table tbody').innerHTML=cats.map(c=>{
     const rs=data.filter(r=>r.cat===c);
     const cs=[...new Set(rs.flatMap(r=>r.services||[]))];
@@ -1199,55 +1250,373 @@ function renderOverview(){
     const mn=cps.length?Math.min(...cps):0;
     const mx=cps.length?Math.max(...cps):0;
     const av=cps.length?cps.reduce((a,b)=>a+b,0)/cps.length:0;
-    return `<tr>
+    const volatility=mn>0?Math.round((mx-mn)/mn*100):0;
+    
+    // Inline range bar
+    const globalMax=Math.max(...cats.map(cat=>{const p=data.filter(r=>r.cat===cat).map(r=>r.price).filter(x=>x>0);return p.length?Math.max(...p):0;}));
+    const mnPct=globalMax?(mn/globalMax*100):0;
+    const avPct=globalMax?(av/globalMax*100):0;
+    const mxPct=globalMax?(mx/globalMax*100):0;
+    
+    return `<tr onclick="drillCategory('${esc(c)}')" style="cursor:pointer">
       <td><span class="cat-chip"><span class="cat-dot" style="background:${CAT_COL[c]||MID}"></span>${esc(c)}</span></td>
       <td><span class="num">${rs.length}</span></td>
       <td><span class="num">${cs.length}</span></td>
       <td><span class="num">${cv.length}</span></td>
-      <td><span class="num" style="color:${GN}">${fmt(mn)}</span></td>
+      <td>
+        <div style="position:relative;background:var(--line2);height:20px;border-radius:3px;overflow:hidden">
+          <div style="position:absolute;left:${mnPct}%;width:${mxPct-mnPct}%;top:0;height:100%;background:linear-gradient(90deg,${GN},${OR},${RD});opacity:.85"></div>
+          <div style="position:absolute;left:${avPct}%;top:0;height:100%;width:2px;background:var(--ink)"></div>
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:space-between;padding:0 6px;font-size:.64rem;font-weight:700;color:var(--white);text-shadow:0 0 2px rgba(0,0,0,.5)">
+            <span>${fmt(mn)}</span><span>${fmt(mx)}</span>
+          </div>
+        </div>
+      </td>
       <td><span class="num">${fmt(av)}</span></td>
-      <td><span class="num" style="color:${RD}">${fmt(mx)}</span></td>
+      <td>
+        <div style="display:flex;align-items:center;gap:6px">
+          <div style="width:50px;background:var(--line2);height:6px;border-radius:3px;overflow:hidden">
+            <div style="height:100%;background:${volatility>100?RD:volatility>50?AM:GN};width:${Math.min(100,volatility)}%"></div>
+          </div>
+          <span class="b ${volatility>100?'rd':volatility>50?'am':'gn'}">${volatility}%</span>
+        </div>
+      </td>
     </tr>`;
   }).join('');
   set('ov-tbl-meta',cats.length+' categories');
 
-  // Vendors list
-  const venStats={};
-  data.forEach(r=>{
-    if(!venStats[r.vendor])venStats[r.vendor]={count:0,svcs:new Set(),prices:[]};
-    venStats[r.vendor].count++;
-    (r.services||[]).forEach(s=>venStats[r.vendor].svcs.add(s));
-    if(r.price>0)venStats[r.vendor].prices.push(r.price);
-  });
-  const topV=Object.entries(venStats).sort((a,b)=>b[1].count-a[1].count).slice(0,8);
-  const maxV=topV.length?topV[0][1].count:1;
-  document.getElementById('ov-top-vendors').innerHTML=topV.map(([v,d])=>`
-    <div class="blist-row">
-      <div class="blist-lbl">${esc(v)}<div style="font-size:.68rem;color:${MID};font-weight:500;margin-top:1px">${d.svcs.size} services</div></div>
-      <div class="blist-bar"><div class="blist-fill" style="width:${d.count/maxV*100}%;background:${vcol(v)}"></div></div>
-      <div class="blist-val">${d.count}</div>
-    </div>
-  `).join('');
+  // ─── VENDOR CONCENTRATION ───
+  renderVendorConcentration(data);
   set('ov-ven-meta',vens.length+' vendors');
 
-  // Top services by avg price
+  // ─── TOP SERVICES BY VALUE ───
   const svcMap={};
   data.forEach(r=>{(r.services||[]).forEach(s=>{
-    if(!svcMap[s])svcMap[s]={cat:r.cat,prices:[],count:0};
+    if(!svcMap[s])svcMap[s]={cat:r.cat,prices:[],count:0,vendors:new Set()};
     if(r.price>0)svcMap[s].prices.push(r.price);
     svcMap[s].count++;
+    svcMap[s].vendors.add(r.vendor);
   });});
-  const topS=Object.entries(svcMap).map(([s,d])=>({s,cat:d.cat,avg:d.prices.length?d.prices.reduce((a,b)=>a+b,0)/d.prices.length:0,count:d.count})).sort((a,b)=>b.avg-a.avg).slice(0,8);
+  const topS=Object.entries(svcMap)
+    .map(([s,d])=>({s,cat:d.cat,avg:d.prices.length?d.prices.reduce((a,b)=>a+b,0)/d.prices.length:0,count:d.count,vendors:d.vendors.size}))
+    .sort((a,b)=>b.avg-a.avg).slice(0,8);
   const maxSvc=topS.length?topS[0].avg:1;
   document.getElementById('ov-top-services').innerHTML=topS.map(s=>`
-    <div class="blist-row">
-      <div class="blist-lbl">${esc(s.s.length>24?s.s.substring(0,24)+'…':s.s)}<div style="font-size:.68rem;color:${MID};font-weight:500;margin-top:1px">${esc(s.cat)}</div></div>
+    <div class="blist-row" style="grid-template-columns:220px 1fr 110px">
+      <div class="blist-lbl">
+        ${esc(s.s.length>30?s.s.substring(0,30)+'…':s.s)}
+        <div style="font-size:.66rem;color:var(--mid);font-weight:500;margin-top:2px;display:flex;gap:10px">
+          <span>${esc(s.cat)}</span>
+          <span>${s.vendors} vendor${s.vendors>1?'s':''}</span>
+          <span>${s.count} quote${s.count>1?'s':''}</span>
+        </div>
+      </div>
       <div class="blist-bar"><div class="blist-fill" style="width:${s.avg/maxSvc*100}%;background:${CAT_COL[s.cat]||OR}"></div></div>
       <div class="blist-val">${fmt(s.avg)}</div>
     </div>
   `).join('');
 }
 
+// ═══ HEATMAP: Vendor × Category ═══
+function renderHeatmap(data,cats,vens){
+  // Top 10 vendors by quote count
+  const venVol={};
+  data.forEach(r=>{venVol[r.vendor]=(venVol[r.vendor]||0)+1;});
+  const topVens=Object.entries(venVol).sort((a,b)=>b[1]-a[1]).slice(0,10).map(x=>x[0]);
+  
+  // Build matrix: vendor × category → total spend
+  const matrix={};
+  let globalMax=0;
+  topVens.forEach(v=>{
+    matrix[v]={};
+    cats.forEach(c=>{
+      const ps=data.filter(r=>r.vendor===v&&r.cat===c).map(r=>r.price).filter(p=>p>0);
+      const total=ps.reduce((a,b)=>a+b,0);
+      matrix[v][c]=total;
+      if(total>globalMax)globalMax=total;
+    });
+  });
+  
+  let html=`<div style="overflow-x:auto"><table style="width:100%;border-collapse:separate;border-spacing:3px"><thead><tr>
+    <th style="background:transparent;padding:6px 8px;text-align:left;font-size:.66rem;color:var(--mid);font-weight:700;text-transform:uppercase;letter-spacing:.6px;min-width:120px">Vendor</th>`;
+  cats.forEach(c=>{
+    html+=`<th style="background:transparent;padding:6px;font-size:.62rem;color:var(--mid);font-weight:700;text-transform:uppercase;letter-spacing:.5px;writing-mode:vertical-rl;transform:rotate(180deg);height:90px;min-width:40px" title="${esc(c)}">${esc(c.length>18?c.substring(0,18)+'…':c)}</th>`;
+  });
+  html+=`</tr></thead><tbody>`;
+  
+  topVens.forEach(v=>{
+    html+=`<tr>
+      <td style="padding:6px 8px;font-size:.74rem;font-weight:600;color:var(--ink);background:var(--bg);border-radius:var(--r);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(v)}</td>`;
+    cats.forEach(c=>{
+      const val=matrix[v][c];
+      if(val>0){
+        const intensity=val/globalMax;
+        const bg=`rgba(208,74,2,${0.08+intensity*0.85})`;
+        const txt=intensity>0.5?'#fff':'var(--ink)';
+        html+=`<td style="padding:8px 4px;text-align:center;background:${bg};border-radius:var(--r);cursor:pointer;font-size:.68rem;font-weight:700;color:${txt};min-width:50px" title="${esc(v)} × ${esc(c)}: ${fmtFull(val)}">${fmt(val)}</td>`;
+      }else{
+        html+=`<td style="padding:8px 4px;text-align:center;background:var(--bg);border-radius:var(--r);font-size:.66rem;color:#D1D5DB">—</td>`;
+      }
+    });
+    html+=`</tr>`;
+  });
+  html+=`</tbody></table></div>
+    <div style="margin-top:12px;display:flex;align-items:center;gap:10px;font-size:.68rem;color:var(--mid);justify-content:center">
+      <span>Low</span>
+      <div style="width:140px;height:10px;background:linear-gradient(90deg,rgba(208,74,2,.08),rgba(208,74,2,.9));border-radius:3px"></div>
+      <span>High</span>
+      <span style="margin-left:12px;font-weight:700;color:var(--ink)">Max: ${fmt(globalMax)}</span>
+    </div>`;
+  document.getElementById('ov-heatmap').innerHTML=html;
+}
+
+// ═══ RADAR: Category Maturity ═══
+function renderRadar(data,cats){
+  destroyChart('ov-radar-chart');
+  const ctx=document.getElementById('ov-radar-chart');
+  if(!ctx)return;
+  
+  // For each category, compute normalized scores (0-100) for: vendors, services, quotes, avg price, volatility
+  const maxVens=Math.max(...cats.map(c=>new Set(data.filter(r=>r.cat===c).map(r=>r.vendor)).size),1);
+  const maxSvcs=Math.max(...cats.map(c=>new Set(data.filter(r=>r.cat===c).flatMap(r=>r.services||[])).size),1);
+  const maxQuotes=Math.max(...cats.map(c=>data.filter(r=>r.cat===c).length),1);
+  
+  const dimensions=['Vendor Choice','Service Breadth','Quote Volume','Price Level','Competition'];
+  
+  const datasets=cats.slice(0,4).map((c,i)=>{
+    const rs=data.filter(r=>r.cat===c);
+    const vs=new Set(rs.map(r=>r.vendor)).size;
+    const ss=new Set(rs.flatMap(r=>r.services||[])).size;
+    const qs=rs.length;
+    const ps=rs.map(r=>r.price).filter(p=>p>0);
+    const avgP=ps.length?ps.reduce((a,b)=>a+b,0)/ps.length:0;
+    const mn=ps.length?Math.min(...ps):0;
+    const mx=ps.length?Math.max(...ps):0;
+    const volatility=mn>0?Math.min(100,(mx-mn)/mn*100):0;
+    const globalAvg=data.filter(r=>r.price>0).reduce((a,b)=>a+b.price,0)/(data.filter(r=>r.price>0).length||1);
+    
+    const col=CAT_COL[c]||MID;
+    return {
+      label:c,
+      data:[
+        Math.round((vs/maxVens)*100),
+        Math.round((ss/maxSvcs)*100),
+        Math.round((qs/maxQuotes)*100),
+        Math.round(Math.min(100,(avgP/globalAvg)*50)),
+        Math.round(volatility)
+      ],
+      borderColor:col,
+      backgroundColor:col+'22',
+      borderWidth:2,
+      pointBackgroundColor:col,
+      pointRadius:3,
+      pointHoverRadius:5
+    };
+  });
+  
+  CHARTS['ov-radar-chart']=new Chart(ctx,{
+    type:'radar',
+    data:{labels:dimensions,datasets},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{position:'bottom',labels:{font:{size:10,family:'Inter'},boxWidth:8,padding:8,color:INK}},
+        tooltip:{callbacks:{label:(c)=>c.dataset.label+' · '+c.parsed.r+'%'}}
+      },
+      scales:{
+        r:{
+          beginAtZero:true,max:100,
+          ticks:{stepSize:25,font:{size:9,family:'Inter'},color:MID,backdropColor:'transparent'},
+          grid:{color:'#E5E7EB'},
+          angleLines:{color:'#E5E7EB'},
+          pointLabels:{font:{size:10,family:'Inter',weight:600},color:INK}
+        }
+      }
+    }
+  });
+}
+
+// ═══ TREEMAP: Proportional Spend ═══
+function renderTreemap(data){
+  const catSpend={};
+  data.forEach(r=>{if(r.price>0){catSpend[r.cat]=(catSpend[r.cat]||0)+r.price;}});
+  const total=Object.values(catSpend).reduce((a,b)=>a+b,0);
+  const sorted=Object.entries(catSpend).sort((a,b)=>b[1]-a[1]);
+  
+  // Build squarified-ish layout
+  const container=document.getElementById('ov-treemap');
+  container.innerHTML='';
+  container.style.position='relative';
+  container.style.height='260px';
+  container.style.display='flex';
+  container.style.flexWrap='wrap';
+  container.style.gap='3px';
+  
+  let html='';
+  sorted.forEach(([cat,val],i)=>{
+    const pct=(val/total)*100;
+    const col=CAT_COL[cat]||MID;
+    // Tile sizes vary with pct
+    const flexGrow=val;
+    const fontSize=pct>25?1.1:pct>15?.95:pct>8?.82:.72;
+    const minWidth=pct>25?'220px':pct>10?'140px':'90px';
+    
+    html+=`<div style="flex:${flexGrow} 1 ${minWidth};min-height:100px;background:${col};border-radius:6px;padding:12px 14px;color:#fff;cursor:pointer;transition:all .15s;display:flex;flex-direction:column;justify-content:space-between;overflow:hidden;position:relative" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'" onclick="drillCategory('${esc(cat)}')">
+      <div>
+        <div style="font-family:var(--serif);font-weight:700;font-size:${fontSize}rem;line-height:1.1;margin-bottom:4px">${esc(cat)}</div>
+        <div style="font-size:.68rem;opacity:.85;font-weight:500">${pct.toFixed(1)}% of total</div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-end">
+        <div style="font-family:var(--serif);font-weight:700;font-size:${fontSize*1.3}rem;line-height:1">${fmt(val)}</div>
+        <div style="font-size:.66rem;opacity:.8">${data.filter(r=>r.cat===cat).length} files</div>
+      </div>
+    </div>`;
+  });
+  container.innerHTML=html;
+}
+
+// ═══ BOX PLOT: Price Distribution ═══
+function renderBoxPlot(data,cats){
+  destroyChart('ov-box-chart');
+  const ctx=document.getElementById('ov-box-chart');
+  if(!ctx)return;
+  
+  const boxData=cats.map(c=>{
+    const ps=data.filter(r=>r.cat===c).map(r=>r.price).filter(p=>p>0).sort((a,b)=>a-b);
+    if(!ps.length)return null;
+    const q1=ps[Math.floor(ps.length*0.25)];
+    const median=ps[Math.floor(ps.length*0.5)];
+    const q3=ps[Math.floor(ps.length*0.75)];
+    const min=ps[0];
+    const max=ps[ps.length-1];
+    return {cat:c,min,q1,median,q3,max,count:ps.length};
+  }).filter(Boolean);
+  
+  // Custom horizontal range chart simulating box plot
+  CHARTS['ov-box-chart']=new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels:boxData.map(b=>b.cat.length>18?b.cat.substring(0,18)+'…':b.cat),
+      datasets:[
+        {
+          label:'Min-Q1',
+          data:boxData.map(b=>[b.min,b.q1]),
+          backgroundColor:boxData.map(b=>(CAT_COL[b.cat]||OR)+'44'),
+          borderColor:boxData.map(b=>CAT_COL[b.cat]||OR),
+          borderWidth:1,
+          borderSkipped:false,
+          borderRadius:2
+        },
+        {
+          label:'Q1-Q3 (IQR)',
+          data:boxData.map(b=>[b.q1,b.q3]),
+          backgroundColor:boxData.map(b=>(CAT_COL[b.cat]||OR)+'CC'),
+          borderColor:boxData.map(b=>CAT_COL[b.cat]||OR),
+          borderWidth:2,
+          borderSkipped:false,
+          borderRadius:3
+        },
+        {
+          label:'Q3-Max',
+          data:boxData.map(b=>[b.q3,b.max]),
+          backgroundColor:boxData.map(b=>(CAT_COL[b.cat]||OR)+'44'),
+          borderColor:boxData.map(b=>CAT_COL[b.cat]||OR),
+          borderWidth:1,
+          borderSkipped:false,
+          borderRadius:2
+        }
+      ]
+    },
+    options:{
+      indexAxis:'y',
+      responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{position:'bottom',labels:{font:{size:10,family:'Inter'},boxWidth:10,padding:8,color:INK}},
+        tooltip:{
+          callbacks:{
+            label:(c)=>{
+              const b=boxData[c.dataIndex];
+              if(c.datasetIndex===1)return `Median: ${fmt(b.median)} (n=${b.count})`;
+              return c.dataset.label+': '+fmt(c.parsed._custom?.start||0)+' - '+fmt(c.parsed._custom?.end||0);
+            }
+          }
+        }
+      },
+      scales:{
+        x:{
+          stacked:false,
+          ticks:{callback:(v)=>fmt(v),font:{size:10,family:'Inter'},color:MID},
+          grid:{color:'#F3F4F6'}
+        },
+        y:{
+          stacked:false,
+          ticks:{font:{size:10,family:'Inter'},color:INK},
+          grid:{display:false}
+        }
+      }
+    }
+  });
+}
+
+// ═══ VENDOR CONCENTRATION: Pareto-style ═══
+function renderVendorConcentration(data){
+  const venSpend={};
+  data.forEach(r=>{if(r.price>0){venSpend[r.vendor]=(venSpend[r.vendor]||0)+r.price;}});
+  const total=Object.values(venSpend).reduce((a,b)=>a+b,0);
+  const sorted=Object.entries(venSpend).sort((a,b)=>b[1]-a[1]);
+  
+  // Calculate cumulative percentage
+  let cum=0;
+  const rows=sorted.slice(0,8).map(([v,val])=>{
+    const pct=(val/total)*100;
+    cum+=pct;
+    const risk=cum<=40?'gn':cum<=70?'am':'rd';
+    const riskLabel=cum<=40?'Diversified':cum<=70?'Moderate':'Concentrated';
+    return{v,val,pct,cum,risk,riskLabel};
+  });
+  
+  // Calculate concentration metrics
+  const top3Pct=sorted.slice(0,3).reduce((a,b)=>a+b[1],0)/total*100;
+  const top3Label=top3Pct<40?'Low Risk':top3Pct<60?'Moderate':'High Risk';
+  const top3Color=top3Pct<40?GN:top3Pct<60?AM:RD;
+  
+  let html=`<div style="background:${top3Color}15;border-left:3px solid ${top3Color};padding:10px 12px;border-radius:var(--r);margin-bottom:14px;display:flex;align-items:center;justify-content:space-between">
+    <div>
+      <div style="font-size:.68rem;color:var(--mid);font-weight:700;text-transform:uppercase;letter-spacing:.6px">Top 3 Vendor Concentration</div>
+      <div style="font-family:var(--serif);font-size:1.5rem;font-weight:700;color:${top3Color};line-height:1;margin-top:3px">${top3Pct.toFixed(1)}%</div>
+    </div>
+    <span class="b" style="background:${top3Color};color:#fff;padding:5px 11px;font-size:.72rem">${top3Label}</span>
+  </div>`;
+  
+  html+=rows.map((r,i)=>`
+    <div style="margin-bottom:9px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;font-size:.76rem">
+        <span style="font-weight:600;color:var(--ink)">${i+1}. ${esc(r.v)}</span>
+        <span style="display:flex;gap:8px;align-items:center">
+          <span class="num" style="color:var(--or);font-weight:700">${fmt(r.val)}</span>
+          <span class="b ${r.risk}" style="min-width:54px;text-align:center">${r.pct.toFixed(1)}%</span>
+        </span>
+      </div>
+      <div style="background:var(--line2);height:6px;border-radius:3px;overflow:hidden;position:relative">
+        <div style="position:absolute;inset:0;background:linear-gradient(90deg,${vcol(r.v)},${vcol(r.v)}99);width:${r.pct}%;border-radius:3px"></div>
+      </div>
+    </div>
+  `).join('');
+  
+  document.getElementById('ov-vendor-concentration').innerHTML=html;
+}
+
+// ═══ DRILLDOWNS ═══
+function drillCategory(cat){
+  // Switch to selector tab with this category pre-selected
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelector('.tab[data-page="selector"]').classList.add('active');
+  document.getElementById('pg-selector').classList.add('active');
+  document.getElementById('sel-cat').value=cat;
+  selFilterChips();
+  toast('Filtered to '+cat,'ok');
+}
   
 function drillProject(p){
   CUR_PROJ=p;
@@ -1332,7 +1701,6 @@ function drawPriceRange(id,data){
 // SELECTOR PAGE
 // ═══════════════════════════════════
 function selFilterChips(){
-  // MASTER DATA — no project filter
   const data=DB;
   const s=(document.getElementById('sel-search').value||'').toLowerCase();
   const c=document.getElementById('sel-cat').value;
@@ -1342,32 +1710,41 @@ function selFilterChips(){
     const cs=new Set(data.filter(r=>r.cat===c).flatMap(r=>r.services||[]));
     sv=sv.filter(x=>cs.has(x));
   }
-  document.getElementById('sel-chips').innerHTML=sv.map(x=>{
+  const container=document.getElementById('sel-chips');
+  container.innerHTML=sv.map((x,i)=>{
     const cnt=data.filter(r=>(r.services||[]).includes(x)).length;
     const vens=new Set(data.filter(r=>(r.services||[]).includes(x)).map(r=>r.vendor));
     const on=selSvcs.has(x);
     const catOf=data.find(r=>(r.services||[]).includes(x))?.cat||'';
-    return `<div class="chip ${on?'on':''}" data-svc="${esc(x)}" onclick="togSelSvc(this)" title="${esc(x)} · ${vens.size} vendors · ${cnt} quotes">
+    return `<div class="chip ${on?'on':''}" data-svc="${esc(x)}" data-idx="${i}" title="${esc(x)} · ${vens.size} vendors · ${cnt} quotes">
       <span class="cat-dot" style="background:${CAT_COL[catOf]||MID}"></span>
       <span>${esc(x.length>30?x.substring(0,30)+'…':x)}</span>
       <span class="chip-cnt">${cnt}</span>
     </div>`;
   }).join('');
+  
+  // Attach listeners PROPERLY after DOM update
+  container.querySelectorAll('.chip').forEach(chip=>{
+    chip.addEventListener('click',function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      const svc=this.dataset.svc;
+      if(selSvcs.has(svc)){
+        selSvcs.delete(svc);
+        this.classList.remove('on');
+      }else{
+        selSvcs.add(svc);
+        this.classList.add('on');
+      }
+      selRenderPicked();
+      selRender();
+    });
+  });
+  
   selRenderPicked();
 }
 
-function togSelSvc(el){
-  const s=el.dataset.svc;
-  if(selSvcs.has(s)){
-    selSvcs.delete(s);
-    el.classList.remove('on');
-  }else{
-    selSvcs.add(s);
-    el.classList.add('on');
-  }
-  selRenderPicked();
-  selRender();
-}
+
 
 function selRenderPicked(){
   const el=document.getElementById('sel-picked');
@@ -1726,16 +2103,32 @@ function loadDemoQuote(){
 }
 
 function inFilterSvc(){
-  const data=filteredDB();
   const s=(document.getElementById('in-svc-s').value||'').toLowerCase();
   const c=document.getElementById('in-cat').value;
   let sv=[...new Set(DB.flatMap(r=>r.services||[]))].sort();
   if(s)sv=sv.filter(x=>x.toLowerCase().includes(s));
   if(c!=='All'){const cs=new Set(DB.filter(r=>r.cat===c).flatMap(r=>r.services||[]));sv=sv.filter(x=>cs.has(x));}
-  document.getElementById('in-svcs').innerHTML=sv.map(x=>{
+  
+  const container=document.getElementById('in-svcs');
+  container.innerHTML=sv.map(x=>{
     const on=inSvcs.has(x);
-    return `<div class="chip ${on?'on':''}" onclick="togInSvc(${JSON.stringify(x)},this)">${esc(x.length>26?x.substring(0,26)+'…':x)}</div>`;
+    return `<div class="chip ${on?'on':''}" data-svc="${esc(x)}">
+      <span>${esc(x.length>26?x.substring(0,26)+'…':x)}</span>
+    </div>`;
   }).join('');
+  
+  container.querySelectorAll('.chip').forEach(chip=>{
+    chip.addEventListener('click',function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      const svc=this.dataset.svc;
+      if(inSvcs.has(svc)){inSvcs.delete(svc);this.classList.remove('on');}
+      else{inSvcs.add(svc);this.classList.add('on');}
+      set('in-svc-cnt',inSvcs.size);
+      scoreQuote();
+    });
+  });
+  
   set('in-svc-cnt',inSvcs.size);
 }
 
@@ -2124,16 +2517,30 @@ function rqFilterSvc(){
   let sv=[...new Set(DB.flatMap(r=>r.services||[]))].sort();
   if(s)sv=sv.filter(x=>x.toLowerCase().includes(s));
   if(rqCat!=='All'){const cs=new Set(DB.filter(r=>r.cat===rqCat).flatMap(r=>r.services||[]));sv=sv.filter(x=>cs.has(x));}
-  document.getElementById('rq-svcs').innerHTML=sv.map(x=>{
+  
+  const container=document.getElementById('rq-svcs');
+  container.innerHTML=sv.map(x=>{
     const on=rqSvcs.has(x);
     const cnt=DB.filter(r=>(r.services||[]).includes(x)).length;
     const catOf=DB.find(r=>(r.services||[]).includes(x))?.cat||'';
-    return `<div class="chip ${on?'on':''}" data-svc="${esc(x)}" onclick="togRqSvc(this)">
+    return `<div class="chip ${on?'on':''}" data-svc="${esc(x)}">
       <span class="cat-dot" style="background:${CAT_COL[catOf]||MID}"></span>
       <span>${esc(x.length>26?x.substring(0,26)+'…':x)}</span>
       <span class="chip-cnt">${cnt}</span>
     </div>`;
   }).join('');
+  
+  container.querySelectorAll('.chip').forEach(chip=>{
+    chip.addEventListener('click',function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      const svc=this.dataset.svc;
+      if(rqSvcs.has(svc)){rqSvcs.delete(svc);this.classList.remove('on');}
+      else{rqSvcs.add(svc);this.classList.add('on');}
+      rqRender();
+    });
+  });
+  
   rqRenderPicked();
 }
 
