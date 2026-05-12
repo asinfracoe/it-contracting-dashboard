@@ -446,19 +446,42 @@ html,body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-siz
     </div>
   </div>
   
-  <!-- ROW 2: DETAILED INSIGHTS -->
+<!-- ROW 2: DETAILED INSIGHTS -->
   <div class="sec-lbl">Detailed Insights <span class="sec-lbl-sub">· deeper analysis for strategic decisions</span></div>
     <div style="margin-bottom:20px">
     <div class="card">
       <div class="card-head">
         <div class="card-title"><span class="card-title-ico">🔥</span>Vendor × Category Spend Heatmap</div>
-        <span class="info-ico" data-tip="Shows where each vendor concentrates their business. Dark cells = heavy spend with that vendor in that category. Use to spot vendor specialization and negotiate better bundled deals.">ⓘ</span>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn sm sec" onclick="hmSelectAll()">All</button>
+          <button class="btn sm sec" onclick="hmClearFilters()">Clear</button>
+          <span class="info-ico" data-tip="Shows where each vendor concentrates their business. Filter by vendor(s) and category(ies). Click any cell to see the exact services quoted and drill into details.">ⓘ</span>
+        </div>
       </div>
+
+      <!-- FILTER PANEL: Vendor + Category multi-select chips -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;padding:12px;background:var(--bg);border-radius:var(--r)">
+        <div>
+          <div style="font-size:.66rem;font-weight:700;color:var(--mid);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px;display:flex;justify-content:space-between">
+            <span>🏢 Vendors</span>
+            <span id="hm-ven-cnt" style="color:var(--or)">All</span>
+          </div>
+          <div class="chip-row" id="hm-ven-chips" style="max-height:110px;background:#fff;padding:6px;border-radius:var(--r);border:1px solid var(--line)"></div>
+        </div>
+        <div>
+          <div style="font-size:.66rem;font-weight:700;color:var(--mid);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px;display:flex;justify-content:space-between">
+            <span>🗂️ Categories</span>
+            <span id="hm-cat-cnt" style="color:var(--or)">All</span>
+          </div>
+          <div class="chip-row" id="hm-cat-chips" style="max-height:110px;background:#fff;padding:6px;border-radius:var(--r);border:1px solid var(--line)"></div>
+        </div>
+      </div>
+
       <div id="ov-heatmap" style="padding:10px 0"></div>
     </div>
   </div>
-
-  <!-- ROW 2: TREEMAP + SCATTER -->
+  
+  <!-- ROW 2: TREEMAP + CATEGORY AVG PRICE -->
   <div class="grid-2">
     <div class="card">
       <div class="card-head">
@@ -469,10 +492,10 @@ html,body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-siz
     </div>
     <div class="card">
       <div class="card-head">
-        <div class="card-title"><span class="card-title-ico">📊</span>Price Distribution &amp; Outliers</div>
-        <div class="card-meta am">Box Plot</div>
+        <div class="card-title"><span class="card-title-ico">💰</span>Average Quote Price by Category</div>
+        <span class="info-ico" data-tip="Shows the average quotation price across all quotes in each category. Taller bars = more expensive categories on average. Use this to understand where the big-ticket items are and benchmark new quotes.">ⓘ</span>
       </div>
-      <div class="chart-wrap"><canvas id="ov-box-chart"></canvas></div>
+      <div class="chart-wrap"><canvas id="ov-catavg-chart"></canvas></div>
     </div>
   </div>
 
@@ -1072,6 +1095,8 @@ let selSvcs=new Set();
 let rqSvcs=new Set();
 let rqCat='All';
 let inSvcs=new Set();
+let hmVens=new Set();  // heatmap vendor filter
+let hmCats=new Set();  // heatmap category filter
 let grokCfg={key:'',mdl:'grok-2-latest',sysp:''};
 let chatHist=[];
 let chatBusy=false;
@@ -1426,6 +1451,67 @@ function renderOverview(){
   // ─── TREEMAP ───
   renderTreemap(data);
 
+// ═══ CATEGORY × AVG PRICE: Horizontal Bar with Min-Max Whiskers ═══
+function renderCategoryAvgPrice(data,cats){
+  destroyChart('ov-catavg-chart');
+  const ctx=document.getElementById('ov-catavg-chart');
+  if(!ctx)return;
+
+  const catStats=cats.map(c=>{
+    const ps=data.filter(r=>r.cat===c).map(r=>r.price).filter(p=>p>0);
+    return{
+      cat:c,
+      avg:ps.length?ps.reduce((a,b)=>a+b,0)/ps.length:0,
+      min:ps.length?Math.min(...ps):0,
+      max:ps.length?Math.max(...ps):0,
+      count:ps.length
+    };
+  }).filter(x=>x.count>0).sort((a,b)=>b.avg-a.avg);
+
+  CHARTS['ov-catavg-chart']=new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels:catStats.map(d=>d.cat.length>20?d.cat.substring(0,20)+'…':d.cat),
+      datasets:[{
+        label:'Avg Price',
+        data:catStats.map(d=>d.avg),
+        backgroundColor:catStats.map(d=>CAT_COL[d.cat]||OR),
+        borderRadius:4,
+        borderSkipped:false,
+        maxBarThickness:32
+      }]
+    },
+    options:{
+      indexAxis:'y',
+      responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{
+          callbacks:{
+            title:(items)=>catStats[items[0].dataIndex].cat,
+            label:(c)=>{
+              const d=catStats[c.dataIndex];
+              return[
+                'Avg: '+fmt(d.avg),
+                'Min: '+fmt(d.min),
+                'Max: '+fmt(d.max),
+                d.count+' quote'+(d.count>1?'s':'')
+              ];
+            }
+          }
+        }
+      },
+      scales:{
+        x:{beginAtZero:true,ticks:{callback:(v)=>fmt(v),font:{size:10,family:'Inter'},color:MID},grid:{color:'#F3F4F6'},title:{display:true,text:'Average Quote Price (USD)',font:{size:10,weight:600},color:MID}},
+        y:{ticks:{font:{size:10,family:'Inter'},color:INK},grid:{display:false}}
+      }
+    }
+  });
+}
+
+  // ─── CATEGORY × AVG PRICE CHART ───
+  renderCategoryAvgPrice(data,cats);
+
 
   // ─── CATEGORY DEEP-DIVE TABLE ───
   document.querySelector('#ov-cat-table tbody').innerHTML=cats.map(c=>{
@@ -1503,43 +1589,68 @@ function renderOverview(){
   `).join('');
 }
 
-// ═══ HEATMAP: Vendor × Category ═══
+// ═══ HEATMAP: Vendor × Category (INTERACTIVE) ═══
 function renderHeatmap(data,cats,vens){
-  // Top 10 vendors by quote count
+  // Top 10 vendors by quote count (default selection pool)
   const venVol={};
   data.forEach(r=>{venVol[r.vendor]=(venVol[r.vendor]||0)+1;});
   const topVens=Object.entries(venVol).sort((a,b)=>b[1]-a[1]).slice(0,10).map(x=>x[0]);
-  
-  // Build matrix: vendor × category → total spend
+
+  // ─── Build filter chips (vendor + category) ───
+  buildHeatmapFilters(topVens,cats,data);
+
+  // ─── Apply filters ───
+  const selVens=hmVens.size>0?[...hmVens]:topVens;
+  const selCats=hmCats.size>0?[...hmCats]:cats;
+
+  // Build matrix: vendor × category → {total, services, count}
   const matrix={};
   let globalMax=0;
-  topVens.forEach(v=>{
+  selVens.forEach(v=>{
     matrix[v]={};
-    cats.forEach(c=>{
-      const ps=data.filter(r=>r.vendor===v&&r.cat===c).map(r=>r.price).filter(p=>p>0);
+    selCats.forEach(c=>{
+      const rs=data.filter(r=>r.vendor===v&&r.cat===c);
+      const ps=rs.map(r=>r.price).filter(p=>p>0);
       const total=ps.reduce((a,b)=>a+b,0);
-      matrix[v][c]=total;
+      const svcs=[...new Set(rs.flatMap(r=>r.services||[]))];
+      matrix[v][c]={total,svcs,count:rs.length};
       if(total>globalMax)globalMax=total;
     });
   });
-  
+
+  // ─── Empty-state guard ───
+  if(selVens.length===0||selCats.length===0){
+    document.getElementById('ov-heatmap').innerHTML=`<div class="empty" style="padding:30px"><div class="empty-ico">🔍</div><div class="empty-t">No data in current filter</div><div class="empty-s">Select at least one vendor and one category above, or click "All" to reset.</div></div>`;
+    return;
+  }
+
+  // ─── Render table ───
   let html=`<div style="overflow-x:auto"><table style="width:100%;border-collapse:separate;border-spacing:3px"><thead><tr>
-    <th style="background:transparent;padding:6px 8px;text-align:left;font-size:.66rem;color:var(--mid);font-weight:700;text-transform:uppercase;letter-spacing:.6px;min-width:120px">Vendor</th>`;
-  cats.forEach(c=>{
-    html+=`<th style="background:transparent;padding:6px;font-size:.62rem;color:var(--mid);font-weight:700;text-transform:uppercase;letter-spacing:.5px;writing-mode:vertical-rl;transform:rotate(180deg);height:90px;min-width:40px" title="${esc(c)}">${esc(c.length>18?c.substring(0,18)+'…':c)}</th>`;
+    <th style="background:transparent;padding:6px 8px;text-align:left;font-size:.66rem;color:var(--mid);font-weight:700;text-transform:uppercase;letter-spacing:.6px;min-width:130px">Vendor</th>`;
+  selCats.forEach(c=>{
+    html+=`<th style="background:transparent;padding:6px;font-size:.62rem;color:var(--mid);font-weight:700;text-transform:uppercase;letter-spacing:.5px;writing-mode:vertical-rl;transform:rotate(180deg);height:100px;min-width:44px" title="${esc(c)}">${esc(c.length>20?c.substring(0,20)+'…':c)}</th>`;
   });
   html+=`</tr></thead><tbody>`;
-  
-  topVens.forEach(v=>{
+
+  selVens.forEach(v=>{
     html+=`<tr>
-      <td style="padding:6px 8px;font-size:.74rem;font-weight:600;color:var(--ink);background:var(--bg);border-radius:var(--r);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(v)}</td>`;
-    cats.forEach(c=>{
-      const val=matrix[v][c];
-      if(val>0){
-        const intensity=val/globalMax;
+      <td style="padding:7px 10px;font-size:.76rem;font-weight:600;color:var(--ink);background:var(--bg);border-radius:var(--r);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(v)}</td>`;
+    selCats.forEach(c=>{
+      const d=matrix[v][c];
+      if(d && d.total>0){
+        const intensity=d.total/globalMax;
         const bg=`rgba(208,74,2,${0.08+intensity*0.85})`;
         const txt=intensity>0.5?'#fff':'var(--ink)';
-        html+=`<td style="padding:8px 4px;text-align:center;background:${bg};border-radius:var(--r);cursor:pointer;font-size:.68rem;font-weight:700;color:${txt};min-width:50px" title="${esc(v)} × ${esc(c)}: ${fmtFull(val)}">${fmt(val)}</td>`;
+        const svcCount=d.svcs.length;
+        const tooltip=`${v} × ${c}\n${fmtFull(d.total)} across ${d.count} quote${d.count>1?'s':''}\n${svcCount} service${svcCount>1?'s':''}: ${d.svcs.slice(0,4).join(', ')}${svcCount>4?'…':''}`;
+        html+=`<td style="padding:8px 4px;text-align:center;background:${bg};border-radius:var(--r);cursor:pointer;font-size:.68rem;font-weight:700;color:${txt};min-width:54px;transition:transform .12s" 
+          onmouseover="this.style.transform='scale(1.08)'" 
+          onmouseout="this.style.transform='scale(1)'"
+          title="${esc(tooltip)}"
+          onclick="hmShowCell('${esc(v).replace(/'/g,"\\'")}','${esc(c).replace(/'/g,"\\'")}')">
+          <div>${fmt(d.total)}</div>
+          <div style="font-size:.58rem;font-weight:500;opacity:.85;margin-top:1px">${svcCount} svc</div>
+        </td>`;
       }else{
         html+=`<td style="padding:8px 4px;text-align:center;background:var(--bg);border-radius:var(--r);font-size:.66rem;color:#D1D5DB">—</td>`;
       }
@@ -1547,15 +1658,151 @@ function renderHeatmap(data,cats,vens){
     html+=`</tr>`;
   });
   html+=`</tbody></table></div>
-    <div style="margin-top:12px;display:flex;align-items:center;gap:10px;font-size:.68rem;color:var(--mid);justify-content:center">
+    <div style="margin-top:12px;display:flex;align-items:center;gap:10px;font-size:.68rem;color:var(--mid);justify-content:center;flex-wrap:wrap">
       <span>Low</span>
       <div style="width:140px;height:10px;background:linear-gradient(90deg,rgba(208,74,2,.08),rgba(208,74,2,.9));border-radius:3px"></div>
       <span>High</span>
       <span style="margin-left:12px;font-weight:700;color:var(--ink)">Max: ${fmt(globalMax)}</span>
+      <span style="margin-left:8px;color:var(--or);font-weight:600">💡 Click a cell to see services</span>
     </div>`;
   document.getElementById('ov-heatmap').innerHTML=html;
 }
 
+// ─── Build filter chips ───
+function buildHeatmapFilters(vens,cats,data){
+  // Vendor chips
+  const venEl=document.getElementById('hm-ven-chips');
+  if(venEl){
+    venEl.innerHTML=vens.map(v=>{
+      const cnt=data.filter(r=>r.vendor===v).length;
+      const on=hmVens.has(v);
+      return `<div class="chip ${on?'on':''}" data-ven="${esc(v)}" style="font-size:.70rem;padding:4px 9px">
+        <span>${esc(v.length>16?v.substring(0,16)+'…':v)}</span>
+        <span class="chip-cnt">${cnt}</span>
+      </div>`;
+    }).join('');
+    venEl.querySelectorAll('.chip').forEach(chip=>{
+      chip.addEventListener('click',function(){
+        const v=this.dataset.ven;
+        if(hmVens.has(v)){hmVens.delete(v);this.classList.remove('on');}
+        else{hmVens.add(v);this.classList.add('on');}
+        set('hm-ven-cnt',hmVens.size===0?'All':hmVens.size+' selected');
+        renderHeatmap(filteredDB(),[...new Set(filteredDB().map(r=>r.cat))].sort(),[...new Set(filteredDB().map(r=>r.vendor))]);
+      });
+    });
+    set('hm-ven-cnt',hmVens.size===0?'All':hmVens.size+' selected');
+  }
+
+  // Category chips
+  const catEl=document.getElementById('hm-cat-chips');
+  if(catEl){
+    catEl.innerHTML=cats.map(c=>{
+      const cnt=data.filter(r=>r.cat===c).length;
+      const on=hmCats.has(c);
+      return `<div class="chip ${on?'on':''}" data-cat="${esc(c)}" style="font-size:.70rem;padding:4px 9px">
+        <span class="cat-dot" style="background:${CAT_COL[c]||MID}"></span>
+        <span>${esc(c.length>18?c.substring(0,18)+'…':c)}</span>
+        <span class="chip-cnt">${cnt}</span>
+      </div>`;
+    }).join('');
+    catEl.querySelectorAll('.chip').forEach(chip=>{
+      chip.addEventListener('click',function(){
+        const c=this.dataset.cat;
+        if(hmCats.has(c)){hmCats.delete(c);this.classList.remove('on');}
+        else{hmCats.add(c);this.classList.add('on');}
+        set('hm-cat-cnt',hmCats.size===0?'All':hmCats.size+' selected');
+        renderHeatmap(filteredDB(),[...new Set(filteredDB().map(r=>r.cat))].sort(),[...new Set(filteredDB().map(r=>r.vendor))]);
+      });
+    });
+    set('hm-cat-cnt',hmCats.size===0?'All':hmCats.size+' selected');
+  }
+}
+
+// ─── Clear all filters ───
+function hmClearFilters(){
+  hmVens.clear();
+  hmCats.clear();
+  renderOverview();
+}
+
+// ─── Select all (same as clear = shows all) ───
+function hmSelectAll(){
+  hmClearFilters();
+}
+
+// ─── Cell click: open side panel with services + quote details ───
+function hmShowCell(ven,cat){
+  const rs=DB.filter(r=>r.vendor===ven&&r.cat===cat);
+  if(!rs.length){toast('No data for this combination','warn');return;}
+
+  const ps=rs.map(r=>r.price).filter(p=>p>0);
+  const total=ps.reduce((a,b)=>a+b,0);
+  const avg=ps.length?total/ps.length:0;
+  const svcs=[...new Set(rs.flatMap(r=>r.services||[]))];
+
+  const p=document.getElementById('sp-panel');
+  p.classList.add('on');
+  set('sp-title',ven+' × '+cat);
+
+  document.getElementById('sp-body').innerHTML=`
+    <!-- Summary -->
+    <div style="background:var(--ort);border-radius:var(--r);padding:12px 14px;margin-bottom:14px;border-left:3px solid var(--or)">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div>
+          <div style="font-size:.62rem;font-weight:700;color:var(--or);text-transform:uppercase;letter-spacing:.6px;margin-bottom:2px">Total Spend</div>
+          <div style="font-family:var(--serif);font-size:1.2rem;font-weight:700;color:var(--ink)">${fmt(total)}</div>
+        </div>
+        <div>
+          <div style="font-size:.62rem;font-weight:700;color:var(--or);text-transform:uppercase;letter-spacing:.6px;margin-bottom:2px">Avg Quote</div>
+          <div style="font-family:var(--serif);font-size:1.2rem;font-weight:700;color:var(--ink)">${fmt(avg)}</div>
+        </div>
+        <div>
+          <div style="font-size:.62rem;font-weight:700;color:var(--or);text-transform:uppercase;letter-spacing:.6px;margin-bottom:2px">Quote Files</div>
+          <div style="font-family:var(--serif);font-size:1.2rem;font-weight:700;color:var(--ink)">${rs.length}</div>
+        </div>
+        <div>
+          <div style="font-size:.62rem;font-weight:700;color:var(--or);text-transform:uppercase;letter-spacing:.6px;margin-bottom:2px">Unique Services</div>
+          <div style="font-family:var(--serif);font-size:1.2rem;font-weight:700;color:var(--ink)">${svcs.length}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Services quoted -->
+    <div class="sec-lbl" style="margin:4px 0 10px">Services Quoted (${svcs.length})</div>
+    ${svcs.map(s=>{
+      const svcRows=rs.filter(r=>(r.services||[]).includes(s));
+      const svcPrices=svcRows.map(r=>r.price).filter(p=>p>0);
+      const svcMin=svcPrices.length?Math.min(...svcPrices):0;
+      return `<div style="padding:8px 10px;background:var(--bg);border-radius:var(--r);margin-bottom:5px;border-left:3px solid ${CAT_COL[cat]||OR};display:flex;justify-content:space-between;align-items:center;gap:8px">
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;color:var(--ink);font-size:.76rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s)}</div>
+          <div style="font-size:.66rem;color:var(--mid);margin-top:1px">${svcRows.length} quote${svcRows.length>1?'s':''}</div>
+        </div>
+        <span style="color:var(--or);font-family:var(--serif);font-weight:700;font-size:.92rem;flex-shrink:0">${fmt(svcMin)}</span>
+      </div>`;
+    }).join('')}
+
+    <!-- Quote files -->
+    <div class="sec-lbl" style="margin:16px 0 10px">Source Files (${rs.length})</div>
+    ${rs.sort((a,b)=>a.price-b.price).map((r,i)=>`
+      <div style="background:var(--bg);border-radius:var(--r);padding:9px 11px;margin-bottom:6px;border-left:3px solid ${i===0?'var(--gn)':'var(--line)'};cursor:pointer;transition:background .12s" 
+        onmouseover="this.style.background='var(--ort)'" 
+        onmouseout="this.style.background='var(--bg)'"
+        onclick="selShowFile(${DB.indexOf(r)})">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:600;color:var(--ink);font-size:.76rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.file)}</div>
+            <div style="font-size:.66rem;color:var(--mid);margin-top:2px">${esc(r.proj)} · ${r.year} ${r.quarter}</div>
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="color:${i===0?'var(--gn)':'var(--or)'};font-family:var(--serif);font-weight:700;font-size:.95rem">${fmt(r.price)}</div>
+            ${i===0?'<span class="b gn" style="font-size:.58rem;margin-top:1px">★ BEST</span>':''}
+          </div>
+        </div>
+      </div>
+    `).join('')}
+  `;
+}
 
 
 // ═══ TREEMAP: Proportional Spend ═══
