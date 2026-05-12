@@ -412,11 +412,8 @@ html,body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-siz
     </div>
   </div>
 
-  <!-- KPI STRIP -->
-  <div class="kpi-row" id="ov-kpis"></div>
-
-  <!-- PROJECT CARDS WITH MINI SPARKLINES -->
-  <div class="sec-lbl">Project Portfolio <span class="sec-lbl-sub">· click to drill in</span></div>
+  <!-- PROJECT CARDS WITH ENRICHED STATS -->
+  <div class="sec-lbl">Project Portfolio <span class="sec-lbl-sub">· click to drill in · each card shows full project snapshot</span></div>
   <div class="grid-3" id="ov-proj-cards"></div>
 
 
@@ -1367,33 +1364,83 @@ function renderOverview(){
   const tot=prices.reduce((a,b)=>a+b,0);
   const median=prices.length?[...prices].sort((a,b)=>a-b)[Math.floor(prices.length/2)]:0;
 
-  // ─── KPIs ───
-  document.getElementById('ov-kpis').innerHTML=[
-    {lbl:'Quote Files',val:data.length,sub:CUR_PROJ==='All'?'All projects':CUR_PROJ,ico:'📄'},
-    {lbl:'Categories',val:cats.length,sub:'Tech domains',ico:'🗂️'},
-    {lbl:'Services',val:svcs.length,sub:'Line items',ico:'🧩'},
-    {lbl:'Vendors',val:vens.length,sub:'Active suppliers',ico:'🏢'},
-    {lbl:'Total Value',val:fmt(tot),sub:'Median '+fmt(median),ico:'💰'}
-  ].map(k=>`<div class="kpi"><div class="kpi-ico">${k.ico}</div><div class="kpi-lbl">${k.lbl}</div><div class="kpi-val">${k.val}</div><div class="kpi-sub">${k.sub}</div></div>`).join('');
 
-  // ─── PROJECT CARDS WITH SPARKLINES ───
+  // ─── PROJECT CARDS — ENRICHED ───
   const projs=['Idemia','Tenneco','Panasonic'];
   document.getElementById('ov-proj-cards').innerHTML=projs.map(p=>{
     const pd=DB.filter(r=>r.proj===p);
     const pc=[...new Set(pd.map(r=>r.cat))];
     const psv=[...new Set(pd.flatMap(r=>r.services||[]))];
+    const pv=[...new Set(pd.map(r=>r.vendor))];
     const ps=pd.map(r=>r.price).filter(x=>x>0);
     const pa=ps.length?ps.reduce((a,b)=>a+b,0)/ps.length:0;
     const pTotal=ps.reduce((a,b)=>a+b,0);
+    const pMin=ps.length?Math.min(...ps):0;
+    const pMax=ps.length?Math.max(...ps):0;
     const col=PROJ_COL[p];
     
-    // Build a tiny sparkline of quotes by year
+    // Year sparkline
     const yrs=[...new Set(pd.map(r=>r.year))].sort();
     const yrCounts=yrs.map(y=>pd.filter(r=>r.year===y).length);
     const maxY=Math.max(...yrCounts,1);
     const sparklineBars=yrCounts.map((c,i)=>{
       const h=Math.max(4,(c/maxY)*28);
       return `<div style="flex:1;background:${col};height:${h}px;border-radius:2px 2px 0 0;opacity:${0.4+(c/maxY)*0.6}" title="${yrs[i]}: ${c} quotes"></div>`;
+    }).join('');
+    
+    return `<div class="proj-card" style="border-left-color:${col}" onclick="drillProject('${p}')">
+      <!-- HEADER -->
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
+        <div>
+          <div class="proj-name">${p}</div>
+          <div class="proj-sub">${psv.length} services in scope</div>
+        </div>
+        <span class="b" style="background:${col}15;color:${col};font-size:.72rem;padding:4px 9px">${pd.length} files</span>
+      </div>
+
+      <!-- TOP STATS ROW: Categories · Avg Quote · Vendors -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;padding:10px;background:var(--bg);border-radius:var(--r)">
+        <div style="text-align:center">
+          <div style="font-family:var(--serif);font-size:1.3rem;font-weight:700;color:var(--ink);line-height:1">${pc.length}</div>
+          <div style="font-size:.62rem;font-weight:700;color:var(--mid);text-transform:uppercase;letter-spacing:.5px;margin-top:3px">Categories</div>
+        </div>
+        <div style="text-align:center;border-left:1px solid var(--line);border-right:1px solid var(--line)">
+          <div style="font-family:var(--serif);font-size:1.3rem;font-weight:700;color:${col};line-height:1">${fmt(pa)}</div>
+          <div style="font-size:.62rem;font-weight:700;color:var(--mid);text-transform:uppercase;letter-spacing:.5px;margin-top:3px">Avg Quote</div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-family:var(--serif);font-size:1.3rem;font-weight:700;color:var(--ink);line-height:1">${pv.length}</div>
+          <div style="font-size:.62rem;font-weight:700;color:var(--mid);text-transform:uppercase;letter-spacing:.5px;margin-top:3px">Vendors</div>
+        </div>
+      </div>
+
+      <!-- PRICE RANGE BAR: Min → Max -->
+      <div style="margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;font-size:.62rem;font-weight:700;color:var(--mid);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">
+          <span>Price Range</span>
+          <span style="color:${col}">Spread: ${pMin>0?Math.round((pMax-pMin)/pMin*100):0}%</span>
+        </div>
+        <div style="position:relative;height:22px;background:linear-gradient(90deg,${GN}22,${col}33,${RD}22);border-radius:4px;overflow:hidden">
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:space-between;padding:0 8px;font-size:.70rem;font-weight:700">
+            <span style="color:${GN};text-shadow:0 0 2px #fff">MIN ${fmt(pMin)}</span>
+            <span style="color:${RD};text-shadow:0 0 2px #fff">MAX ${fmt(pMax)}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- YEAR SPARKLINE -->
+      <div style="font-size:.62rem;font-weight:700;color:var(--mid);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Quote Volume by Year</div>
+      <div style="display:flex;align-items:flex-end;gap:3px;height:28px;padding:0 2px">${sparklineBars}</div>
+      <div style="display:flex;justify-content:space-between;font-size:.62rem;color:var(--mid);margin-top:3px;padding:0 2px;font-weight:600">
+        ${yrs.map(y=>`<span>${y}</span>`).join('')}
+      </div>
+
+      <!-- FOOTER: Total Spend -->
+      <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--line2);display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:.64rem;font-weight:700;color:var(--mid);text-transform:uppercase;letter-spacing:.6px">Total Spend</span>
+        <span style="font-family:var(--serif);font-size:1.35rem;font-weight:700;color:var(--ink);letter-spacing:-.3px">${fmt(pTotal)}</span>
+      </div>
+    </div>`;
     }).join('');
     
     return `<div class="proj-card" style="border-left-color:${col}" onclick="drillProject('${p}')">
