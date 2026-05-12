@@ -954,12 +954,22 @@ html,body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-siz
         <!-- CHARTS -->
         <div class="grid-2">
           <div class="card">
-            <div class="card-head"><div class="card-title"><span class="card-title-ico">📅</span>Multi-Year Projection</div><div class="card-meta am">5% YoY growth</div></div>
-            <div class="chart-wrap sm"><canvas id="rq-year-chart"></canvas></div>
+            <div class="card-head"><div class="card-title"><span class="card-title-ico">🏢</span>Vendor Price Benchmark</div><div class="card-meta or">Best total per vendor</div></div>
+            <div class="chart-wrap sm"><canvas id="rq-benchmark-chart"></canvas></div>
           </div>
           <div class="card">
-            <div class="card-head"><div class="card-title"><span class="card-title-ico">🏢</span>Vendor Coverage</div><div class="card-meta gn">Top shortlist</div></div>
-            <div class="chart-wrap sm"><canvas id="rq-vendor-chart"></canvas></div>
+            <div class="card-head"><div class="card-title"><span class="card-title-ico">📅</span>Budget Scenarios</div><div class="card-meta am">Best · Target · Worst</div></div>
+            <div class="chart-wrap sm"><canvas id="rq-scenario-chart"></canvas></div>
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-head"><div class="card-title"><span class="card-title-ico">📊</span>Service Price Spread</div><div class="card-meta bl">Min–Max range</div></div>
+            <div class="chart-wrap sm"><canvas id="rq-spread-chart"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><div class="card-title"><span class="card-title-ico">📈</span>Historical Price Trend</div><div class="card-meta gn">Year-over-year</div></div>
+            <div class="chart-wrap sm"><canvas id="rq-trend-chart"></canvas></div>
           </div>
         </div>
 
@@ -1188,13 +1198,46 @@ function renderSimpleCharts(data,cats){
           datalabels:{display:false}
         },
         scales:{
-          x:{ticks:{font:{size:10,family:'Inter'},color:INK,maxRotation:45,minRotation:30},grid:{display:false}},
-          y:{beginAtZero:true,ticks:{font:{size:10,family:'Inter'},color:MID,stepSize:1},grid:{color:'#F3F4F6'},title:{display:true,text:'Number of Quotes',font:{size:10,family:'Inter',weight:600},color:MID}}
+          x:{beginAtZero:true,ticks:{font:{size:10,family:'Inter'},color:MID,stepSize:1},grid:{color:'#F3F4F6'},title:{display:true,text:'Number of Quotes',font:{size:10,family:'Inter',weight:600},color:MID}},
+          y:{ticks:{font:{size:10,family:'Inter'},color:INK},grid:{display:false}}
         }
       }
     });
   }
 
+  // Chart 4: Vendors by Avg Price Quoted (horizontal bar, top 8)
+  destroyChart('ov-simple4-chart');
+  const ctx4=document.getElementById('ov-simple4-chart');
+  if(ctx4){
+    const venAvg={};
+    data.forEach(r=>{
+      if(r.price>0){
+        if(!venAvg[r.vendor])venAvg[r.vendor]={sum:0,count:0};
+        venAvg[r.vendor].sum+=r.price;
+        venAvg[r.vendor].count++;
+      }
+    });
+    const topVenAvg=Object.entries(venAvg).map(([v,d])=>({v,avg:d.sum/d.count,count:d.count})).sort((a,b)=>b.avg-a.avg).slice(0,8);
+    CHARTS['ov-simple4-chart']=new Chart(ctx4,{
+      type:'bar',
+      data:{
+        labels:topVenAvg.map(d=>d.v.length>16?d.v.substring(0,16)+'…':d.v),
+        datasets:[{label:'Avg Price',data:topVenAvg.map(d=>d.avg),backgroundColor:topVenAvg.map(d=>vcol(d.v)),borderRadius:6,borderSkipped:false,maxBarThickness:24}]
+      },
+      options:{
+        indexAxis:'y',responsive:true,maintainAspectRatio:false,
+        plugins:{
+          legend:{display:false},
+          tooltip:{callbacks:{title:(items)=>topVenAvg[items[0].dataIndex].v,label:(c)=>{const d=topVenAvg[c.dataIndex];return['Avg: '+fmt(d.avg),d.count+' quote'+(d.count>1?'s':'')];}}}
+        },
+        scales:{
+          x:{beginAtZero:true,ticks:{font:{size:10,family:'Inter'},color:MID,callback:(v)=>fmt(v)},grid:{color:'#F3F4F6'},title:{display:true,text:'Average Quote Price (USD)',font:{size:10,family:'Inter',weight:600},color:MID}},
+          y:{ticks:{font:{size:10,family:'Inter'},color:INK},grid:{display:false}}
+        }
+      }
+    });
+  }
+}
   // Chart 2: Number of Services per Category (horizontal bar)
   destroyChart('ov-simple2-chart');
   const ctx2=document.getElementById('ov-simple2-chart');
@@ -1454,15 +1497,6 @@ function renderOverview(){
   const tot=prices.reduce((a,b)=>a+b,0);
   const median=prices.length?[...prices].sort((a,b)=>a-b)[Math.floor(prices.length/2)]:0;
 
-  // ─── KPIs ───
-  document.getElementById('ov-kpis').innerHTML=[
-    {lbl:'Quote Files',val:data.length,sub:CUR_PROJ==='All'?'All projects':CUR_PROJ,ico:'📄'},
-    {lbl:'Categories',val:cats.length,sub:'Tech domains',ico:'🗂️'},
-    {lbl:'Services',val:svcs.length,sub:'Line items',ico:'🧩'},
-    {lbl:'Vendors',val:vens.length,sub:'Active suppliers',ico:'🏢'},
-    {lbl:'Total Value',val:fmt(tot),sub:'Median '+fmt(median),ico:'💰'}
-  ].map(k=>`<div class="kpi"><div class="kpi-ico">${k.ico}</div><div class="kpi-lbl">${k.lbl}</div><div class="kpi-val">${k.val}</div><div class="kpi-sub">${k.sub}</div></div>`).join('');
-
   // ─── PROJECT CARDS WITH SPARKLINES ───
   const projs=['Idemia','Tenneco','Panasonic'];
   document.getElementById('ov-proj-cards').innerHTML=projs.map(p=>{
@@ -1514,12 +1548,7 @@ function renderOverview(){
 
   // ─── TREEMAP ───
   renderTreemap(data);
-
-// ═══ CATEGORY × AVG PRICE: Horizontal Bar with Min-Max Whiskers ═══
-function renderCategoryAvgPrice(data,cats){
-  destroyChart('ov-catavg-chart');
-  const ctx=document.getElementById('ov-catavg-chart');
-  if(!ctx)return;
+  renderCategoryAvgPrice(data,cats);
 
   const catStats=cats.map(c=>{
     const ps=data.filter(r=>r.cat===c).map(r=>r.price).filter(p=>p>0);
@@ -1868,6 +1897,34 @@ function hmShowCell(ven,cat){
   `;
 }
 
+// ═══ CATEGORY × AVG PRICE: Horizontal Bar ═══
+function renderCategoryAvgPrice(data,cats){
+  destroyChart('ov-catavg-chart');
+  const ctx=document.getElementById('ov-catavg-chart');
+  if(!ctx)return;
+  const catStats=cats.map(c=>{
+    const ps=data.filter(r=>r.cat===c).map(r=>r.price).filter(p=>p>0);
+    return{cat:c,avg:ps.length?ps.reduce((a,b)=>a+b,0)/ps.length:0,min:ps.length?Math.min(...ps):0,max:ps.length?Math.max(...ps):0,count:ps.length};
+  }).filter(x=>x.count>0).sort((a,b)=>b.avg-a.avg);
+  CHARTS['ov-catavg-chart']=new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels:catStats.map(d=>d.cat.length>20?d.cat.substring(0,20)+'…':d.cat),
+      datasets:[{label:'Avg Price',data:catStats.map(d=>d.avg),backgroundColor:catStats.map(d=>CAT_COL[d.cat]||OR),borderRadius:4,borderSkipped:false,maxBarThickness:32}]
+    },
+    options:{
+      indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{title:(items)=>catStats[items[0].dataIndex].cat,label:(c)=>{const d=catStats[c.dataIndex];return['Avg: '+fmt(d.avg),'Min: '+fmt(d.min),'Max: '+fmt(d.max),d.count+' quote'+(d.count>1?'s':'')];}}}
+      },
+      scales:{
+        x:{beginAtZero:true,ticks:{callback:(v)=>fmt(v),font:{size:10,family:'Inter'},color:MID},grid:{color:'#F3F4F6'},title:{display:true,text:'Average Quote Price (USD)',font:{size:10,weight:600},color:MID}},
+        y:{ticks:{font:{size:10,family:'Inter'},color:INK},grid:{display:false}}
+      }
+    }
+  });
+}  
 
 // ═══ TREEMAP: Proportional Spend ═══
 function renderTreemap(data){
@@ -3315,9 +3372,26 @@ if(ctxSp){
       }
     });
   }
-  // Strategy
+// ─── VENDOR COVERAGE COMPUTATION ───
+  const venCov={};
+  data.forEach(r=>{
+    const matched=(r.services||[]).filter(s=>sel.includes(s));
+    if(matched.length>0&&r.price>0){
+      if(!venCov[r.vendor])venCov[r.vendor]={covered:new Set(),ps:[]};
+      matched.forEach(s=>venCov[r.vendor].covered.add(s));
+      venCov[r.vendor].ps.push(r.price);
+    }
+  });
+  const venList=Object.entries(venCov).map(([v,d])=>({
+    v,
+    cov:d.covered.size,
+    pct:(d.covered.size/sel.length)*100,
+    avg:d.ps.reduce((a,b)=>a+b,0)/d.ps.length
+  })).sort((a,b)=>b.cov-a.cov||a.avg-b.avg);
+
+  // ─── STRATEGY ───
   const top3=venList.slice(0,3).map(v=>v.v);
-  const totalTerm=vals.avg.reduce((a,b)=>a+b,0);
+  const totalTerm=totAvg*term*1.05;
   document.getElementById('rq-strategy').innerHTML=`
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">
       <div style="background:var(--gnl);border-left:3px solid var(--gn);border-radius:var(--r);padding:12px 14px">
@@ -3343,18 +3417,17 @@ if(ctxSp){
     <table class="cat-table">
       <thead><tr><th>Vendor</th><th>Coverage</th><th>Avg Quote</th><th>Records</th><th>Recommend</th></tr></thead>
       <tbody>
-        ${venList.map((v,i)=>`<tr>
+        ${venList.length?venList.map((v,i)=>`<tr>
           <td>${vbadge(v.v)}</td>
           <td><span class="num">${v.cov}/${sel.length} (${Math.round(v.pct)}%)</span></td>
           <td><span class="num" style="color:${OR}">${fmt(v.avg)}</span></td>
           <td><span class="num">${venCov[v.v].ps.length}</span></td>
           <td>${i<3?'<span class="b gn">Invite</span>':'<span class="b nt">Optional</span>'}</td>
-        </tr>`).join('')}
+        </tr>`).join(''):`<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--mid)">No vendor history for selected services</td></tr>`}
       </tbody>
     </table>
   `;
 }
-
 function rqRenderPicked(){
   const el=document.getElementById('rq-picked');
   set('rq-count',rqSvcs.size+(rqSvcs.size===1?' service':' services'));
@@ -3376,6 +3449,35 @@ function removeRqSvc(s){
   rqRender();
 }
 
+// ═══ RFQ EXPORT ═══
+function rqExport(){
+  if(rqSvcs.size===0){toast('Select services first','warn');return;}
+  const sel=[...rqSvcs];
+  const proj=document.getElementById('rq-proj').value;
+  const data=proj==='All'?DB:DB.filter(r=>r.proj===proj);
+  const users=parseInt(document.getElementById('rq-users').value)||2000;
+  const term=parseInt(document.getElementById('rq-term').value)||3;
+  
+  let csv='RFQ Export\r\n';
+  csv+='Project,'+proj+'\r\n';
+  csv+='Users,'+users+'\r\n';
+  csv+='Term (years),'+term+'\r\n';
+  csv+='Services Count,'+sel.length+'\r\n\r\n';
+  csv+='Service,Quotes,Min,Avg,Max,Target (-10%),Best Vendor\r\n';
+  
+  sel.forEach(s=>{
+    const rs=data.filter(r=>(r.services||[]).includes(s)&&r.price>0);
+    const ps=rs.map(r=>r.price);
+    const mn=ps.length?Math.min(...ps):0;
+    const mx=ps.length?Math.max(...ps):0;
+    const av=ps.length?ps.reduce((a,b)=>a+b,0)/ps.length:0;
+    const bestV=rs.length?rs.reduce((a,b)=>a.price<b.price?a:b).vendor:'—';
+    csv+=`"${s}",${rs.length},${mn},${Math.round(av)},${mx},${Math.round(av*0.9)},"${bestV}"\r\n`;
+  });
+  
+  dlCSV(csv,'rfq_'+Date.now()+'.csv');
+}
+  
 // ═══════════════════════════════════
 // GROK AI CHAT
 // ═══════════════════════════════════
