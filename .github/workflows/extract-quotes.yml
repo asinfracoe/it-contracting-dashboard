@@ -1,0 +1,51 @@
+name: Extract Quotes & Update Dashboard
+
+on:
+  push:
+    paths:
+      - 'quotes/**'
+      - 'extractor/**'
+  workflow_dispatch:  # Manual trigger button
+
+permissions:
+  contents: write
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.G_TOKEN }}
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          cd extractor
+          pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: Run extractor
+        env:
+          LLAMA_API_KEY: ${{ secrets.LLAMA_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        run: |
+          cd extractor
+          cd ..
+          python extractor/main.py
+      
+      - name: Commit catalog_data.json
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add catalog_data.json
+          git diff --staged --quiet || git commit -m "🤖 Auto-update catalog from quotes [skip ci]"
+          git push
