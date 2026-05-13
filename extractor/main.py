@@ -1,11 +1,11 @@
 """
-Main orchestrator with progressive save + multi-LLM fallback.
+Main orchestrator — local-only extraction.
+No AI calls during extraction = never gets blocked.
 """
-import os
 import json
 import sys
 from pathlib import Path
-from ai_extractor import extract_quote, AllLLMsExhausted
+from ai_extractor import extract_quote
 from file_processor import is_supported
 
 QUOTES_DIR = Path("quotes")
@@ -13,9 +13,12 @@ OUTPUT_FILE = Path("catalog_data.json")
 
 
 def load_existing() -> list:
-    if not OUTPUT_FILE.exists(): return []
-    try: return json.loads(OUTPUT_FILE.read_text())
-    except Exception: return []
+    if not OUTPUT_FILE.exists():
+        return []
+    try:
+        return json.loads(OUTPUT_FILE.read_text())
+    except Exception:
+        return []
 
 
 def save_progress(records: list):
@@ -29,7 +32,8 @@ def scan_files() -> list:
     
     all_files = []
     for proj_folder in QUOTES_DIR.iterdir():
-        if not proj_folder.is_dir(): continue
+        if not proj_folder.is_dir():
+            continue
         for f in proj_folder.rglob("*"):
             if f.is_file() and is_supported(f):
                 all_files.append((f, proj_folder.name))
@@ -37,19 +41,8 @@ def scan_files() -> list:
 
 
 def main():
-    print("🚀 Starting multi-format extraction pipeline\n")
-    
-    # Validate at least one LLM
-    available_llms = []
-    if os.getenv("OPENAI_API_KEY"): available_llms.append("OpenAI")
-    if os.getenv("GROQ_API_KEY"): available_llms.append("Groq")
-    
-    if not available_llms:
-        print("❌ No LLM keys found. Set OPENAI_API_KEY or GROQ_API_KEY")
-        sys.exit(1)
-    
-    print(f"🤖 LLM chain: {' → '.join(available_llms)}")
-    print(f"📦 Local parsers: PDF (PyMuPDF), DOCX (python-docx), XLSX (pandas/openpyxl)\n")
+    print("🚀 Starting LOCAL extraction pipeline (no AI calls)\n")
+    print("📦 Parsers: PDF (PyMuPDF + pdfplumber), DOCX, XLSX, CSV, TXT\n")
     
     existing = load_existing()
     done_files = {r["file"] for r in existing}
@@ -58,12 +51,11 @@ def main():
     all_files = scan_files()
     pending = [(f, p) for f, p in all_files if f.name not in done_files]
     
-    # Count by file type
     by_type = {}
     for f, _ in pending:
         ext = f.suffix.lower()
         by_type[ext] = by_type.get(ext, 0) + 1
-    type_summary = ", ".join(f"{v} {k}" for k, v in sorted(by_type.items()))
+    type_summary = ", ".join(f"{v} {k}" for k, v in sorted(by_type.items())) or "none"
     
     print(f"📁 Found {len(all_files)} total · {len(pending)} new to process ({type_summary})\n")
     
@@ -74,7 +66,6 @@ def main():
     records = list(existing)
     success = 0
     fail = 0
-    exhausted = False
     
     try:
         for idx, (file_path, proj_folder) in enumerate(pending, 1):
@@ -88,13 +79,8 @@ def main():
                     print(f"     💾 Saved ({len(records)} total)")
                 else:
                     fail += 1
-            except AllLLMsExhausted as e:
-                print(f"\n🛑 {e}")
-                print(f"   Stopped at {idx-1}/{len(pending)} files")
-                exhausted = True
-                break
             except Exception as e:
-                print(f"     ❌ Unexpected: {str(e)[:200]}")
+                print(f"     ❌ Unexpected error: {str(e)[:200]}")
                 fail += 1
                 continue
     
@@ -104,15 +90,12 @@ def main():
     finally:
         save_progress(records)
         print("\n" + "=" * 60)
-        print("📊 SUMMARY")
+        print("📊 EXTRACTION SUMMARY")
         print("=" * 60)
         print(f"   ✅ Success:        {success}")
         print(f"   ❌ Failed:         {fail}")
         print(f"   📦 Total records:  {len(records)}")
         print(f"   💾 Saved to:       {OUTPUT_FILE}")
-        if exhausted:
-            print(f"\n   ⚠️  Stopped early — LLM rate limits hit")
-            print(f"   🔄 Re-run later — already-processed files will be skipped")
         print("=" * 60)
         sys.exit(0)
 
