@@ -1,155 +1,74 @@
-# extractor/main.py — updated for per-license records
-
-import asyncio
-import time
-import sys
-from datetime import datetime
+"""
+Main orchestrator: scans quotes/ folder, extracts every file, builds catalog_data.json
+"""
+import os
+import json
 from pathlib import Path
+from ai_extractor import extract_quote
 
-from sharepoint_connector import SharePointConnector
-from file_processor        import FileProcessor
-from ai_extractor          import AIExtractor
-from catalog_builder       import CatalogBuilder
-from github_pusher         import GitHubPusher
-from config import (
-    DELAY_BETWEEN_FILES,
-    DELAY_BETWEEN_FOLDERS,
-    OUTPUT_FILE,
-)
+QUOTES_DIR = Path("quotes")
+OUTPUT_FILE = Path("catalog_data.json")
+SUPPORTED_EXTS = {".pdf", ".xlsx", ".xls", ".docx", ".csv", ".txt"}
 
 
-async def process_single_file(
-    file_info, category,
-    sp_connector, file_processor,
-    ai_extractor, catalog_builder
-):
-    filename = file_info.get("name", "unknown")
+def scan_quotes() -> list:
+    """Walk quotes/ folder and process every supported file."""
+    records = []
+    if not QUOTES_DIR.exists():
+        print(f"⚠️ {QUOTES_DIR} not found — creating it.")
+        QUOTES_DIR.mkdir(exist_ok=True)
+        return records
+    
+    project_folders = [d for d in QUOTES_DIR.iterdir() if d.is_dir()]
+    print(f"📁 Found {len(project_folders)} project folder(s)")
+    
+    for proj_folder in project_folders:
+        print(f"\n📂 Project: {proj_folder.name}")
+        files = [f for f in proj_folder.rglob("*") 
+                 if f.is_file() and f.suffix.lower() in SUPPORTED_EXTS]
+        print(f"   {len(files)} file(s) to process")
+        
+        for file_path in files:
+            record = extract_quote(file_path, proj_folder.name)
+            if record:
+                records.append(record)
+    
+    return records
 
+
+def merge_with_existing(new_records: list) -> list:
+    """Preserve existing records; replace ones with same filename."""
+    if not OUTPUT_FILE.exists():
+        return new_records
     try:
-        print(f"\n  📥 Downloading: {filename[:50]}")
-        file_bytes = sp_connector.download_file(file_info)
-
-        if not file_bytes:
-            catalog_builder.add_error(
-                filename, category, "Empty file"
-            )
-            return 0
-
-        text, method = file_processor.extract_text(
-            file_bytes, filename
-        )
-        if text:
-            print(f"  📝 {method} ({len(text):,} chars)")
-
-        # Returns LIST of records now
-        records = await ai_extractor.extract_full(
-            file_bytes=file_bytes,
-            filename=filename,
-            category=category,
-            text_from_processor=text,
-        )
-
-        added = catalog_builder.add_records(records)
-        return added
-
-    except Exception as e:
-        print(f"  ❌ Error: {filename}: {e}")
-        catalog_builder.add_error(filename, category, str(e))
-        return 0
+        existing = json.loads(OUTPUT_FILE.read_text())
+    except Exception:
+        return new_records
+    
+    new_files = {r["file"] for r in new_records}
+    kept = [r for r in existing if r.get("file") not in new_files]
+    return kept + new_records
 
 
-async def run_extraction():
-    start_time = time.time()
-
-    print("=" * 65)
-    print("  IT Contracting Dashboard — SharePoint Extractor")
-    print(f"  Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print("=" * 65)
-
-    sp_connector    = SharePointConnector()
-    file_processor  = FileProcessor()
-    ai_extractor    = AIExtractor()
-    catalog_builder = CatalogBuilder()
-    github_pusher   = GitHubPusher()
-
-    print("\n🔗 STEP 1: Connecting to SharePoint...")
-    try:
-        sp_connector.connect()
-    except Exception as e:
-        print(f"❌ SharePoint connection failed: {e}")
-        sys.exit(1)
-
-    print("\n📋 STEP 2: Listing files...")
-    all_files   = sp_connector.list_all_category_files()
-    total_files = sum(len(f) for f in all_files.values())
-
-    print(f"\n📊 Total files: {total_files}")
-    for cat, files in all_files.items():
-        print(f"   {cat}: {len(files)} files")
-
-    if total_files == 0:
-        print("❌ No files found")
-        sys.exit(1)
-
-    print(f"\n⚙️  STEP 3: Processing {total_files} files...")
-
-    processed  = 0
-    total_items = 0
-
-    for category, files in all_files.items():
-        if not files:
-            continue
-        print(f"\n{'─'*65}")
-        print(f"📁 {category} ({len(files)} files)")
-        print(f"{'─'*65}")
-
-        for i, file_info in enumerate(files, 1):
-            print(f"\n[{processed+1}/{total_files}]")
-            added = await process_single_file(
-                file_info, category,
-                sp_connector, file_processor,
-                ai_extractor, catalog_builder
-            )
-            total_items += added
-            processed   += 1
-            if i < len(files):
-                time.sleep(DELAY_BETWEEN_FILES)
-
-        time.sleep(DELAY_BETWEEN_FOLDERS)
-
-    print(f"\n💾 STEP 4: Saving...")
-    catalog_builder.save()
-    catalog_builder.print_summary()
-
-    elapsed = round(time.time() - start_time, 1)
-    print(f"\n⏱️  Total time: {elapsed}s")
-    print(f"📦 Total line items: {total_items}")
-
-    print(f"\n📤 STEP 5: Pushing to GitHub...")
-    try:
-        github_pusher.test_connection()
-        github_pusher.push_catalog(OUTPUT_FILE)
-    except Exception as e:
-        print(f"⚠️  GitHub push failed: {e}")
-
-    print(f"\n{'='*65}")
-    print(f"🎉 DONE")
-    print(f"{'='*65}\n")
-    return catalog_builder.records
+def main():
+    print("🚀 Starting quote extraction pipeline\n")
+    
+    if not os.getenv("LLAMA_API_KEY"):
+        print("❌ LLAMA_API_KEY not set"); return
+    if not os.getenv("GROQ_API_KEY"):
+        print("❌ GROQ_API_KEY not set"); return
+    
+    new_records = scan_quotes()
+    print(f"\n✅ Extracted {len(new_records)} new records")
+    
+    if not new_records:
+        print("ℹ️ No new records — exiting")
+        return
+    
+    final = merge_with_existing(new_records)
+    OUTPUT_FILE.write_text(json.dumps(final, indent=2))
+    print(f"💾 Wrote {len(final)} total records → {OUTPUT_FILE}")
 
 
 if __name__ == "__main__":
-    args = sys.argv[1:]
-    if "--test" in args:
-        sp = SharePointConnector()
-        sp.test_connection()
-        gh = GitHubPusher()
-        gh.test_connection()
-    elif "--push-only" in args:
-        if not Path(OUTPUT_FILE).exists():
-            print(f"❌ {OUTPUT_FILE} not found")
-            sys.exit(1)
-        gh = GitHubPusher()
-        gh.push_catalog(OUTPUT_FILE)
-    else:
-        asyncio.run(run_extraction())
+    main()
