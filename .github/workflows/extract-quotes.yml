@@ -10,6 +10,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: extract-quotes-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   extract:
     runs-on: ubuntu-latest
@@ -21,6 +25,7 @@ jobs:
         with:
           token: ${{ secrets.G_TOKEN }}
           persist-credentials: true
+          fetch-depth: 0
       
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -28,20 +33,19 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
       
-      - name: Install Python dependencies
+      - name: Install dependencies
         run: |
           pip install --upgrade pip
           pip install -r extractor/requirements.txt
       
-      - name: Run extractor (heuristic-first + AI fallback)
+      # =====================================================================
+      # STAGE 1: Local extraction (NO AI — never fails due to rate limits)
+      # =====================================================================
+      - name: Stage 1 — Local extraction (regex/heuristic)
         id: extract
-        continue-on-error: true
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: python extractor/main.py
       
-      - name: Commit and push catalog_data.json
+      - name: Commit extracted catalog (Stage 1)
         if: always()
         env:
           G_TOKEN: ${{ secrets.G_TOKEN }}
@@ -49,21 +53,74 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git remote set-url origin https://x-access-token:${G_TOKEN}@github.com/${{ github.repository }}.git
+          
           git add catalog_data.json 2>/dev/null || true
+          
           if git diff --staged --quiet; then
-            echo "ℹ️ No changes to catalog_data.json"
+            echo "ℹ️ No new extractions to commit"
           else
             COUNT=$(python -c "import json; print(len(json.load(open('catalog_data.json'))))" 2>/dev/null || echo "?")
-            git commit -m "🤖 Auto-update catalog: $COUNT records [skip ci]"
-            git push origin HEAD:${{ github.ref_name }}
-            echo "✅ Pushed catalog with $COUNT records"
+            git commit -m "📊 Local extraction: $COUNT records [skip ci]"
+            
+            for i in 1 2 3; do
+              git pull --rebase origin ${{ github.ref_name }} || true
+              if git push origin HEAD:${{ github.ref_name }}; then
+                echo "✅ Pushed $COUNT records (Stage 1)"
+                break
+              fi
+              sleep 2
+            done
           fi
       
-      - name: Report status
+      # =====================================================================
+      # STAGE 2: AI validation (optional — failures don't break pipeline)
+      # =====================================================================
+      - name: Stage 2 — AI validation pass
+        id: validate
+        continue-on-error: true
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        run: python extractor/ai_validator.py
+      
+      - name: Commit AI validation results (Stage 2)
+        if: always()
+        env:
+          G_TOKEN: ${{ secrets.G_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git add catalog_data.json 2>/dev/null || true
+          
+          if git diff --staged --quiet; then
+            echo "ℹ️ No AI corrections to commit"
+          else
+            git commit -m "🤖 AI validation pass [skip ci]"
+            
+            for i in 1 2 3; do
+              git pull --rebase origin ${{ github.ref_name }} || true
+              if git push origin HEAD:${{ github.ref_name }}; then
+                echo "✅ Pushed AI corrections (Stage 2)"
+                break
+              fi
+              sleep 2
+            done
+          fi
+      
+      - name: Final status
         if: always()
         run: |
-          if [ "${{ steps.extract.outcome }}" == "failure" ]; then
-            echo "⚠️ Extractor exited with errors — partial progress was committed"
+          if [ "${{ steps.extract.outcome }}" == "success" ]; then
+            echo "✅ Stage 1 (local extraction): SUCCESS"
           else
-            echo "✅ Extraction completed successfully"
+            echo "❌ Stage 1 (local extraction): FAILED"
+          fi
+          
+          if [ "${{ steps.validate.outcome }}" == "success" ]; then
+            echo "✅ Stage 2 (AI validation): SUCCESS"
+          elif [ "${{ steps.validate.outcome }}" == "failure" ]; then
+            echo "⚠️ Stage 2 (AI validation): FAILED (non-critical — local data still committed)"
+          else
+            echo "⏭️ Stage 2 (AI validation): SKIPPED"
           fi
