@@ -1,1 +1,44 @@
-[]
+[
+  {
+    "proj": "Panasonic",
+    "region": "APAC",
+    "country": "Japan",
+    "cat": "Network & Telecom",
+    "vendor": "Cisco",
+    "file": "Cisco_PASCZ - signed.pdf",
+    "services": [
+      "Cisco Catalyst C8300"
+    ],
+    "price": 17016,
+    "year": 2025,
+    "quarter": "Q1"
+  },
+  {
+    "proj": "Panasonic",
+    "region": "EMEA",
+    "country": "Czech Republic",
+    "cat": "Network & Telecom",
+    "vendor": "Cisco",
+    "file": "CZ - 4595421-4_250880_Panasonic_Cisco_Catalyst_C8300_02102025.pdf",
+    "services": [
+      "Cisco Catalyst C8300"
+    ],
+    "price": 407,
+    "year": 2025,
+    "quarter": "Q1"
+  },
+  {
+    "proj": "Panasonic",
+    "region": "APAC",
+    "country": "Japan",
+    "cat": "Network & Telecom",
+    "vendor": "Cisco",
+    "file": "ClientOrder_AD101-2511-005_20251114 (3).pdf",
+    "services": [
+      "Cisco Catalyst C8300"
+    ],
+    "price": 12467281,
+    "year": 2025,
+    "quarter": "Q1"
+  }
+]
