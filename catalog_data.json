@@ -40,5 +40,298 @@
     "price": 12467281,
     "year": 2025,
     "quarter": "Q1"
+  },
+  {
+    "proj": "Panasonic",
+    "region": "Americas",
+    "country": "United States",
+    "cat": "M365 & Power Platform",
+    "vendor": "Copeland LP",
+    "file": "Copeland New EAS_en-US_CPS_1342548_003_Final_CTM.pdf",
+    "services": [
+      "M365 E5",
+      "Microsoft Defender",
+      "Power BI Premium",
+      "Visio P1",
+      "Visio P2",
+      "Windows 365"
+    ],
+    "price": 0,
+    "year": 2023,
+    "quarter": "Q2",
+    "_validated": false
+  },
+  {
+    "proj": "Panasonic",
+    "region": "APAC",
+    "country": "India",
+    "cat": "Network & Telecom",
+    "vendor": "Cisco",
+    "file": "92922585.pdf",
+    "services": [
+      "Cisco Catalyst C8300",
+      "Cisco Meraki",
+      "Cisco Meraki MR46E"
+    ],
+    "price": 3799672,
+    "year": 2026,
+    "quarter": "Q1",
+    "_validated": false
+  },
+  {
+    "proj": "Panasonic",
+    "region": "APAC",
+    "country": "India",
+    "cat": "Network & Telecom",
+    "vendor": "Cisco",
+    "file": "20251107 _ Panasonic Automotive _ India Sites PDF.pdf",
+    "services": [
+      "Cisco Catalyst C8300",
+      "Cisco Meraki",
+      "Cisco Meraki MR46E"
+    ],
+    "price": 0,
+    "year": 2025,
+    "quarter": "Q1",
+    "_validated": false
+  },
+  {
+    "proj": "Panasonic",
+    "region": "EMEA",
+    "country": "Czech Republic",
+    "cat": "Network & Telecom",
+    "vendor": "Cisco",
+    "file": "Cisco4628852_PASCZ - PO#AD101-2511-006.pdf",
+    "services": [
+      "Cisco Catalyst C8300",
+      "Oracle Database Appliance"
+    ],
+    "price": 17016,
+    "year": 2026,
+    "quarter": "Q4",
+    "_validated": false
+  },
+  {
+    "proj": "Panasonic",
+    "region": "APAC",
+    "country": "India",
+    "cat": "Network & Telecom",
+    "vendor": "Cisco",
+    "file": "92924827.pdf",
+    "services": [
+      "Cisco Meraki",
+      "Cisco Meraki MR46E"
+    ],
+    "price": 2563089,
+    "year": 2026,
+    "quarter": "Q1",
+    "_validated": false
+  },
+  {
+    "proj": "Panasonic",
+    "region": "Global",
+    "country": "Multi-Region",
+    "cat": "M365 & Power Platform",
+    "vendor": "Microsoft",
+    "file": "Microsoft EA - Prelim Yr-Yr Comp - FINAL.xlsx",
+    "services": [
+      "M365 E5",
+      "Power BI Premium",
+      "Visio P1",
+      "Visio P2",
+      "Windows 365"
+    ],
+    "price": 0,
+    "year": 2025,
+    "quarter": "Q1",
+    "_validated": false
+  },
+  {
+    "proj": "Panasonic",
+    "region": "EMEA",
+    "country": "Germany",
+    "cat": "Network & Telecom",
+    "vendor": "Cisco",
+    "file": "9300456211.PDF",
+    "services": [
+      "Cisco Catalyst 9400",
+      "Cisco Catalyst 9800",
+      "Cisco Catalyst C8300",
+      "Security Awareness Training"
+    ],
+    "price": 128,
+    "year": 2026,
+    "quarter": "Q1",
+    "_validated": false
+  },
+  {
+    "proj": "Panasonic",
+    "region": "APAC",
+    "country": "Japan",
+    "cat": "Network & Telecom",
+    "vendor": "Cisco",
+    "file": "12.5.2025 - Revised Quote - Equinix TY Cisco License - EN.pdf",
+    "services": [],
+    "price": 0,
+    "year": 2025,
+    "quarter": "Q4",
+    "_validated": false
+  },
+  {
+    "proj": "Panasonic",
+    "region": "Americas",
+    "country": "United States",
+    "cat": "IdAM",
+    "vendor": "Quest",
+    "file": "Final PASAP - NTT-Panasonic Auto-Cisco Network Equipment Rev.3.pdf",
+    "services": [
+      "Cisco Catalyst 9200",
+      "Cisco Catalyst 9800",
+      "Cisco Catalyst C8300",
+      "Cisco Wireless 9176I",
+      "Oracle Database Appliance"
+    ],
+    "price": 7582500,
+    "year": 2025,
+    "quarter": "Q4",
+    "_validated": false
+  },
+  {
+    "proj": "Panasonic",
+    "region": "EMEA",
+    "country": "Germany",
+    "cat": "Network & Telecom",
+    "vendor": "Cisco",
+    "file": "9300455698.PDF",
+    "services": [],
+    "price": 7693,
+    "year": 2025,
+    "quarter": "Q1",
+    "_validated": false
+  },
+  {
+    "proj": "Panasonic",
+    "region": "APAC",
+    "country": "India",
+    "cat": "Network & Telecom",
+    "vendor": "Unknown",
+    "file": "92924822.pdf",
+    "services": [
+      "Cisco Meraki"
+    ],
+    "price": 545986,
+    "year": 2026,
+    "quarter": "Q1",
+    "_validated": false
+  },
+  {
+    "proj": "Panasonic",
+    "region": "APAC",
+    "country": "India",
+    "cat": "Network & Telecom",
+    "vendor": "Unknown",
+    "file": "92922627.pdf",
+    "services": [
+      "Cisco Meraki"
+    ],
+    "price": 916860,
+    "year": 2026,
+    "quarter": "Q1",
+    "_validated": false
+  },
+  {
+    "proj": "Panasonic",
+    "region": "Americas",
+    "country": "United States",
+    "cat": "M365 & Power Platform",
+    "vendor": "Microsoft",
+    "file": "2024-12-11_Resonant Clinical Solutions_M365 Licensing.pdf",
+    "services": [
+      "M365 E3",
+      "M365 E5",
+      "Teams Essentials"
+    ],
+    "price": 26838,
+    "year": 2024,
+    "quarter": "Q4",
+    "_validated": false
+  },
+  {
+    "proj": "Panasonic",
+    "region": "EMEA",
+    "country": "Czech Republic",
+    "cat": "Network & Telecom",
+    "vendor": "Cisco",
+    "file": "9300031101 Panasonic Automotive Systems Co., Ltd..pdf",
+    "services": [
+      "Cisco Catalyst C8300",
+      "Security Awareness Training"
+    ],
+    "price": 0,
+    "year": 2025,
+    "quarter": "Q1",
+    "_validated": false
+  },
+  {
+    "proj": "Panasonic",
+    "region": "EMEA",
+    "country": "Germany",
+    "cat": "Network & Telecom",
+    "vendor": "Cisco",
+    "file": "9300455600.PDF",
+    "services": [
+      "Cisco Catalyst C8300"
+    ],
+    "price": 47872,
+    "year": 2025,
+    "quarter": "Q1",
+    "_validated": false
+  },
+  {
+    "proj": "Panasonic",
+    "region": "APAC",
+    "country": "Japan",
+    "cat": "M365 & Power Platform",
+    "vendor": "Microsoft",
+    "file": "Eng_[PAS] Tenant migration schedule overview_20250724.pdf",
+    "services": [
+      "M365 E3",
+      "M365 E5"
+    ],
+    "price": 0,
+    "year": 2025,
+    "quarter": "Q2",
+    "_validated": false
+  },
+  {
+    "proj": "Panasonic",
+    "region": "EMEA",
+    "country": "Germany",
+    "cat": "IdAM",
+    "vendor": "Cisco",
+    "file": "12.7.2025 - Quote_4613379_PAS Cisco DNA-C8000V for Frankfurt.pdf",
+    "services": [],
+    "price": 12767,
+    "year": 2025,
+    "quarter": "Q1",
+    "_validated": false
+  },
+  {
+    "proj": "Panasonic",
+    "region": "EMEA",
+    "country": "Germany",
+    "cat": "Network & Telecom",
+    "vendor": "Cisco",
+    "file": "Cisco_PASEU - signed.pdf",
+    "services": [
+      "Cisco Catalyst 9400",
+      "Cisco Catalyst 9800",
+      "Cisco Catalyst C8300",
+      "Security Awareness Training"
+    ],
+    "price": 175,
+    "year": 2025,
+    "quarter": "Q1",
+    "_validated": false
   }
 ]
