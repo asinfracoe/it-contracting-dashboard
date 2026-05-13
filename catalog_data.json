@@ -11,7 +11,8 @@
     ],
     "price": 17016,
     "year": 2025,
-    "quarter": "Q1"
+    "quarter": "Q1",
+    "_validated": true
   },
   {
     "proj": "Panasonic",
@@ -25,7 +26,8 @@
     ],
     "price": 407,
     "year": 2025,
-    "quarter": "Q1"
+    "quarter": "Q1",
+    "_validated": true
   },
   {
     "proj": "Panasonic",
@@ -39,7 +41,8 @@
     ],
     "price": 12467281,
     "year": 2025,
-    "quarter": "Q1"
+    "quarter": "Q1",
+    "_validated": true
   },
   {
     "proj": "Panasonic",
@@ -59,7 +62,7 @@
     "price": 0,
     "year": 2023,
     "quarter": "Q2",
-    "_validated": false
+    "_validated": true
   },
   {
     "proj": "Panasonic",
@@ -76,7 +79,7 @@
     "price": 3799672,
     "year": 2026,
     "quarter": "Q1",
-    "_validated": false
+    "_validated": true
   },
   {
     "proj": "Panasonic",
@@ -93,7 +96,7 @@
     "price": 0,
     "year": 2025,
     "quarter": "Q1",
-    "_validated": false
+    "_validated": true
   },
   {
     "proj": "Panasonic",
@@ -109,7 +112,7 @@
     "price": 17016,
     "year": 2026,
     "quarter": "Q4",
-    "_validated": false
+    "_validated": true
   },
   {
     "proj": "Panasonic",
@@ -125,7 +128,7 @@
     "price": 2563089,
     "year": 2026,
     "quarter": "Q1",
-    "_validated": false
+    "_validated": true
   },
   {
     "proj": "Panasonic",
@@ -144,7 +147,7 @@
     "price": 0,
     "year": 2025,
     "quarter": "Q1",
-    "_validated": false
+    "_validated": true
   },
   {
     "proj": "Panasonic",
@@ -162,7 +165,7 @@
     "price": 128,
     "year": 2026,
     "quarter": "Q1",
-    "_validated": false
+    "_validated": true
   },
   {
     "proj": "Panasonic",
@@ -175,7 +178,7 @@
     "price": 0,
     "year": 2025,
     "quarter": "Q4",
-    "_validated": false
+    "_validated": true
   },
   {
     "proj": "Panasonic",
@@ -194,7 +197,7 @@
     "price": 7582500,
     "year": 2025,
     "quarter": "Q4",
-    "_validated": false
+    "_validated": true
   },
   {
     "proj": "Panasonic",
@@ -207,7 +210,7 @@
     "price": 7693,
     "year": 2025,
     "quarter": "Q1",
-    "_validated": false
+    "_validated": true
   },
   {
     "proj": "Panasonic",
@@ -222,7 +225,7 @@
     "price": 545986,
     "year": 2026,
     "quarter": "Q1",
-    "_validated": false
+    "_validated": true
   },
   {
     "proj": "Panasonic",
@@ -237,7 +240,7 @@
     "price": 916860,
     "year": 2026,
     "quarter": "Q1",
-    "_validated": false
+    "_validated": true
   },
   {
     "proj": "Panasonic",
@@ -254,7 +257,7 @@
     "price": 26838,
     "year": 2024,
     "quarter": "Q4",
-    "_validated": false
+    "_validated": true
   },
   {
     "proj": "Panasonic",
@@ -270,7 +273,7 @@
     "price": 0,
     "year": 2025,
     "quarter": "Q1",
-    "_validated": false
+    "_validated": true
   },
   {
     "proj": "Panasonic",
@@ -285,7 +288,7 @@
     "price": 47872,
     "year": 2025,
     "quarter": "Q1",
-    "_validated": false
+    "_validated": true
   },
   {
     "proj": "Panasonic",
@@ -301,7 +304,7 @@
     "price": 0,
     "year": 2025,
     "quarter": "Q2",
-    "_validated": false
+    "_validated": true
   },
   {
     "proj": "Panasonic",
@@ -314,7 +317,7 @@
     "price": 12767,
     "year": 2025,
     "quarter": "Q1",
-    "_validated": false
+    "_validated": true
   },
   {
     "proj": "Panasonic",
@@ -332,6 +335,6 @@
     "price": 175,
     "year": 2025,
     "quarter": "Q1",
-    "_validated": false
+    "_validated": true
   }
 ]
