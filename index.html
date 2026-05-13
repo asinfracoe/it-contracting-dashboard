@@ -651,43 +651,55 @@ html,body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-siz
       </div>
       <div id="ex-results" style="display:none">
         <div id="ex-verdict"></div>
-        <div class="grid-4" id="ex-kpis"></div>
-        <div class="card" id="ex-combo-card">
-          <div class="card-head"><div class="card-title"><span class="card-title-ico">🔀</span>Combination Analysis</div><div class="card-meta or" id="ex-combo-meta">—</div></div>
-          <div id="ex-combo-body"></div>
-        </div>
-        <div class="card" style="padding:0">
-          <div class="card-head" style="padding:14px 18px"><div class="card-title"><span class="card-title-ico">📜</span>Comparable Prior Quotes</div><span class="card-meta bl" id="ex-prior-meta">—</span></div>
-          <div style="overflow:auto;max-height:320px">
-            <table class="cat-table" id="ex-prior-table">
-              <thead><tr><th>Vendor</th><th>Project</th><th>Matched</th><th>Price</th><th>vs Your Quote</th><th>Year</th></tr></thead>
-              <tbody></tbody>
-            </table>
-          </div>
-        </div>
-        <div class="grid-2">
-        <div class="card">
-          <div class="card-head">
-            <div class="card-title"><span class="card-title-ico">🎯</span>Your Quote vs Historical Range</div>
-            <span class="info-ico" data-tip="Shows where your quote sits compared to all past quotes for the same services. Green zone = below average (good). Red zone = above ceiling (bad). Orange marker = your quote.">ⓘ</span>
-          </div>
-          <div class="chart-wrap"><canvas id="ex-pos-chart"></canvas></div>
-        </div>
-        <div class="card">
-          <div class="card-head">
-            <div class="card-title"><span class="card-title-ico">🏆</span>Vendor Price Ranking</div>
-            <span class="info-ico" data-tip="Ranks all vendors who have quoted the same services by their best price. Your quote (highlighted orange) is placed in context. Lower = better.">ⓘ</span>
-          </div>
-          <div class="chart-wrap"><canvas id="ex-vendor-chart"></canvas></div>
-        </div>
-      </div>
-        <div class="card">
-          <div class="card-head"><div class="card-title"><span class="card-title-ico">🎯</span>Action Plan</div><div class="card-meta gn">Recommendation</div></div>
+        <div class="card" style="border-left:4px solid var(--or)">
+          <div class="card-head"><div class="card-title"><span class="card-title-ico">🎯</span>Action Plan</div><div class="card-meta gn">Top Recommendation</div></div>
           <div id="ex-rec"></div>
           <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
             <button class="btn" onclick="exExport()">📥 Export Report</button>
             <button class="btn dark" onclick="exAskGrok()">🤖 Ask Grok</button>
             <button class="btn sec" onclick="exPushRFQ()">📋 Build Counter-RFQ</button>
+          </div>
+        </div>
+        
+        <div class="grid-4" id="ex-kpis"></div>
+        
+        <div class="card" id="ex-combo-card">
+          <div class="card-head"><div class="card-title"><span class="card-title-ico">🔀</span>Same-Combination Historical Analysis</div><div class="card-meta or" id="ex-combo-meta">—</div></div>
+          <div id="ex-combo-body"></div>
+        </div>
+        
+        <div class="card" style="padding:0">
+          <div class="card-head" style="padding:14px 18px">
+            <div class="card-title"><span class="card-title-ico">📊</span>Per-Service Price Comparison</div>
+            <div class="card-meta bl" id="ex-svc-comp-meta">—</div>
+          </div>
+          <div id="ex-svc-comp" style="padding:0 18px 18px"></div>
+        </div>
+        
+        <div class="card" style="padding:0">
+          <div class="card-head" style="padding:14px 18px"><div class="card-title"><span class="card-title-ico">📜</span>Comparable Prior Quotes</div><span class="card-meta bl" id="ex-prior-meta">—</span></div>
+          <div style="overflow:auto;max-height:340px">
+            <table class="cat-table" id="ex-prior-table">
+              <thead><tr><th>Vendor</th><th>Project</th><th style="text-align:left !important">Country</th><th>Matched</th><th>Price</th><th>vs Your Quote</th><th>Year</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+        
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-head">
+              <div class="card-title"><span class="card-title-ico">🎯</span>Your Quote vs Historical Range</div>
+              <span class="info-ico" data-tip="Shows where your quote sits compared to all past quotes for the same services. Green zone = below average (good). Red zone = above ceiling (bad). Orange marker = your quote.">ⓘ</span>
+            </div>
+            <div class="chart-wrap"><canvas id="ex-pos-chart"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <div class="card-title"><span class="card-title-ico">🏆</span>Vendor Price Ranking</div>
+              <span class="info-ico" data-tip="Ranks all vendors who have quoted the same services by their best price. Your quote (highlighted orange) is placed in context. Lower = better.">ⓘ</span>
+            </div>
+            <div class="chart-wrap"><canvas id="ex-vendor-chart"></canvas></div>
           </div>
         </div>
       </div>
@@ -2231,22 +2243,110 @@ function scoreQuote(){
     {lbl:'Percentile',val:perc.toFixed(0)+'%',sub:perc<50?'below median':'above median'}
   ];
   document.getElementById('ex-kpis').innerHTML=kpis.map(k=>`<div class="kpi"><div class="kpi-lbl">${k.lbl}</div><div class="kpi-val">${k.val}</div><div class="kpi-sub ${k.cls||''}">${k.sub}</div></div>`).join('');
+  renderExSvcComparison(sel,p,proj);
 
   const comboEl=document.getElementById('ex-combo-body');
-  const allMatch=pool.filter(r=>sel.every(s=>(r.services||[]).includes(s)));
-  set('ex-combo-meta',allMatch.length+' vendors quoted same combo');
-  if(allMatch.length===0){comboEl.innerHTML='<div style="padding:16px;text-align:center;color:var(--mid);font-size:.80rem">No other vendor has quoted this exact combination</div>';}
-  else{
-    const comboPrices=allMatch.map(r=>r.price).filter(x=>x>0);
-    comboEl.innerHTML=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px"><div class="mstat"><div class="mstat-lbl">Min (Same Combo)</div><div class="mstat-val gn">${fmt(Math.min(...comboPrices))}</div></div><div class="mstat"><div class="mstat-lbl">Avg (Same Combo)</div><div class="mstat-val or">${fmt(comboPrices.reduce((a,b)=>a+b,0)/comboPrices.length)}</div></div><div class="mstat"><div class="mstat-lbl">Max (Same Combo)</div><div class="mstat-val rd">${fmt(Math.max(...comboPrices))}</div></div></div>${allMatch.sort((a,b)=>a.price-b.price).slice(0,5).map(r=>`<div style="padding:10px;background:var(--bg);border-radius:var(--r);margin-bottom:6px;display:flex;justify-content:space-between;align-items:center"><div>${vbadge(r.vendor)} <span style="font-size:.70rem;color:var(--mid);margin-left:6px">${esc(r.proj)} · ${r.year}</span></div><div style="font-family:var(--serif);color:var(--or);font-weight:700">${fmt(r.price)}</div></div>`).join('')}`;
+    const allMatch=pool.filter(r=>sel.every(s=>(r.services||[]).includes(s)));
+    const supersetMatch=DB.filter(r=>sel.every(s=>(r.services||[]).includes(s))&&r.price>0);
+    set('ex-combo-meta',allMatch.length+' exact match · '+supersetMatch.length+' total');
+    
+    if(allMatch.length===0&&supersetMatch.length===0){
+      comboEl.innerHTML='<div style="padding:20px;text-align:center;color:var(--mid);font-size:.82rem"><div style="font-size:2rem;margin-bottom:8px;opacity:.4">🔍</div><div style="font-weight:700;color:var(--ink2);margin-bottom:4px">No matching combination found</div><div>No vendor has previously quoted all ${sel.length} services together. This is a fresh combination — recommend issuing RFQ to 4-5 vendors.</div></div>';
+    } else {
+      const useMatch=allMatch.length>0?allMatch:supersetMatch;
+      const comboPrices=useMatch.map(r=>r.price).filter(x=>x>0);
+      const yourP=p;
+      const minP=Math.min(...comboPrices);
+      const avgP=comboPrices.reduce((a,b)=>a+b,0)/comboPrices.length;
+      const maxP=Math.max(...comboPrices);
+      const yourVsMin=((yourP-minP)/minP*100);
+      const yourVsAvg=((yourP-avgP)/avgP*100);
+      const yourVsMax=((yourP-maxP)/maxP*100);
+      
+      const countries=[...new Set(useMatch.map(r=>r.country))];
+      const regions=[...new Set(useMatch.map(r=>r.region))];
+      const vendors=[...new Set(useMatch.map(r=>r.vendor))];
+      
+      const countryStats=countries.map(c=>{
+        const cq=useMatch.filter(r=>r.country===c);
+        const cp=cq.map(r=>r.price).filter(x=>x>0);
+        return{country:c,count:cq.length,min:Math.min(...cp),avg:cp.reduce((a,b)=>a+b,0)/cp.length,max:Math.max(...cp)};
+      }).sort((a,b)=>a.avg-b.avg);
+      
+      comboEl.innerHTML=`
+        <div style="background:linear-gradient(90deg,var(--ort),transparent);padding:12px 14px;border-radius:var(--r);margin-bottom:14px;border-left:3px solid var(--or)">
+          <div style="font-size:.70rem;font-weight:700;color:var(--or);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px">${allMatch.length>0?'✅ EXACT COMBINATION HISTORY':'ℹ️ SUPERSET HISTORY (vendors quoted these services + more)'}</div>
+          <div style="font-size:.78rem;color:var(--ink2);font-weight:500">${useMatch.length} prior quote${useMatch.length>1?'s':''} from ${vendors.length} vendor${vendors.length>1?'s':''} across ${countries.length} countr${countries.length>1?'ies':'y'} (${regions.join(', ')})</div>
+        </div>
+        
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
+          <div class="mstat"><div class="mstat-lbl">Your Quote</div><div class="mstat-val or">${fmt(yourP)}</div></div>
+          <div class="mstat"><div class="mstat-lbl">Min (Same Combo)</div><div class="mstat-val gn">${fmt(minP)}</div><div style="font-size:.62rem;color:${yourVsMin>0?'var(--rd)':'var(--gn)'};font-weight:700;margin-top:2px">${yourVsMin>=0?'+':''}${yourVsMin.toFixed(1)}% vs you</div></div>
+          <div class="mstat"><div class="mstat-lbl">Avg (Same Combo)</div><div class="mstat-val or">${fmt(avgP)}</div><div style="font-size:.62rem;color:${yourVsAvg>0?'var(--rd)':'var(--gn)'};font-weight:700;margin-top:2px">${yourVsAvg>=0?'+':''}${yourVsAvg.toFixed(1)}% vs you</div></div>
+          <div class="mstat"><div class="mstat-lbl">Max (Same Combo)</div><div class="mstat-val rd">${fmt(maxP)}</div><div style="font-size:.62rem;color:${yourVsMax>0?'var(--rd)':'var(--gn)'};font-weight:700;margin-top:2px">${yourVsMax>=0?'+':''}${yourVsMax.toFixed(1)}% vs you</div></div>
+        </div>
+        
+        ${countryStats.length>1?`
+        <div style="margin-bottom:14px">
+          <div style="font-size:.68rem;font-weight:700;color:var(--mid);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">🌍 Geographic Breakdown</div>
+          <table class="cat-table" style="background:var(--white);border-radius:var(--r);overflow:hidden">
+            <thead>
+              <tr>
+                <th style="text-align:left !important">Country</th>
+                <th>Quotes</th>
+                <th>Min</th>
+                <th>Avg</th>
+                <th>Max</th>
+                <th>vs Your Quote</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${countryStats.map(cs=>{
+                const diff=((yourP-cs.avg)/cs.avg*100);
+                return `<tr>
+                  <td style="text-align:left;font-weight:600">${esc(cs.country)}</td>
+                  <td><span class="b nt">${cs.count}</span></td>
+                  <td class="num" style="color:var(--gn)">${fmt(cs.min)}</td>
+                  <td class="num" style="color:var(--or);font-weight:700">${fmt(cs.avg)}</td>
+                  <td class="num" style="color:var(--rd)">${fmt(cs.max)}</td>
+                  <td><span class="b ${diff<0?'gn':'rd'}">${diff>=0?'+':''}${diff.toFixed(1)}%</span></td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>`:''}
+        
+        <div style="font-size:.68rem;font-weight:700;color:var(--mid);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">📜 Top Comparable Quotes</div>
+        ${useMatch.sort((a,b)=>a.price-b.price).slice(0,8).map(r=>{
+          const diff=((yourP-r.price)/r.price*100);
+          return `<div style="padding:10px 12px;background:var(--bg);border-radius:var(--r);margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="selShowQuote('${esc(r.vendor).replace(/'/g,"\\'")}','${esc((r.services||[])[0]||'').replace(/'/g,"\\'")}')">
+            <div style="flex:1">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">${vbadge(r.vendor)}<span style="font-size:.66rem;color:var(--mid);font-weight:600">${esc(r.proj)} · ${esc(r.country||r.region)}</span></div>
+              <div style="font-size:.66rem;color:var(--mid)">${esc(r.file.length>40?r.file.substring(0,40)+'…':r.file)} · ${r.year}${r.quarter||''}</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-family:var(--serif);color:var(--or);font-weight:700;font-size:1rem">${fmt(r.price)}</div>
+              <div style="font-size:.64rem;color:${diff<0?'var(--gn)':'var(--rd)'};font-weight:700;margin-top:2px">${diff>=0?'+':''}${diff.toFixed(1)}% vs you</div>
+            </div>
+          </div>`;
+        }).join('')}
+      `;
   }
 
   const priorEl=document.querySelector('#ex-prior-table tbody');
   set('ex-prior-meta',pool.length+' prior');
-  priorEl.innerHTML=pool.slice(0,15).sort((a,b)=>a.price-b.price).map(r=>{
+  priorEl.innerHTML=pool.slice(0,20).sort((a,b)=>a.price-b.price).map(r=>{
     const matched=sel.filter(s=>(r.services||[]).includes(s)).length;
     const diff=((r.price-p)/p*100).toFixed(1);
-    return `<tr><td>${vbadge(r.vendor)}</td><td>${esc(r.proj)}</td><td><span class="b nt">${matched}/${sel.length}</span></td><td class="num">${fmt(r.price)}</td><td><span class="b ${diff<0?'gn':'rd'}">${diff>=0?'+':''}${diff}%</span></td><td>${r.year}${r.quarter||''}</td></tr>`;
+    return `<tr style="cursor:pointer" onclick="selShowQuote('${esc(r.vendor).replace(/'/g,"\\'")}','${esc((r.services||[]).find(s=>sel.includes(s))||'').replace(/'/g,"\\'")}')">
+      <td>${vbadge(r.vendor)}</td>
+      <td>${esc(r.proj)}</td>
+      <td style="text-align:left">${esc(r.country||r.region||'—')}</td>
+      <td><span class="b nt">${matched}/${sel.length}</span></td>
+      <td class="num">${fmt(r.price)}</td>
+      <td><span class="b ${diff<0?'gn':'rd'}">${diff>=0?'+':''}${diff}%</span></td>
+      <td>${r.year}${r.quarter||''}</td>
+    </tr>`;
   }).join('');
 
   destroyChart('ex-pos-chart');
@@ -2274,16 +2374,209 @@ function scoreQuote(){
   }
 
   const recEl=document.getElementById('ex-rec');
+  const targetPrice=avg*0.9;
+  const savingsVsYou=p-targetPrice;
+  const bestVendor=pool.length?pool.sort((a,b)=>a.price-b.price)[0]:null;
+  
+  let actionVerdict,actionColor,actionIcon,actionTitle,nextSteps;
+  if(verdict==='gn'){
+    actionVerdict='ACCEPT';
+    actionColor='var(--gn)';
+    actionIcon='✅';
+    actionTitle='Strong Quote — Move to Close';
+    nextSteps=[
+      `<strong>Close quickly</strong> at <strong style="color:var(--or)">${fmt(p)}</strong> — this beats market average by ${Math.abs(deltaPct).toFixed(1)}%`,
+      `Request a <strong>price-hold</strong> for 30 days to allow for internal approvals`,
+      `Lock in <strong>annual escalator cap</strong> at ≤5% if multi-year`,
+      `Try one final ask: <strong style="color:var(--or)">${fmt(p*0.97)}</strong> (3% additional discount)`
+    ];
+  } else if(verdict==='am'){
+    actionVerdict='NEGOTIATE';
+    actionColor='var(--am)';
+    actionIcon='⚠️';
+    actionTitle='Fair Quote — Push for Better Terms';
+    nextSteps=[
+      `<strong>Counter at <span style="color:var(--or)">${fmt(targetPrice)}</span></strong> — this is 10% below market average and achievable based on history`,
+      `Cite benchmark: ${bestVendor?`<strong>${esc(bestVendor.vendor)}</strong> previously quoted <strong>${fmt(bestVendor.price)}</strong> for similar scope`:'historical floor of '+fmt(min)}`,
+      `Request <strong>2 additional competing bids</strong> to maintain leverage`,
+      `Potential savings if achieved: <strong style="color:var(--gn)">${fmt(savingsVsYou)}</strong>`
+    ];
+  } else {
+    actionVerdict='REJECT / RE-RFQ';
+    actionColor='var(--rd)';
+    actionIcon='❌';
+    actionTitle='Overpriced — Reject and Restart';
+    nextSteps=[
+      `<strong>Reject</strong> this quote — it is <strong style="color:var(--rd)">${deltaPct.toFixed(1)}% above market</strong>`,
+      `Issue <strong>fresh RFQ to 4-5 vendors</strong> with target of <strong style="color:var(--or)">${fmt(avg*0.95)}</strong>`,
+      `Top alternative vendors: <strong>${pool.slice(0,3).map(r=>esc(r.vendor)).join(', ')}</strong>`,
+      `Reference floor: <strong style="color:var(--gn)">${fmt(min)}</strong> achieved historically — use as anchor`
+    ];
+  }
+  
   recEl.innerHTML=`
+    <div style="background:linear-gradient(90deg,${actionColor}15,transparent);padding:14px 16px;border-radius:var(--r);margin-bottom:14px;border-left:4px solid ${actionColor}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+        <div style="flex:1">
+          <div style="font-size:.68rem;font-weight:800;color:${actionColor};letter-spacing:1px;margin-bottom:4px">${actionIcon} VERDICT: ${actionVerdict}</div>
+          <div style="font-family:var(--serif);font-size:1.15rem;font-weight:700;color:var(--ink);margin-bottom:6px">${actionTitle}</div>
+          <div style="font-size:.78rem;color:var(--ink2);line-height:1.5">${body}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:.62rem;font-weight:700;color:var(--mid);text-transform:uppercase">Target Price</div>
+          <div style="font-family:var(--serif);font-size:1.4rem;font-weight:800;color:var(--or)">${fmt(targetPrice)}</div>
+          <div style="font-size:.66rem;color:var(--mid);font-weight:600">${fmt(savingsVsYou)} potential save</div>
+        </div>
+      </div>
+    </div>
+    
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
+      <div class="mstat"><div class="mstat-lbl">Your Position</div><div class="mstat-val ${deltaPct<0?'gn':'rd'}" style="font-size:1.05rem">${perc.toFixed(0)}<span style="font-size:.7rem">th %ile</span></div></div>
+      <div class="mstat"><div class="mstat-lbl">Market Floor</div><div class="mstat-val gn" style="font-size:1.05rem">${prices.length?fmt(min):'—'}</div></div>
+      <div class="mstat"><div class="mstat-lbl">Best Vendor</div><div class="mstat-val" style="font-size:.85rem;font-family:var(--sans)">${bestVendor?esc(bestVendor.vendor):'—'}</div></div>
+    </div>
+    
+    <div style="font-size:.68rem;font-weight:700;color:var(--mid);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">📋 Next Steps</div>
     <ol style="padding-left:20px;font-size:.82rem;line-height:1.8;color:var(--ink2)">
-      <li><strong>Benchmark:</strong> Your quote is at the ${perc.toFixed(0)}th percentile (${deltaPct<0?'below':'above'} average by ${Math.abs(deltaPct).toFixed(1)}%)</li>
-      <li><strong>Target Price:</strong> Aim for <strong style="color:var(--or)">${fmt(avg*0.9)}</strong> based on 10% below market average</li>
-      <li><strong>Best Price History:</strong> ${prices.length?fmt(min)+' was the lowest achieved':'No prior benchmark available'}</li>
-      <li><strong>Action:</strong> ${verdict==='gn'?'Accept and close quickly':verdict==='am'?'Counter with target price and request 2 more bids':'Request revised quote or issue RFQ to 3+ vendors'}</li>
+      ${nextSteps.map(s=>`<li>${s}</li>`).join('')}
     </ol>
   `;
 }
 
+function renderExSvcComparison(sel,yourTotalPrice,proj){
+  const el=document.getElementById('ex-svc-comp');
+  if(!el)return;
+  
+  const yourPerSvcEstimate=yourTotalPrice/sel.length;
+  
+  const html=sel.map(s=>{
+    let pool=DB.filter(r=>(r.services||[]).includes(s)&&r.price>0);
+    if(proj!=='All')pool=pool.filter(r=>r.proj===proj);
+    
+    if(pool.length===0){
+      return `<div style="padding:14px;background:var(--bg);border-radius:var(--r);margin-bottom:10px;border-left:3px solid var(--mid)">
+        <div style="font-weight:700;color:var(--ink);font-size:.84rem;margin-bottom:4px">${esc(s)}</div>
+        <div class="b nt">⚠️ No historical data for this service</div>
+      </div>`;
+    }
+    
+    const exclusiveQuotes=pool.filter(r=>(r.services||[]).length===1);
+    const useQuotes=exclusiveQuotes.length>0?exclusiveQuotes:pool;
+    const ps=useQuotes.map(r=>r.price);
+    const mn=Math.min(...ps);
+    const mx=Math.max(...ps);
+    const av=ps.reduce((a,b)=>a+b,0)/ps.length;
+    const median=[...ps].sort((a,b)=>a-b)[Math.floor(ps.length/2)];
+    
+    const yourVsAvg=((yourPerSvcEstimate-av)/av*100);
+    
+    let verdict,vColor,vIco;
+    if(yourVsAvg<-15){verdict='Excellent — Well below market';vColor='var(--gn)';vIco='✅';}
+    else if(yourVsAvg<-5){verdict='Good — Below market';vColor='var(--gn)';vIco='✅';}
+    else if(yourVsAvg<5){verdict='Fair — Within market range';vColor='var(--am)';vIco='⚠️';}
+    else if(yourVsAvg<15){verdict='High — Above market';vColor='var(--am)';vIco='⚠️';}
+    else {verdict='Overpriced — Significantly above market';vColor='var(--rd)';vIco='❌';}
+    
+    const countries=[...new Set(useQuotes.map(r=>r.country))];
+    const vendors=[...new Set(useQuotes.map(r=>r.vendor))];
+    const bestQuote=useQuotes.find(r=>r.price===mn);
+    
+    const range=mx-mn;
+    const yourPos=range>0?Math.max(0,Math.min(100,((yourPerSvcEstimate-mn)/range)*100)):50;
+    const avgPos=range>0?((av-mn)/range)*100:50;
+    
+    const uid='svcComp-'+s.replace(/[^a-z0-9]/gi,'').substring(0,20);
+    
+    return `<div style="background:var(--white);border:1px solid var(--line);border-left:4px solid ${vColor};border-radius:var(--r2);margin-bottom:12px;overflow:hidden">
+      <div style="padding:12px 14px;cursor:pointer" onclick="toggleExSvc('${uid}')">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:8px">
+          <div style="flex:1">
+            <div style="font-weight:700;color:var(--ink);font-size:.84rem;margin-bottom:4px">${esc(s)}</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;font-size:.66rem;font-weight:600">
+              <span class="b bl">${useQuotes.length} quote${useQuotes.length>1?'s':''}</span>
+              <span class="b nt">${vendors.length} vendor${vendors.length>1?'s':''}</span>
+              <span class="b nt">${countries.length} countr${countries.length>1?'ies':'y'}</span>
+              ${exclusiveQuotes.length===0?'<span class="b am">📦 Bundled prices only</span>':''}
+            </div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:.62rem;font-weight:700;color:${vColor};letter-spacing:.4px;margin-bottom:2px">${vIco} ${verdict.toUpperCase()}</div>
+            <div style="font-size:.72rem;color:var(--mid);font-weight:600">Est. your price: <strong style="color:var(--or)">${fmt(yourPerSvcEstimate)}</strong></div>
+            <div style="font-size:.64rem;color:${yourVsAvg<0?'var(--gn)':'var(--rd)'};font-weight:700;margin-top:2px">${yourVsAvg>=0?'+':''}${yourVsAvg.toFixed(1)}% vs avg</div>
+          </div>
+        </div>
+        
+        <div style="position:relative;height:36px;background:linear-gradient(90deg,rgba(16,185,129,.2) 0%,rgba(245,158,11,.2) 50%,rgba(239,68,68,.2) 100%);border-radius:var(--r);overflow:hidden;margin-top:6px">
+          <div style="position:absolute;left:${avgPos}%;top:0;height:100%;width:2px;background:var(--ink);opacity:.4"></div>
+          <div style="position:absolute;left:${avgPos}%;top:-2px;transform:translateX(-50%);font-size:.58rem;font-weight:700;color:var(--ink);background:white;padding:1px 4px;border-radius:2px;border:1px solid var(--line)">AVG</div>
+          <div style="position:absolute;left:${yourPos}%;top:0;height:100%;width:3px;background:var(--or);box-shadow:0 0 4px rgba(208,74,2,.5)"></div>
+          <div style="position:absolute;left:${yourPos}%;bottom:-1px;transform:translateX(-50%);font-size:.58rem;font-weight:800;color:white;background:var(--or);padding:1px 5px;border-radius:2px">YOU</div>
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:space-between;padding:0 8px;font-size:.62rem;font-weight:700;color:var(--ink)">
+            <span>Min ${fmt(mn)}</span><span>Max ${fmt(mx)}</span>
+          </div>
+        </div>
+        
+        <div style="display:flex;justify-content:flex-end;margin-top:6px"><span id="${uid}-arrow" style="color:var(--mid);font-size:.78rem">▼ Show all quotes</span></div>
+      </div>
+      
+      <div id="${uid}" style="display:none;background:var(--bg);padding:12px 14px;border-top:1px solid var(--line2)">
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px">
+          <div class="mstat" style="background:var(--white);padding:8px"><div class="mstat-lbl">Min</div><div class="mstat-val gn" style="font-size:.95rem">${fmt(mn)}</div></div>
+          <div class="mstat" style="background:var(--white);padding:8px"><div class="mstat-lbl">Median</div><div class="mstat-val" style="font-size:.95rem">${fmt(median)}</div></div>
+          <div class="mstat" style="background:var(--white);padding:8px"><div class="mstat-lbl">Avg</div><div class="mstat-val or" style="font-size:.95rem">${fmt(av)}</div></div>
+          <div class="mstat" style="background:var(--white);padding:8px"><div class="mstat-lbl">Max</div><div class="mstat-val rd" style="font-size:.95rem">${fmt(mx)}</div></div>
+        </div>
+        <div style="font-size:.66rem;font-weight:700;color:var(--mid);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">All Historical Quotes</div>
+        <table class="cat-table" style="background:var(--white);border-radius:var(--r);overflow:hidden">
+          <thead>
+            <tr>
+              <th>Vendor</th>
+              <th style="text-align:left !important">Project</th>
+              <th style="text-align:left !important">Country</th>
+              <th>Year</th>
+              <th>Price</th>
+              <th>vs Your Est.</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${useQuotes.sort((a,b)=>a.price-b.price).map(r=>{
+              const diff=((yourPerSvcEstimate-r.price)/r.price*100);
+              return `<tr style="cursor:pointer" onclick="selShowQuote('${esc(r.vendor).replace(/'/g,"\\'")}','${esc(s).replace(/'/g,"\\'")}')">
+                <td>${vbadge(r.vendor)}</td>
+                <td style="text-align:left">${esc(r.proj)}</td>
+                <td style="text-align:left">${esc(r.country||'—')}</td>
+                <td>${r.year}${r.quarter?' '+r.quarter:''}</td>
+                <td class="num" style="color:${r.price===mn?'var(--gn)':r.price===mx?'var(--rd)':'var(--ink)'};font-weight:700">${fmt(r.price)}${r.price===mn?' 🏆':''}</td>
+                <td><span class="b ${diff<0?'gn':'rd'}">${diff>=0?'+':''}${diff.toFixed(1)}%</span></td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+        ${bestQuote?`<div style="margin-top:10px;padding:8px 12px;background:var(--gnl);border-radius:var(--r);border-left:3px solid var(--gn)">
+          <div style="font-size:.68rem;font-weight:700;color:var(--gnd)">💡 BEST DEAL ON RECORD</div>
+          <div style="font-size:.74rem;color:var(--gnd);margin-top:2px">${esc(bestQuote.vendor)} quoted ${fmt(bestQuote.price)} in ${bestQuote.year} (${esc(bestQuote.country||bestQuote.region)})</div>
+        </div>`:''}
+      </div>
+    </div>`;
+  }).join('');
+  
+  el.innerHTML=html;
+  set('ex-svc-comp-meta',sel.length+' service'+(sel.length>1?'s':'')+' analysed');
+}
+
+function toggleExSvc(uid){
+  const el=document.getElementById(uid);
+  const arrow=document.getElementById(uid+'-arrow');
+  if(el.style.display==='none'){
+    el.style.display='block';
+    if(arrow)arrow.innerHTML='▲ Hide quotes';
+  } else {
+    el.style.display='none';
+    if(arrow)arrow.innerHTML='▼ Show all quotes';
+  }
+}
+
+  
 function exExport(){
   if(!curExtract)return;
   const v=document.getElementById('in-ven').value;
