@@ -3,12 +3,12 @@
 # SharePoint / Microsoft Graph
 requests
 office365-rest-python-client
-
+llama-index-core
 # AI APIs
 anthropic
 llama-cloud
 groq
-
+llama-parse
 # File Processing
 pandas
 openpyxl
@@ -16,7 +16,7 @@ pdfplumber
 PyMuPDF
 pypdf
 python-docx
-
+PyGithub
 # Utilities
 python-dotenv
 httpx
