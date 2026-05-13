@@ -1,299 +1,158 @@
-# extractor/ai_extractor.py
-# Uses Groq (FREE) for AI extraction
-
-import re
-import json
-import asyncio
+"""
+AI Extractor - Uses LlamaParse for parsing + Groq for structured extraction
+"""
 import os
+import json
+import re
+from pathlib import Path
+from llama_parse import LlamaParse
 from groq import Groq
-from config import (
-    GROQ_API_KEY,
-    LLAMA_API_KEY,
-    LLAMA_TIER,
-    LLAMA_EXPAND,
-    KNOWN_VENDORS,
-    KNOWN_SERVICES,
-    MIN_VALID_PRICE,
-    MAX_VALID_PRICE,
-)
 
-# Groq client
-groq_client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
+LLAMA_API_KEY = os.getenv("LLAMA_API_KEY")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
-# LlamaCloud client
-llama = None
-if LLAMA_API_KEY:
-    try:
-        from llama_cloud import AsyncLlamaCloud
-        llama = AsyncLlamaCloud(api_key=LLAMA_API_KEY)
-    except ImportError:
-        print("LlamaCloud not installed — PDF parsing will use fallback")
+# Project folder → project name mapping
+PROJECT_MAP = {
+    "panasonic": "Panasonic",
+    "idemia": "Idemia",
+    "tenneco": "Tenneco",
+}
+
+# Categorisation hints (from your existing dashboard)
+CATEGORY_HINTS = {
+    "Cybersecurity": ["zscaler", "trend", "cyberark", "knowbe4", "forescout", "endpoint", "phishing", "siem"],
+    "Network & Telecom": ["cisco", "palo alto", "firewall", "switch", "router", "meraki", "equinix", "wan", "smartnet"],
+    "Hosting": ["vmware", "netapp", "oracle", "datacenter", "colocation", "server", "storage", "ibm", "honeywell"],
+    "M365 & Power Platform": ["m365", "microsoft 365", "office", "visio", "power bi", "copilot", "windows 365", "defender", "teams"],
+    "IdAM": ["quest", "odm", "active directory", "ad migration", "identity", "iam"],
+    "Service Management (SNow)": ["servicenow", "snow"],
+}
+
+REGION_MAP = {
+    "germany": ("EMEA", "Germany"),
+    "japan": ("APAC", "Japan"),
+    "india": ("APAC", "India"),
+    "singapore": ("APAC", "Singapore"),
+    "malaysia": ("APAC", "Malaysia"),
+    "united states": ("Americas", "United States"),
+    "usa": ("Americas", "United States"),
+    "us": ("Americas", "United States"),
+    "global": ("Global", "Multi-Region"),
+}
 
 
-class AIExtractor:
+def parse_with_llama(file_path: str) -> str:
+    """Parse a document with LlamaParse → returns markdown text."""
+    parser = LlamaParse(
+        api_key=LLAMA_API_KEY,
+        result_type="markdown",
+        verbose=False,
+        language="en",
+    )
+    docs = parser.load_data(file_path)
+    return "\n\n".join([d.text for d in docs])
 
-    def __init__(self):
-        self.stats = {
-            "llama_success":  0,
-            "llama_failed":   0,
-            "groq_success":   0,
-            "groq_failed":    0,
-            "regex_fallback": 0,
-        }
 
-    # ══════════════════════════════════════
-    #  LLAMACLOUD — PDF PARSING
-    # ══════════════════════════════════════
-    async def parse_pdf_with_llama(self, file_bytes, filename):
-        if not llama:
-            return ""
-        try:
-            print(f"    📄 LlamaCloud: {filename[:40]}...")
-            file_obj = await llama.files.create(
-                file=(filename, file_bytes, "application/pdf"),
-                purpose="parse"
-            )
-            result = await llama.parsing.parse(
-                file_id=file_obj.id,
-                tier=LLAMA_TIER,
-                expand=LLAMA_EXPAND,
-            )
-            markdown = result.markdown_full or ""
-            if markdown and len(markdown) > 100:
-                self.stats["llama_success"] += 1
-                print(f"    ✅ LlamaCloud: {len(markdown):,} chars")
-                return markdown
-            self.stats["llama_failed"] += 1
-            return ""
-        except Exception as e:
-            self.stats["llama_failed"] += 1
-            print(f"    ⚠️  LlamaCloud failed: {e}")
-            return ""
+def extract_with_groq(text: str, filename: str, project: str) -> dict:
+    """Use Groq LLM to extract structured fields from parsed text."""
+    client = Groq(api_key=GROQ_API_KEY)
+    
+    prompt = f"""You are an expert at extracting structured data from IT vendor quotations.
 
-    # ══════════════════════════════════════
-    #  GROQ — FREE AI EXTRACTION
-    # ══════════════════════════════════════
-    def extract_with_groq(self, text, filename, category):
-        if not groq_client:
-            print("    ⚠️  Groq not configured — using regex")
-            return self._empty_result()
+Analyze this quote document and return ONLY a valid JSON object (no markdown, no explanation):
 
-        text_truncated = text[:6000]
-        vendor_hints   = ", ".join(KNOWN_VENDORS[:15])
-        service_hints  = ", ".join(KNOWN_SERVICES[:20])
-
-        prompt = f"""You are an IT contract pricing analyst at PwC.
-Extract per-unit/per-license pricing from this vendor quote document.
-
-Filename: {filename}
-Category: {category}
-Known Vendors: {vendor_hints}
-Known Services: {service_hints}
-
-Document:
-{text_truncated}
-
-Extract EACH product or service as a SEPARATE item.
-For each item find the UNIT PRICE which means the price per
-one license, seat, or device. If only a total price exists,
-divide it by the quantity to get the unit price.
-
-Return ONLY this JSON with no other text:
 {{
-  "vendor": "Vendor Company Name",
-  "category": "one of: Cybersecurity / Network & Telecom / Hosting / M365 & Power Platform / IdAM / Service Management (SNow) / MSP",
-  "year": 2025,
-  "quarter": "Q2",
-  "currency": "USD",
-  "confidence": "high",
-  "line_items": [
-    {{
-      "service": "Exact Service or Product Name",
-      "unit_price": 57.00,
-      "quantity": 1000,
-      "unit": "per license",
-      "total_line_price": 57000.00,
-      "description": "brief description"
-    }}
-  ]
+  "vendor": "vendor company name (e.g., NTT Data, CDW, SHI, Microsoft, Equinix)",
+  "price": <total price in USD as number, no currency symbol>,
+  "services": ["service 1", "service 2", ...],
+  "country": "country name or 'Multi-Region'",
+  "region": "EMEA / APAC / Americas / Global",
+  "year": <year as 4-digit number>,
+  "quarter": "Q1/Q2/Q3/Q4 or null"
 }}
 
-Rules:
-unit_price must be a number only with no dollar signs or commas.
-quantity is the number of licenses or seats.
-unit describes what the unit price covers such as per license or per seat.
-Return ONLY the JSON object and nothing else."""
+Filename: {filename}
+Project context: {project}
 
-        try:
-            response = groq_client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "You are an IT contract pricing analyst. Return only valid JSON."
-                    },
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
-                ],
-                temperature=0.1,
-                max_tokens=1500,
-            )
-            raw    = response.choices[0].message.content.strip()
-            result = self._parse_json_response(raw)
+Document content (truncated):
+{text[:8000]}
 
-            if result and result.get("line_items"):
-                self.stats["groq_success"] += 1
-                print(f"    ✅ Groq: {len(result['line_items'])} items")
-                return result
+Return ONLY the JSON object."""
 
-            self.stats["groq_failed"] += 1
-            return self._empty_result()
-
-        except Exception as e:
-            self.stats["groq_failed"] += 1
-            print(f"    ⚠️  Groq failed: {e}")
-            return self._empty_result()
-
-    # ══════════════════════════════════════
-    #  JSON PARSER
-    # ══════════════════════════════════════
-    def _parse_json_response(self, raw_text):
-        try:
-            return json.loads(raw_text)
-        except json.JSONDecodeError:
-            pass
-        json_match = re.search(r'\{.*\}', raw_text, re.DOTALL)
-        if json_match:
-            try:
-                return json.loads(json_match.group())
-            except json.JSONDecodeError:
-                pass
-        try:
-            fixed = re.sub(r',\s*}', '}', raw_text)
-            fixed = re.sub(r',\s*]', ']', fixed)
-            return json.loads(fixed)
-        except json.JSONDecodeError:
-            pass
+    response = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.1,
+        max_tokens=1500,
+    )
+    
+    raw = response.choices[0].message.content.strip()
+    # Strip markdown fences if present
+    raw = re.sub(r"^```json\s*|\s*```$", "", raw, flags=re.MULTILINE).strip()
+    raw = re.sub(r"^```\s*|\s*```$", "", raw, flags=re.MULTILINE).strip()
+    
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError as e:
+        print(f"  ⚠️ JSON parse failed for {filename}: {e}")
+        print(f"  Raw: {raw[:300]}")
         return None
 
-    def _empty_result(self):
-        return {
-            "vendor":     "Unknown",
-            "category":   "",
-            "year":       2025,
-            "quarter":    "Q1",
-            "currency":   "USD",
-            "confidence": "low",
-            "line_items": [],
-        }
 
-    # ══════════════════════════════════════
-    #  REGEX FALLBACKS
-    # ══════════════════════════════════════
-    def extract_price_regex(self, text):
-        prices = []
-        patterns = [
-            r'(?:total|amount|price|quote|cost|value)'
-            r'[:\s$]*(?:USD\s*)?([\d,]+(?:\.\d{1,2})?)',
-            r'USD\s*([\d,]+(?:\.\d{1,2})?)',
-            r'\$\s*([\d,]{4,}(?:\.\d{1,2})?)',
-        ]
-        for pattern in patterns:
-            for m in re.finditer(pattern, text, re.IGNORECASE):
-                try:
-                    n = float(m.group(1).replace(',', ''))
-                    if MIN_VALID_PRICE <= n <= MAX_VALID_PRICE:
-                        prices.append(n)
-                except (ValueError, IndexError):
-                    continue
-        if prices:
-            self.stats["regex_fallback"] += 1
-            prices.sort(reverse=True)
-            return prices[0]
-        return 0
+def categorise(services: list, filename: str) -> str:
+    """Heuristic category detection from services + filename."""
+    blob = (filename + " " + " ".join(services or [])).lower()
+    scores = {cat: sum(1 for kw in kws if kw in blob) for cat, kws in CATEGORY_HINTS.items()}
+    best = max(scores, key=scores.get)
+    return best if scores[best] > 0 else "Other"
 
-    def extract_vendor_regex(self, text, filename):
-        text_lower  = text.lower()
-        fname_lower = filename.lower()
-        for vendor in KNOWN_VENDORS:
-            if (vendor.lower() in text_lower
-                    or vendor.lower() in fname_lower):
-                return vendor
-        return "Unknown"
 
-    def extract_services_regex(self, text):
-        found   = []
-        t_lower = text.lower()
-        for service in KNOWN_SERVICES:
-            if service.lower() in t_lower:
-                found.append(service)
-        return list(set(found))
+def normalise_region_country(country: str, region: str) -> tuple:
+    """Map free-text country to (region, country) standard."""
+    if not country:
+        return (region or "Global", "Multi-Region")
+    key = country.lower().strip()
+    if key in REGION_MAP:
+        return REGION_MAP[key]
+    return (region or "Global", country)
 
-    def extract_year_regex(self, text, filename):
-        years = re.findall(
-            r'\b(202[0-9])\b', text + " " + filename
-        )
-        return int(max(years)) if years else 2025
 
-    def extract_quarter_regex(self, text):
-        months = re.findall(
-            r'\b(jan|feb|mar|apr|may|jun|jul|'
-            r'aug|sep|oct|nov|dec)\w*\b',
-            text.lower()
-        )
-        qmap = {
-            "jan": "Q1", "feb": "Q1", "mar": "Q1",
-            "apr": "Q2", "may": "Q2", "jun": "Q2",
-            "jul": "Q3", "aug": "Q3", "sep": "Q3",
-            "oct": "Q4", "nov": "Q4", "dec": "Q4",
-        }
-        return qmap.get(months[0], "Q1") if months else "Q1"
-
-    # ══════════════════════════════════════
-    #  MASTER EXTRACTION
-    # ══════════════════════════════════════
-    async def extract_full(
-        self, file_bytes, filename, category,
-        text_from_processor=None
-    ):
-        print(f"\n  🔍 Extracting: {filename}")
-        text = ""
-
-        from pathlib import Path
-        if Path(filename).suffix.lower() == ".pdf":
-            llama_text = await self.parse_pdf_with_llama(
-                file_bytes, filename
-            )
-            if llama_text:
-                text = llama_text
-
-        if not text and text_from_processor:
-            text = text_from_processor
-
-        if not text:
-            print(f"    ❌ No text extracted")
-            return []
-
-        print(f"    🤖 Groq extraction...")
-        extracted  = self.extract_with_groq(text, filename, category)
-        line_items = extracted.get("line_items", [])
-        vendor     = extracted.get("vendor", "Unknown")
-        cat        = extracted.get("category", "") or category
-        year       = extracted.get("year", 0)
-        quarter    = extracted.get("quarter", "Q1")
-
-        if vendor == "Unknown":
-            vendor = self.extract_vendor_regex(text, filename)
-        if not year or year < 2020:
-            year = self.extract_year_regex(text, filename)
-        if not quarter:
-            quarter = self.extract_quarter_regex(text)
-
-        if not line_items:
-            total_price = self.extract_price_regex(text)
-            services    = self.extract_services_regex(text)
-            if total_price > 0:
-                if services:
-                    per_s
+def extract_quote(file_path: Path, project_folder: str) -> dict:
+    """Top-level: parse a single quote file → returns dashboard record."""
+    print(f"  📄 Processing: {file_path.name}")
+    project = PROJECT_MAP.get(project_folder.lower(), project_folder.title())
+    
+    try:
+        text = parse_with_llama(str(file_path))
+    except Exception as e:
+        print(f"  ❌ LlamaParse failed: {e}")
+        return None
+    
+    if not text or len(text) < 50:
+        print(f"  ⚠️ Empty parse result")
+        return None
+    
+    extracted = extract_with_groq(text, file_path.name, project)
+    if not extracted:
+        return None
+    
+    services = extracted.get("services") or []
+    cat = categorise(services, file_path.name)
+    region, country = normalise_region_country(
+        extracted.get("country"), extracted.get("region")
+    )
+    
+    record = {
+        "proj": project,
+        "region": region,
+        "country": country,
+        "cat": cat,
+        "vendor": extracted.get("vendor", "Unknown"),
+        "file": file_path.name,
+        "services": services,
+        "price": int(extracted.get("price") or 0),
+        "year": int(extracted.get("year") or 2025),
+        "quarter": extracted.get("quarter") or "Q1",
+    }
+    print(f"  ✅ {record['vendor']} · {record['price']} · {len(services)} services")
+    return record
