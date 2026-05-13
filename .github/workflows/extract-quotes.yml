@@ -33,7 +33,7 @@ jobs:
           pip install --upgrade pip
           pip install -r extractor/requirements.txt
       
-      - name: Run extractor (multi-format + multi-LLM)
+      - name: Run extractor (heuristic-first + AI fallback)
         id: extract
         continue-on-error: true
         env:
