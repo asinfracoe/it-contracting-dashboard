@@ -28,23 +28,26 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
       
-      - name: Install dependencies
+      - name: Install system dependencies (Tesseract OCR)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tesseract-ocr
+      
+      - name: Install Python dependencies
         run: |
           pip install --upgrade pip
           pip install -r extractor/requirements.txt
       
-      - name: Run extractor (multi-LLM fallback)
+      - name: Run extractor (multi-format + multi-LLM)
         id: extract
-        continue-on-error: true   # ← CRITICAL: don't fail the job on rate limit
+        continue-on-error: true
         env:
-          LLAMA_API_KEY: ${{ secrets.LLAMA_API_KEY }}
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: python extractor/main.py
       
       - name: Commit and push catalog_data.json
-        if: always()   # ← CRITICAL: run even if extractor failed
+        if: always()
         env:
           G_TOKEN: ${{ secrets.G_TOKEN }}
         run: |
@@ -61,12 +64,11 @@ jobs:
             echo "✅ Pushed catalog with $COUNT records"
           fi
       
-      - name: Report extraction status
+      - name: Report status
         if: always()
         run: |
           if [ "${{ steps.extract.outcome }}" == "failure" ]; then
             echo "⚠️ Extractor exited with errors — partial progress was committed"
-            exit 0   # Don't fail the workflow
           else
             echo "✅ Extraction completed successfully"
           fi
