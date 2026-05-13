@@ -15,9 +15,12 @@ pandas
 openpyxl
 pdfplumber
 PyMuPDF
+pymupdf
 pypdf
 python-docx
 PyGithub
 # Utilities
 python-dotenv
 httpx
+pytesseract
+Pillow
