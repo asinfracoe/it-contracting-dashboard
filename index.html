@@ -277,6 +277,10 @@ html,body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-siz
     <div class="tab" data-page="rfq"><span class="tab-ico">📋</span>RFQ Builder</div>
   </div>
   <div class="top-right">
+    <div id="data-mode-toggle" style="display:inline-flex;background:var(--white);border:1px solid var(--line);border-radius:var(--r2);padding:3px;box-shadow:var(--sh);margin-right:6px">
+      <div class="mode-tog active" data-mode="demo" onclick="setDataMode('demo')" style="padding:6px 12px;font-size:.72rem;font-weight:700;cursor:pointer;border-radius:4px;background:var(--ink);color:white;display:flex;align-items:center;gap:5px">🎯 Demo</div>
+      <div class="mode-tog" data-mode="live" onclick="setDataMode('live')" style="padding:6px 12px;font-size:.72rem;font-weight:700;cursor:pointer;border-radius:4px;color:var(--mid);display:flex;align-items:center;gap:5px">🦙 Live</div>
+    </div>
     <span class="status-pill" id="live-pill">48 Records</span>
     <button class="top-btn" onclick="openModal('sp')">📁 SharePoint</button>
     <span class="status-pill" id="grok-status" style="background:#FEF3C7;color:#92400E">🤖 Grok: Connecting…</span>
@@ -968,6 +972,9 @@ const RAW=[
   {proj:'Tenneco',region:'Americas',country:'United States',cat:'IdAM',vendor:'Proquire LLC',file:'Q-09148 PAS Quest ODMT5.pdf',services:['Quest On-Demand Migration Suite T5','Quest On-Demand Migration M365'],price:168200,year:2025,quarter:'Q1'}
 ];
 
+const DEMO_DB=[...RAW];      // Pristine copy of demo data
+let LIVE_DB=null;            // Will hold extracted catalog_data.json data
+let DATA_MODE='demo';        // 'demo' or 'live'
 let DB=[...RAW];
 let CUR_PROJ='All';
 let CUR_REGION='All';
@@ -1006,6 +1013,14 @@ function filteredDB(){
 }
 
 document.addEventListener('DOMContentLoaded',()=>{
+  // Set initial Live button state to disabled (will be enabled by tryLoadJSON if data exists)
+  const liveBtn=document.querySelector('.mode-tog[data-mode="live"]');
+  if(liveBtn){
+    liveBtn.style.opacity='.4';
+    liveBtn.style.cursor='not-allowed';
+    liveBtn.title='Loading...';
+  }
+  
   initTabs();
   initProjTabs();
   initRegionCountryFilters();
@@ -1021,6 +1036,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   checkBackendStatus();
   checkLlamaStatus();
   tryLoadJSON();
+  updateLivePill();
 });
 
 function renderSimpleCharts(data,cats){
@@ -1134,13 +1150,99 @@ async function tryLoadJSON(){
       const r=await fetch(u);if(!r.ok)continue;
       const d=await r.json();
       if(Array.isArray(d)&&d.length){
-        DB=[...d];renderOverview();toast('Loaded '+d.length+' records','ok');
-        document.getElementById('live-pill').textContent=d.length+' Records';
+        LIVE_DB=[...d];
+        // Enable the Live toggle button visually
+        const liveBtn=document.querySelector('.mode-tog[data-mode="live"]');
+        if(liveBtn){
+          liveBtn.style.opacity='1';
+          liveBtn.title='Switch to live extracted data ('+d.length+' records)';
+        }
+        toast('Live data available: '+d.length+' records','ok');
+        updateLivePill();
         return;
       }
     }catch(e){}
   }
-  document.getElementById('live-pill').textContent=DB.length+' Records · Demo';
+  // No live data found — disable the Live button
+  const liveBtn=document.querySelector('.mode-tog[data-mode="live"]');
+  if(liveBtn){
+    liveBtn.style.opacity='.4';
+    liveBtn.style.cursor='not-allowed';
+    liveBtn.title='No catalog_data.json found — extract quotes first';
+  }
+  updateLivePill();
+}
+
+function updateLivePill(){
+  const pill=document.getElementById('live-pill');
+  if(!pill)return;
+  if(DATA_MODE==='demo'){
+    pill.textContent=DB.length+' Records · Demo';
+    pill.style.background='#FEF3C7';
+    pill.style.color='#92400E';
+  } else {
+    pill.textContent=DB.length+' Records · Live';
+    pill.style.background='#D1FAE5';
+    pill.style.color='#065F46';
+  }
+}
+
+function setDataMode(mode){
+  if(mode==='live' && (!LIVE_DB || LIVE_DB.length===0)){
+    toast('No live data available — extract quotes first via GitHub Actions','warn');
+    return;
+  }
+  if(mode===DATA_MODE)return;
+  
+  DATA_MODE=mode;
+  
+  // Swap the active dataset
+  if(mode==='demo'){
+    DB=[...DEMO_DB];
+  } else {
+    DB=[...LIVE_DB];
+  }
+  
+  // Reset all filters when switching modes
+  CUR_PROJ='All';
+  CUR_REGION='All';
+  CUR_COUNTRY='All';
+  selSvcs.clear();
+  selMtxVens.clear();
+  selMtxSvcs.clear();
+  rqSvcs.clear();
+  inSvcs.clear();
+  hmVens.clear();
+  hmCats.clear();
+  
+  // Update toggle button visual state
+  document.querySelectorAll('.mode-tog').forEach(el=>{
+    if(el.dataset.mode===mode){
+      el.classList.add('active');
+      el.style.background=mode==='demo'?'var(--ink)':'var(--gn)';
+      el.style.color='white';
+    } else {
+      el.classList.remove('active');
+      el.style.background='transparent';
+      el.style.color='var(--mid)';
+    }
+  });
+  
+  // Re-initialise everything
+  initProjTabs();
+  initRegionCountryFilters();
+  populateDropdowns();
+  renderOverview();
+  renderActiveFilters();
+  selFilterChips();
+  selRender();
+  rqBuildCatList();
+  rqFilterSvc();
+  rqRender();
+  inFilterSvc();
+  updateLivePill();
+  
+  toast(`Switched to ${mode==='demo'?'🎯 Demo':'🦙 Live'} data (${DB.length} records)`,'ok');
 }
 
 function initTabs(){
@@ -1158,7 +1260,9 @@ function initTabs(){
 }
 
 function initProjTabs(){
-  const projs=['All','Idemia','Tenneco','Panasonic'];
+  // Dynamically derive projects from current DB
+  const projsFromDB=[...new Set(DB.map(r=>r.proj))].sort();
+  const projs=['All',...projsFromDB];
   ['proj-tabs'].forEach(id=>{
     const el=document.getElementById(id);
     el.innerHTML=projs.map(p=>{
@@ -1233,14 +1337,21 @@ function initPersonaTabs(){}
 
 function populateDropdowns(){
   const cats=[...new Set(DB.map(r=>r.cat))].sort();
-  const projs=['All','Idemia','Tenneco','Panasonic'];
+  const projsFromDB=[...new Set(DB.map(r=>r.proj))].sort();
+  
   [['sel-cat',cats],['in-cat',cats]].forEach(([id,arr])=>{
     const el=document.getElementById(id);
+    if(!el)return;
+    // Reset to just "All Categories"
+    el.innerHTML='<option value="All">All Categories</option>';
     arr.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;el.appendChild(o);});
   });
+  
   ['in-proj','rq-proj'].forEach(id=>{
     const el=document.getElementById(id);
-    projs.filter(p=>p!=='All').forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;el.appendChild(o);});
+    if(!el)return;
+    el.innerHTML='<option value="All">All Projects (master data)</option>';
+    projsFromDB.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;el.appendChild(o);});
   });
 }
 
@@ -1254,7 +1365,7 @@ function renderOverview(){
   const tot=prices.reduce((a,b)=>a+b,0);
   const median=prices.length?[...prices].sort((a,b)=>a-b)[Math.floor(prices.length/2)]:0;
 
-  const projs=['Idemia','Tenneco','Panasonic'];
+  const projs=[...new Set(DB.map(r=>r.proj))].sort();
   document.getElementById('ov-proj-cards').innerHTML=projs.map(p=>{
     let pd=DB.filter(r=>r.proj===p);
     if(CUR_REGION!=='All')pd=pd.filter(r=>r.region===CUR_REGION);
@@ -2869,11 +2980,18 @@ function spLoad(inp){
     try{
       const data=JSON.parse(e.target.result);
       if(Array.isArray(data)&&data.length){
-        DB=[...data];
-        document.getElementById('live-pill').textContent=DB.length+' Records';
-        document.getElementById('sp-msg').textContent='✅ Loaded '+DB.length+' records';
-        renderOverview();selFilterChips();rqFilterSvc();
-        toast('Data loaded: '+DB.length+' records','ok');
+        LIVE_DB=[...data];
+        // Enable the Live toggle button
+        const liveBtn=document.querySelector('.mode-tog[data-mode="live"]');
+        if(liveBtn){
+          liveBtn.style.opacity='1';
+          liveBtn.style.cursor='pointer';
+          liveBtn.title='Switch to live extracted data ('+data.length+' records)';
+        }
+        document.getElementById('sp-msg').textContent='✅ Loaded '+data.length+' records · Click 🦙 Live to view';
+        toast('Live data ready: '+data.length+' records — click 🦙 Live toggle','ok');
+        // Auto-switch to live mode
+        setDataMode('live');
       }
     }catch(err){
       document.getElementById('sp-msg').textContent='❌ Invalid JSON';
@@ -2882,6 +3000,8 @@ function spLoad(inp){
   };
   reader.readAsText(f);
 }
+
+  
 </script>
 
 </body>
