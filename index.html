@@ -492,6 +492,13 @@ html,body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-siz
       <div id="sel-results" style="display:none">
         <div id="sel-verdict"></div>
         <div class="grid-4" id="sel-kpis"></div>
+        <div class="card" style="padding:0">
+          <div class="card-head" style="padding:14px 18px">
+            <div class="card-title"><span class="card-title-ico">📊</span>Per-Service Quote Breakdown</div>
+            <div class="card-meta bl" id="sel-svc-breakdown-meta">—</div>
+          </div>
+          <div id="sel-svc-breakdown" style="padding:0 18px 18px"></div>
+        </div>
         <div class="card">
           <div class="card-head">
             <div class="card-title"><span class="card-title-ico">🔀</span>Combination Analysis</div>
@@ -507,12 +514,39 @@ html,body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-siz
               <button class="btn sm" onclick="selExport()">📥 Export</button>
             </div>
           </div>
+          <div style="padding:12px 18px;background:var(--bg);border-bottom:1px solid var(--line);display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+            <div style="display:inline-flex;gap:4px;background:var(--white);border:1px solid var(--line);border-radius:var(--r2);padding:3px">
+              <div class="mtx-tog active" data-mode="lowest" onclick="selSetMtxMode('lowest')" style="padding:6px 12px;font-size:.72rem;font-weight:600;cursor:pointer;border-radius:4px;background:var(--gn);color:white">🏆 Lowest Price</div>
+              <div class="mtx-tog" data-mode="highest" onclick="selSetMtxMode('highest')" style="padding:6px 12px;font-size:.72rem;font-weight:600;cursor:pointer;border-radius:4px;color:var(--mid)">⚠️ Highest Price</div>
+              <div class="mtx-tog" data-mode="avg" onclick="selSetMtxMode('avg')" style="padding:6px 12px;font-size:.72rem;font-weight:600;cursor:pointer;border-radius:4px;color:var(--mid)">📊 Average</div>
+            </div>
+            <div style="flex:1;display:flex;gap:10px;align-items:center;justify-content:flex-end;flex-wrap:wrap">
+              <div style="display:flex;gap:6px;align-items:center">
+                <span style="font-size:.68rem;font-weight:700;color:var(--mid);text-transform:uppercase">Vendors:</span>
+                <span id="sel-mtx-ven-cnt" style="font-size:.72rem;font-weight:700;color:var(--or)">All</span>
+                <button class="btn sm sec" onclick="selOpenMtxFilter('ven')" style="padding:4px 10px">Filter</button>
+              </div>
+              <div style="display:flex;gap:6px;align-items:center">
+                <span style="font-size:.68rem;font-weight:700;color:var(--mid);text-transform:uppercase">Services:</span>
+                <span id="sel-mtx-svc-cnt" style="font-size:.72rem;font-weight:700;color:var(--or)">All</span>
+                <button class="btn sm sec" onclick="selOpenMtxFilter('svc')" style="padding:4px 10px">Filter</button>
+              </div>
+              <button class="btn sm sec" onclick="selResetMtxFilters()">Reset</button>
+            </div>
+          </div>
+          <div id="sel-mtx-filter-panel" style="display:none;padding:14px 18px;background:var(--ort);border-bottom:1px solid var(--line)">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+              <div id="sel-mtx-filter-title" style="font-size:.78rem;font-weight:700;color:var(--or)">Filter</div>
+              <button class="btn sm sec" onclick="document.getElementById('sel-mtx-filter-panel').style.display='none'">Close</button>
+            </div>
+            <div class="chip-row" id="sel-mtx-filter-chips" style="max-height:160px;background:var(--white);padding:8px;border-radius:var(--r);border:1px solid var(--line)"></div>
+          </div>
           <div class="mtx-wrap" id="sel-mtx-wrap" style="border:none;border-top:1px solid var(--line);border-radius:0"></div>
           <div style="padding:12px 18px;border-top:1px solid var(--line);font-size:.72rem;color:var(--mid);display:flex;gap:14px;flex-wrap:wrap">
-            <span><span style="display:inline-block;width:10px;height:10px;background:rgba(16,185,129,.18);border:1px solid #10B981;border-radius:2px;vertical-align:middle;margin-right:4px"></span>BEST price</span>
-            <span><span style="display:inline-block;width:10px;height:10px;background:rgba(239,68,68,.08);border:1px solid #EF4444;border-radius:2px;vertical-align:middle;margin-right:4px"></span>Highest</span>
-            <span style="color:var(--or);font-weight:700;margin-left:auto">💡 Click any cell to see source quotes</span>
-          </div>
+          <span id="sel-mtx-legend-1"><span style="display:inline-block;width:10px;height:10px;background:rgba(16,185,129,.18);border:1px solid #10B981;border-radius:2px;vertical-align:middle;margin-right:4px"></span>BEST (lowest) price</span>
+          <span id="sel-mtx-legend-2"><span style="display:inline-block;width:10px;height:10px;background:rgba(239,68,68,.08);border:1px solid #EF4444;border-radius:2px;vertical-align:middle;margin-right:4px"></span>Highest price</span>
+          <span style="color:var(--or);font-weight:700;margin-left:auto">💡 Click any cell to see source quotes</span>
+        </div>
         </div>
         <div class="card">
           <div class="card-head">
@@ -927,6 +961,10 @@ let CUR_PROJ='All';
 let CUR_REGION='All';
 let CUR_COUNTRY='All';
 let selSvcs=new Set();
+let selMtxMode='lowest';
+let selMtxVens=new Set();
+let selMtxSvcs=new Set();
+let selMtxFilterType=null;
 let rqSvcs=new Set();
 let rqCat='All';
 let inSvcs=new Set();
@@ -1560,7 +1598,8 @@ function selFilterChips(){
   document.getElementById('sel-chips').innerHTML=svcs.map(v=>{
     const c=pool.find(r=>(r.services||[]).includes(v))?.cat;
     const on=selSvcs.has(v);
-    return `<div class="chip ${on?'on':''}" onclick="togSelSvc('${esc(v).replace(/'/g,"\\'")}',this)"><span class="cat-dot" style="background:${CAT_COL[c]||MID}"></span>${esc(v.length>30?v.substring(0,30)+'…':v)}</div>`;
+    const qCount=pool.filter(r=>(r.services||[]).includes(v)).length;
+    return `<div class="chip ${on?'on':''}" onclick="togSelSvc('${esc(v).replace(/'/g,"\\'")}',this)" title="${qCount} historical quote${qCount>1?'s':''}"><span class="cat-dot" style="background:${CAT_COL[c]||MID}"></span>${esc(v.length>28?v.substring(0,28)+'…':v)}<span class="chip-cnt">${qCount}</span></div>`;
   }).join('');
 }
 
@@ -1636,55 +1675,103 @@ function selRender(){
     {lbl:'Avg Price',val:allPrices.length?fmt(allPrices.reduce((a,b)=>a+b,0)/allPrices.length):'—',sub:'market rate'}
   ];
   document.getElementById('sel-kpis').innerHTML=kpis.map(k=>`<div class="kpi"><div class="kpi-lbl">${k.lbl}</div><div class="kpi-val">${k.val}</div><div class="kpi-sub">${k.sub}</div></div>`).join('');
+  renderSelSvcBreakdown(sel,pool);
 
   const comboEl=document.getElementById('sel-combo-body');
   set('sel-combo-meta',allMatch.length+' full · '+partialMatch.length+' partial');
   if(matches.length===0){comboEl.innerHTML='<div class="empty" style="padding:20px"><div class="empty-t">No matches found</div></div>';}
   else{
-    const venGroups={};
+    const comboMap={};
     matches.forEach(r=>{
-      if(!venGroups[r.vendor])venGroups[r.vendor]={full:[],partial:[]};
-      if(sel.every(s=>(r.services||[]).includes(s)))venGroups[r.vendor].full.push(r);
-      else venGroups[r.vendor].partial.push(r);
+      const matchedSvcs=sel.filter(s=>(r.services||[]).includes(s)).sort();
+      if(matchedSvcs.length===0)return;
+      const key=matchedSvcs.join(' + ');
+      if(!comboMap[key]){comboMap[key]={svcs:matchedSvcs,vendors:{}};}
+      if(!comboMap[key].vendors[r.vendor])comboMap[key].vendors[r.vendor]=[];
+      comboMap[key].vendors[r.vendor].push(r);
     });
-    comboEl.innerHTML=Object.entries(venGroups).sort((a,b)=>(b[1].full.length*1000+b[1].partial.length)-(a[1].full.length*1000+a[1].partial.length)).map(([v,d])=>{
-      const fullPrices=d.full.map(r=>r.price).filter(p=>p>0);
-      const partPrices=d.partial.map(r=>r.price).filter(p=>p>0);
-      return `<div style="padding:12px;background:var(--bg);border-radius:var(--r);margin-bottom:8px;border-left:3px solid ${vcol(v)}">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-          <div style="font-weight:700;color:var(--ink)">${vbadge(v)}</div>
-          <div style="display:flex;gap:6px">
-            ${d.full.length>0?`<span class="b gn">${d.full.length} full match</span>`:''}
-            ${d.partial.length>0?`<span class="b am">${d.partial.length} partial</span>`:''}
+    const sortedCombos=Object.entries(comboMap).sort((a,b)=>b[1].svcs.length-a[1].svcs.length);
+    comboEl.innerHTML=sortedCombos.map(([key,data])=>{
+      const isFull=data.svcs.length===sel.length;
+      const allPrices=Object.values(data.vendors).flat().map(r=>r.price).filter(p=>p>0);
+      const mn=allPrices.length?Math.min(...allPrices):0;
+      const mx=allPrices.length?Math.max(...allPrices):0;
+      const av=allPrices.length?allPrices.reduce((a,b)=>a+b,0)/allPrices.length:0;
+      const totalQuotes=Object.values(data.vendors).flat().length;
+      const venCount=Object.keys(data.vendors).length;
+      return `<div style="background:var(--white);border:1px solid var(--line);border-left:4px solid ${isFull?'var(--gn)':'var(--am)'};border-radius:var(--r2);margin-bottom:12px;overflow:hidden">
+        <div style="padding:12px 16px;background:${isFull?'var(--gnl)':'var(--aml)'}">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;gap:12px">
+            <div style="flex:1">
+              <div style="font-size:.66rem;font-weight:700;color:var(--mid);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px">${isFull?'✅ FULL COMBINATION':'⚠️ PARTIAL COMBINATION ('+data.svcs.length+'/'+sel.length+')'}</div>
+              <div style="font-weight:700;color:var(--ink);font-size:.82rem">${data.svcs.map(s=>esc(s.length>20?s.substring(0,20)+'…':s)).join(' + ')}</div>
+            </div>
+            <div style="display:flex;gap:6px;flex-shrink:0">
+              <span class="b bl">${totalQuotes} quote${totalQuotes>1?'s':''}</span>
+              <span class="b nt">${venCount} vendor${venCount>1?'s':''}</span>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px">
+            <div class="mstat" style="background:var(--white);padding:8px 10px"><div class="mstat-lbl">Min</div><div class="mstat-val gn" style="font-size:1rem">${fmt(mn)}</div></div>
+            <div class="mstat" style="background:var(--white);padding:8px 10px"><div class="mstat-lbl">Avg</div><div class="mstat-val or" style="font-size:1rem">${fmt(av)}</div></div>
+            <div class="mstat" style="background:var(--white);padding:8px 10px"><div class="mstat-lbl">Max</div><div class="mstat-val rd" style="font-size:1rem">${fmt(mx)}</div></div>
           </div>
         </div>
-        <div style="font-size:.74rem;color:var(--mid)">
-          ${fullPrices.length>0?`Full: ${fmt(Math.min(...fullPrices))} – ${fmt(Math.max(...fullPrices))}`:''}
-          ${fullPrices.length>0&&partPrices.length>0?' · ':''}
-          ${partPrices.length>0?`Partial: ${fmt(Math.min(...partPrices))} – ${fmt(Math.max(...partPrices))}`:''}
+        <div style="padding:10px 16px">
+          <div style="font-size:.66rem;font-weight:700;color:var(--mid);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">Vendors who quoted this combination</div>
+          ${Object.entries(data.vendors).sort((a,b)=>{
+            const aMin=Math.min(...a[1].map(r=>r.price).filter(p=>p>0));
+            const bMin=Math.min(...b[1].map(r=>r.price).filter(p=>p>0));
+            return aMin-bMin;
+          }).map(([v,quotes])=>{
+            const ps=quotes.map(r=>r.price).filter(p=>p>0);
+            const vMin=ps.length?Math.min(...ps):0;
+            const vMax=ps.length?Math.max(...ps):0;
+            const vAvg=ps.length?ps.reduce((a,b)=>a+b,0)/ps.length:0;
+            return `<div style="padding:8px 10px;background:var(--bg);border-radius:var(--r);margin-bottom:4px;display:flex;justify-content:space-between;align-items:center">
+              <div style="display:flex;align-items:center;gap:8px">${vbadge(v)}<span style="font-size:.68rem;color:var(--mid);font-weight:600">${quotes.length} quote${quotes.length>1?'s':''}</span></div>
+              <div style="display:flex;gap:14px;font-size:.72rem;font-weight:700">
+                <span style="color:var(--gn)">Min: ${fmt(vMin)}</span>
+                <span style="color:var(--or)">Avg: ${fmt(vAvg)}</span>
+                <span style="color:var(--rd)">Max: ${fmt(vMax)}</span>
+              </div>
+            </div>`;
+          }).join('')}
         </div>
       </div>`;
     }).join('');
   }
 
-  const vens=[...new Set(matches.map(r=>r.vendor))];
+  const allVens=[...new Set(matches.map(r=>r.vendor))];
+  if(selMtxVens.size===0)allVens.forEach(v=>selMtxVens.add(v));
+  if(selMtxSvcs.size===0)sel.forEach(s=>selMtxSvcs.add(s));
+  const vens=allVens.filter(v=>selMtxVens.has(v));
+  const activeSel=sel.filter(s=>selMtxSvcs.has(s));
   const svcPrices={};
-  sel.forEach(s=>{
+  activeSel.forEach(s=>{
     svcPrices[s]={};
     vens.forEach(v=>{
-      const q=matches.find(r=>r.vendor===v&&(r.services||[]).includes(s));
-      svcPrices[s][v]=q?q.price:null;
+      const allQuotes=matches.filter(r=>r.vendor===v&&(r.services||[]).includes(s)&&r.price>0);
+      if(allQuotes.length===0){svcPrices[s][v]=null;}
+      else{
+        const ps=allQuotes.map(r=>r.price);
+        let val;
+        if(selMtxMode==='lowest')val=Math.min(...ps);
+        else if(selMtxMode==='highest')val=Math.max(...ps);
+        else val=ps.reduce((a,b)=>a+b,0)/ps.length;
+        svcPrices[s][v]=val;
+      }
     });
   });
   const bestPerSvc={},worstPerSvc={};
-  sel.forEach(s=>{
+  activeSel.forEach(s=>{
     const ps=Object.values(svcPrices[s]).filter(p=>p!==null&&p>0);
     if(ps.length){bestPerSvc[s]=Math.min(...ps);worstPerSvc[s]=Math.max(...ps);}
   });
   let mtx='<table class="mtx"><thead><tr><th class="sh">Service</th>';
   vens.forEach(v=>{mtx+=`<th class="vh">${vbadge(v)}</th>`;});
   mtx+='</tr></thead><tbody>';
-  sel.forEach(s=>{
+  activeSel.forEach(s=>{
     mtx+=`<tr><td class="sc">${esc(s)}</td>`;
     vens.forEach(v=>{
       const p=svcPrices[s][v];
@@ -1700,22 +1787,111 @@ function selRender(){
   });
   mtx+='</tbody></table>';
   document.getElementById('sel-mtx-wrap').innerHTML=mtx;
-  set('sel-mtx-meta',sel.length+' × '+vens.length);
+  set('sel-mtx-meta',activeSel.length+' × '+vens.length+' · '+selMtxMode);
+  set('sel-mtx-ven-cnt',selMtxVens.size===allVens.length?'All ('+allVens.length+')':selMtxVens.size+' of '+allVens.length);
+  set('sel-mtx-svc-cnt',selMtxSvcs.size===sel.length?'All ('+sel.length+')':selMtxSvcs.size+' of '+sel.length);
 
-  const sourcing={};
-  sel.forEach(s=>{
-    const candidates=vens.map(v=>({v,p:svcPrices[s][v]})).filter(d=>d.p!==null&&d.p>0).sort((a,b)=>a.p-b.p);
-    sourcing[s]=candidates[0]||null;
-  });
   const sourcingEl=document.getElementById('sel-sourcing');
-  sourcingEl.innerHTML=sel.map(s=>{
-    const best=sourcing[s];
-    if(!best)return `<div style="padding:10px;border-bottom:1px solid var(--line2)"><div style="font-size:.80rem;font-weight:600">${esc(s)}</div><div class="b rd" style="margin-top:4px">❌ No historical data</div></div>`;
-    return `<div style="padding:10px;border-bottom:1px solid var(--line2);display:flex;justify-content:space-between;align-items:center">
-      <div><div style="font-size:.80rem;font-weight:600;color:var(--ink)">${esc(s)}</div><div style="font-size:.70rem;color:var(--mid);margin-top:2px">Source from</div></div>
-      <div style="text-align:right">${vbadge(best.v)}<div style="font-family:var(--serif);font-size:1rem;font-weight:700;color:var(--or);margin-top:2px">${fmt(best.p)}</div></div>
-    </div>`;
-  }).join('');
+  const sourcingStrategies=[];
+  
+  if(allMatch.length>0){
+    const fullPrices=allMatch.map(r=>r.price).filter(p=>p>0);
+    const bestFull=allMatch.find(r=>r.price===Math.min(...fullPrices));
+    sourcingStrategies.push({
+      type:'full',
+      label:'🎯 ALL SERVICES BUNDLED',
+      svcs:sel,
+      vendor:bestFull.vendor,
+      price:bestFull.price,
+      file:bestFull.file,
+      recommendation:'Single-vendor sourcing (recommended if available)'
+    });
+  }
+  
+  const allPool=filteredDB();
+  const allMatches=allPool.filter(r=>sel.some(s=>(r.services||[]).includes(s)));
+  const venCombos={};
+  allMatches.forEach(r=>{
+    const matched=sel.filter(s=>(r.services||[]).includes(s)).sort();
+    if(matched.length<=1||matched.length===sel.length)return;
+    if(!venCombos[r.vendor])venCombos[r.vendor]={};
+    const key=matched.join(' + ');
+    if(!venCombos[r.vendor][key]||r.price<venCombos[r.vendor][key].price){
+      venCombos[r.vendor][key]={svcs:matched,price:r.price,file:r.file,record:r};
+    }
+  });
+  
+  const partialCombos=[];
+  Object.entries(venCombos).forEach(([v,combos])=>{
+    Object.values(combos).forEach(c=>{
+      partialCombos.push({vendor:v,svcs:c.svcs,price:c.price,file:c.file,size:c.svcs.length});
+    });
+  });
+  partialCombos.sort((a,b)=>b.size-a.size||a.price-b.price);
+  
+  const topPartials=[];
+  const seenKeys=new Set();
+  partialCombos.forEach(pc=>{
+    const key=pc.svcs.join('|');
+    if(!seenKeys.has(key)&&topPartials.length<3){
+      seenKeys.add(key);
+      topPartials.push(pc);
+    }
+  });
+  
+  topPartials.forEach(pc=>{
+    sourcingStrategies.push({
+      type:'partial',
+      label:`🔀 PARTIAL BUNDLE (${pc.svcs.length}/${sel.length} services)`,
+      svcs:pc.svcs,
+      vendor:pc.vendor,
+      price:pc.price,
+      file:pc.file,
+      recommendation:`Best for ${pc.svcs.length} of ${sel.length} services`
+    });
+  });
+  
+  sel.forEach(s=>{
+    const singleQuotes=allPool.filter(r=>(r.services||[]).includes(s)&&r.price>0);
+    if(singleQuotes.length===0){
+      sourcingStrategies.push({type:'none',label:'❌ INDIVIDUAL SERVICE',svcs:[s],vendor:null,price:0,recommendation:'No historical data — issue fresh RFQ'});
+    } else {
+      const best=singleQuotes.sort((a,b)=>a.price-b.price)[0];
+      sourcingStrategies.push({
+        type:'single',
+        label:'🧩 INDIVIDUAL SERVICE',
+        svcs:[s],
+        vendor:best.vendor,
+        price:best.price,
+        file:best.file,
+        recommendation:'Cheapest single-service quote'
+      });
+    }
+  });
+  
+  sourcingEl.innerHTML=`
+    <div style="font-size:.74rem;color:var(--mid);margin-bottom:12px;line-height:1.5">
+      💡 <strong style="color:var(--ink)">Strategy:</strong> Choose one of the options below. Bundled sourcing (top) typically yields 8–12% savings but individual sourcing gives the best per-service price.
+    </div>
+    ${sourcingStrategies.map((st,idx)=>{
+      const bgCol=st.type==='full'?'var(--gnl)':st.type==='partial'?'var(--aml)':st.type==='single'?'var(--bll)':'var(--rdl)';
+      const bdCol=st.type==='full'?'var(--gn)':st.type==='partial'?'var(--am)':st.type==='single'?'var(--bl)':'var(--rd)';
+      return `<div style="background:${bgCol};border-left:4px solid ${bdCol};border-radius:var(--r2);padding:12px 14px;margin-bottom:8px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:8px">
+          <div style="flex:1">
+            <div style="font-size:.64rem;font-weight:800;color:${bdCol};letter-spacing:.6px;margin-bottom:4px">${st.label}</div>
+            <div style="font-size:.80rem;font-weight:700;color:var(--ink);margin-bottom:3px">${st.svcs.map(s=>esc(s.length>24?s.substring(0,24)+'…':s)).join(' + ')}</div>
+            <div style="font-size:.68rem;color:var(--mid);font-weight:500">${st.recommendation}</div>
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            ${st.vendor?`<div style="margin-bottom:4px">${vbadge(st.vendor)}</div><div style="font-family:var(--serif);font-size:1.1rem;font-weight:700;color:var(--or)">${fmt(st.price)}</div>`:`<span class="b rd">No data</span>`}
+          </div>
+        </div>
+        ${st.file?`<div style="font-size:.66rem;color:var(--mid);padding-top:6px;border-top:1px dashed rgba(0,0,0,.08)">📄 ${esc(st.file)}</div>`:''}
+      </div>`;
+    }).join('')}
+  `;
+  
 
   const filesEl=document.getElementById('sel-files');
   filesEl.innerHTML=matches.slice(0,10).map(r=>`
@@ -1727,6 +1903,87 @@ function selRender(){
   set('sel-files-meta',matches.length+' files');
 }
 
+function renderSelSvcBreakdown(sel,pool){
+  const el=document.getElementById('sel-svc-breakdown');
+  if(!el)return;
+  const breakdownHtml=sel.map(s=>{
+    const quotes=pool.filter(r=>(r.services||[]).includes(s));
+    if(quotes.length===0){
+      return `<div style="padding:14px;background:var(--bg);border-radius:var(--r);margin-bottom:10px;border-left:3px solid var(--rd)">
+        <div style="font-weight:700;color:var(--ink);font-size:.88rem;margin-bottom:4px">${esc(s)}</div>
+        <div class="b rd">❌ No historical quotes</div>
+      </div>`;
+    }
+    const prices=quotes.map(r=>r.price).filter(p=>p>0);
+    const mn=prices.length?Math.min(...prices):0;
+    const mx=prices.length?Math.max(...prices):0;
+    const av=prices.length?prices.reduce((a,b)=>a+b,0)/prices.length:0;
+    const minQ=quotes.find(r=>r.price===mn);
+    const maxQ=quotes.find(r=>r.price===mx);
+    const regions=[...new Set(quotes.map(r=>r.region))];
+    const countries=[...new Set(quotes.map(r=>r.country))];
+    const vendors=[...new Set(quotes.map(r=>r.vendor))];
+    const uid='svcBD-'+s.replace(/[^a-z0-9]/gi,'').substring(0,20);
+    
+    return `<div style="background:var(--white);border:1px solid var(--line);border-radius:var(--r2);margin-bottom:12px;overflow:hidden">
+      <div style="padding:14px 16px;background:linear-gradient(90deg,var(--ort),transparent);border-bottom:1px solid var(--line2);display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="toggleSvcBD('${uid}')">
+        <div style="flex:1">
+          <div style="font-weight:700;color:var(--ink);font-size:.88rem;margin-bottom:4px">${esc(s)}</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;font-size:.70rem;color:var(--mid);font-weight:600">
+            <span class="b bl">${quotes.length} quote${quotes.length>1?'s':''}</span>
+            <span class="b nt">${vendors.length} vendor${vendors.length>1?'s':''}</span>
+            <span class="b nt">${countries.length} countr${countries.length>1?'ies':'y'}</span>
+          </div>
+        </div>
+        <div style="display:flex;gap:18px;align-items:center">
+          <div style="text-align:right"><div style="font-size:.62rem;color:var(--mid);font-weight:700;text-transform:uppercase">Min</div><div style="font-family:var(--serif);font-size:1.05rem;color:var(--gn);font-weight:700">${fmt(mn)}</div></div>
+          <div style="text-align:right"><div style="font-size:.62rem;color:var(--mid);font-weight:700;text-transform:uppercase">Avg</div><div style="font-family:var(--serif);font-size:1.05rem;color:var(--or);font-weight:700">${fmt(av)}</div></div>
+          <div style="text-align:right"><div style="font-size:.62rem;color:var(--mid);font-weight:700;text-transform:uppercase">Max</div><div style="font-family:var(--serif);font-size:1.05rem;color:var(--rd);font-weight:700">${fmt(mx)}</div></div>
+          <span id="${uid}-arrow" style="color:var(--mid);font-size:.9rem;transition:transform .2s">▼</span>
+        </div>
+      </div>
+      <div id="${uid}" style="display:none;padding:12px 16px;background:var(--bg)">
+        <div style="font-size:.68rem;font-weight:700;color:var(--mid);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">All Quotes (click row for details)</div>
+        <table class="cat-table" style="background:var(--white);border-radius:var(--r);overflow:hidden">
+          <thead>
+            <tr>
+              <th>Vendor</th>
+              <th style="text-align:left !important">Project</th>
+              <th style="text-align:left !important">Country</th>
+              <th style="text-align:left !important">Region</th>
+              <th>Year</th>
+              <th>Price</th>
+              <th style="text-align:left !important">File</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${quotes.sort((a,b)=>a.price-b.price).map(r=>`
+              <tr onclick="selShowQuote('${esc(r.vendor).replace(/'/g,"\\'")}','${esc(s).replace(/'/g,"\\'")}')" style="cursor:pointer">
+                <td style="text-align:left">${vbadge(r.vendor)}</td>
+                <td style="text-align:left">${esc(r.proj)}</td>
+                <td style="text-align:left">${esc(r.country||'—')}</td>
+                <td style="text-align:left">${esc(r.region||'—')}</td>
+                <td>${r.year}${r.quarter?' '+r.quarter:''}</td>
+                <td class="num" style="color:${r.price===mn?'var(--gn)':r.price===mx?'var(--rd)':'var(--ink)'};font-weight:700">${fmt(r.price)}${r.price===mn?' 🏆':r.price===mx?' ⚠️':''}</td>
+                <td style="text-align:left;font-size:.70rem;color:var(--mid)">${esc(r.file.length>26?r.file.substring(0,26)+'…':r.file)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+  }).join('');
+  el.innerHTML=breakdownHtml;
+  set('sel-svc-breakdown-meta',sel.length+' service'+(sel.length>1?'s':''));
+}
+
+function toggleSvcBD(uid){
+  const el=document.getElementById(uid);
+  const arrow=document.getElementById(uid+'-arrow');
+  if(el.style.display==='none'){el.style.display='block';arrow.style.transform='rotate(180deg)';}
+  else{el.style.display='none';arrow.style.transform='rotate(0deg)';}
+}
+  
 function selShowQuote(v,s){
   const pool=filteredDB();
   const rs=pool.filter(r=>r.vendor===v&&(r.services||[]).includes(s));
@@ -1753,6 +2010,85 @@ function selShowFile(f){
   if(!r)return;
   selShowQuote(r.vendor,(r.services||[])[0]||'');
 }
+
+function selSetMtxMode(mode){
+  selMtxMode=mode;
+  document.querySelectorAll('.mtx-tog').forEach(el=>{
+    if(el.dataset.mode===mode){
+      el.classList.add('active');
+      el.style.background=mode==='lowest'?'var(--gn)':mode==='highest'?'var(--rd)':'var(--or)';
+      el.style.color='white';
+    } else {
+      el.classList.remove('active');
+      el.style.background='transparent';
+      el.style.color='var(--mid)';
+    }
+  });
+  const legend1=document.getElementById('sel-mtx-legend-1');
+  const legend2=document.getElementById('sel-mtx-legend-2');
+  if(legend1&&legend2){
+    if(selMtxMode==='lowest'){
+      legend1.innerHTML='<span style="display:inline-block;width:10px;height:10px;background:rgba(16,185,129,.18);border:1px solid #10B981;border-radius:2px;vertical-align:middle;margin-right:4px"></span>BEST (lowest) price';
+      legend2.innerHTML='<span style="display:inline-block;width:10px;height:10px;background:rgba(239,68,68,.08);border:1px solid #EF4444;border-radius:2px;vertical-align:middle;margin-right:4px"></span>Highest price';
+    } else if(selMtxMode==='highest'){
+      legend1.innerHTML='<span style="display:inline-block;width:10px;height:10px;background:rgba(16,185,129,.18);border:1px solid #10B981;border-radius:2px;vertical-align:middle;margin-right:4px"></span>Lowest of highs';
+      legend2.innerHTML='<span style="display:inline-block;width:10px;height:10px;background:rgba(239,68,68,.08);border:1px solid #EF4444;border-radius:2px;vertical-align:middle;margin-right:4px"></span>PEAK price';
+    } else {
+      legend1.innerHTML='<span style="display:inline-block;width:10px;height:10px;background:rgba(16,185,129,.18);border:1px solid #10B981;border-radius:2px;vertical-align:middle;margin-right:4px"></span>Lowest average';
+      legend2.innerHTML='<span style="display:inline-block;width:10px;height:10px;background:rgba(239,68,68,.08);border:1px solid #EF4444;border-radius:2px;vertical-align:middle;margin-right:4px"></span>Highest average';
+    }
+  }
+  selRender();
+}
+
+function selOpenMtxFilter(type){
+  selMtxFilterType=type;
+  const panel=document.getElementById('sel-mtx-filter-panel');
+  const title=document.getElementById('sel-mtx-filter-title');
+  const chips=document.getElementById('sel-mtx-filter-chips');
+  const pool=filteredDB();
+  const sel=[...selSvcs];
+  const matches=pool.filter(r=>sel.some(s=>(r.services||[]).includes(s)));
+  
+  if(type==='ven'){
+    title.textContent='🏢 Filter Vendors';
+    const allVens=[...new Set(matches.map(r=>r.vendor))].sort();
+    chips.innerHTML=allVens.map(v=>{
+      const cnt=matches.filter(r=>r.vendor===v).length;
+      const on=selMtxVens.has(v);
+      return `<div class="chip ${on?'on':''}" onclick="togSelMtxVen('${esc(v).replace(/'/g,"\\'")}',this)"><span>${esc(v)}</span><span class="chip-cnt">${cnt}</span></div>`;
+    }).join('');
+  } else {
+    title.textContent='🧩 Filter Services';
+    chips.innerHTML=sel.map(s=>{
+      const c=pool.find(r=>(r.services||[]).includes(s))?.cat;
+      const on=selMtxSvcs.has(s);
+      return `<div class="chip ${on?'on':''}" onclick="togSelMtxSvc('${esc(s).replace(/'/g,"\\'")}',this)"><span class="cat-dot" style="background:${CAT_COL[c]||MID}"></span>${esc(s.length>28?s.substring(0,28)+'…':s)}</div>`;
+    }).join('');
+  }
+  panel.style.display='block';
+}
+
+function togSelMtxVen(v,el){
+  if(selMtxVens.has(v)){selMtxVens.delete(v);el.classList.remove('on');}
+  else{selMtxVens.add(v);el.classList.add('on');}
+  selRender();
+}
+
+function togSelMtxSvc(s,el){
+  if(selMtxSvcs.has(s)){selMtxSvcs.delete(s);el.classList.remove('on');}
+  else{selMtxSvcs.add(s);el.classList.add('on');}
+  selRender();
+}
+
+function selResetMtxFilters(){
+  selMtxVens.clear();
+  selMtxSvcs.clear();
+  selMtxMode='lowest';
+  document.getElementById('sel-mtx-filter-panel').style.display='none';
+  selSetMtxMode('lowest');
+}
+
 
 function selExport(){
   const sel=[...selSvcs];
