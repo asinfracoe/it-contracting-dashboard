@@ -1,11 +1,17 @@
 """
-AI Extractor — LLM structuring with OpenAI primary, Groq fallback.
+AI Extractor — uses AI minimally.
+Flow:
+  1. Heuristic extraction (local, 0 tokens)
+  2. If complete → use as-is
+  3. If incomplete → AI fills gaps (minimal tokens)
+  4. AI formats final JSON (small prompt)
 """
 import os
 import json
 import re
 from pathlib import Path
 from file_processor import process_file
+from heuristic_extractor import heuristic_extract, is_heuristic_complete
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
@@ -16,10 +22,6 @@ LLM_BLOCKED = {"openai": False, "groq": False}
 class AllLLMsExhausted(Exception):
     pass
 
-
-# ============================================================================
-# MAPPINGS
-# ============================================================================
 
 PROJECT_MAP = {
     "panasonic": "Panasonic", "idemia": "Idemia", "tenneco": "Tenneco",
@@ -34,41 +36,46 @@ CATEGORY_HINTS = {
     "Service Management (SNow)": ["servicenow", "snow"],
 }
 
-REGION_MAP = {
-    "germany": ("EMEA", "Germany"), "japan": ("APAC", "Japan"),
-    "india": ("APAC", "India"), "singapore": ("APAC", "Singapore"),
-    "malaysia": ("APAC", "Malaysia"), "czech republic": ("EMEA", "Czech Republic"),
-    "united states": ("Americas", "United States"), "usa": ("Americas", "United States"),
-    "us": ("Americas", "United States"), "global": ("Global", "Multi-Region"),
-}
+
+# ============================================================================
+# CATEGORISATION (local, no AI)
+# ============================================================================
+
+def categorise(services: list, filename: str, vendor: str) -> str:
+    blob = (filename + " " + " ".join(services or []) + " " + vendor).lower()
+    scores = {cat: sum(1 for kw in kws if kw in blob) for cat, kws in CATEGORY_HINTS.items()}
+    best = max(scores, key=scores.get)
+    return best if scores[best] > 0 else "Other"
 
 
 # ============================================================================
-# PROMPT
+# AI GAP-FILLER (only when heuristics incomplete)
 # ============================================================================
 
-def build_prompt(text: str, filename: str, project: str) -> str:
-    return f"""You are an expert at extracting structured data from IT vendor quotations.
+def build_gap_fill_prompt(text: str, partial: dict, filename: str) -> str:
+    """Small prompt — only asks AI to fill missing fields."""
+    missing = []
+    if partial.get("vendor") == "Unknown": missing.append("vendor")
+    if partial.get("price", 0) == 0: missing.append("price")
+    if not partial.get("services"): missing.append("services")
+    
+    return f"""From this quote document, find ONLY these missing fields: {', '.join(missing)}
 
-Analyze this quote document and return ONLY a valid JSON object:
+Already extracted: {json.dumps({k: v for k, v in partial.items() if v and v != "Unknown"})}
 
+Return JSON with just the missing fields:
 {{
-  "vendor": "vendor company name (e.g., NTT Data, CDW, SHI, Microsoft, Equinix)",
-  "price": <total price in USD as number, no currency symbol, no commas>,
-  "services": ["service 1", "service 2", ...],
-  "country": "country name or 'Multi-Region'",
-  "region": "EMEA / APAC / Americas / Global",
-  "year": <year as 4-digit number>,
-  "quarter": "Q1/Q2/Q3/Q4 or null"
+  {"'vendor': 'vendor name'," if "vendor" in missing else ""}
+  {"'price': <total USD price as number>," if "price" in missing else ""}
+  {"'services': ['service 1', 'service 2']" if "services" in missing else ""}
 }}
 
 Filename: {filename}
-Project context: {project}
 
-Document content:
-{text[:12000]}
+Document (first 6000 chars):
+{text[:6000]}
 
-Return ONLY the JSON object, no markdown, no explanation."""
+Return ONLY JSON."""
 
 
 def parse_llm_response(raw: str) -> dict:
@@ -78,110 +85,77 @@ def parse_llm_response(raw: str) -> dict:
     try:
         return json.loads(raw)
     except json.JSONDecodeError:
-        match = re.search(r"\{.*\}", raw, re.DOTALL)
-        if match:
-            try: return json.loads(match.group())
+        m = re.search(r"\{.*\}", raw, re.DOTALL)
+        if m:
+            try: return json.loads(m.group())
             except: pass
-    return None
+    return {}
 
 
-# ============================================================================
-# LLM #1 — OPENAI (primary)
-# ============================================================================
-
-def extract_with_openai(prompt: str) -> dict:
+def call_openai(prompt: str) -> dict:
     if LLM_BLOCKED["openai"] or not OPENAI_API_KEY:
         return None
     try:
         from openai import OpenAI
         client = OpenAI(api_key=OPENAI_API_KEY)
-        response = client.chat.completions.create(
+        r = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.1,
-            max_tokens=1500,
+            temperature=0,
+            max_tokens=600,  # small output
             response_format={"type": "json_object"},
         )
-        return parse_llm_response(response.choices[0].message.content)
+        return parse_llm_response(r.choices[0].message.content)
     except Exception as e:
         err = str(e).lower()
         if "rate_limit" in err or "429" in err or "quota" in err or "insufficient" in err:
-            print(f"  ⚠️ OpenAI rate-limited — failing over to Groq")
+            print(f"     ⚠️ OpenAI exhausted — failing to Groq")
             LLM_BLOCKED["openai"] = True
         else:
-            print(f"  ⚠️ OpenAI error: {str(e)[:150]}")
+            print(f"     ⚠️ OpenAI error: {str(e)[:100]}")
         return None
 
 
-# ============================================================================
-# LLM #2 — GROQ (fallback)
-# ============================================================================
-
-def extract_with_groq(prompt: str) -> dict:
+def call_groq(prompt: str) -> dict:
     if LLM_BLOCKED["groq"] or not GROQ_API_KEY:
         return None
     try:
         from groq import Groq
         client = Groq(api_key=GROQ_API_KEY)
-        response = client.chat.completions.create(
+        r = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.1,
-            max_tokens=1500,
+            temperature=0,
+            max_tokens=600,
         )
-        return parse_llm_response(response.choices[0].message.content)
+        return parse_llm_response(r.choices[0].message.content)
     except Exception as e:
         err = str(e).lower()
         if "rate_limit" in err or "429" in err or "quota" in err or "tpd" in err:
-            print(f"  ⚠️ Groq rate-limited — ALL LLMs exhausted")
+            print(f"     ⚠️ Groq exhausted — ALL LLMs blocked")
             LLM_BLOCKED["groq"] = True
         else:
-            print(f"  ⚠️ Groq error: {str(e)[:150]}")
+            print(f"     ⚠️ Groq error: {str(e)[:100]}")
         return None
 
 
-# ============================================================================
-# MAIN EXTRACTION ROUTER
-# ============================================================================
-
-def extract_with_llm(text: str, filename: str, project: str) -> dict:
-    """Try OpenAI → Groq. Raise if both exhausted."""
-    prompt = build_prompt(text, filename, project)
+def ai_fill_gaps(text: str, partial: dict, filename: str) -> dict:
+    """Only called when heuristic extraction is incomplete."""
+    prompt = build_gap_fill_prompt(text, partial, filename)
     
-    for fn in [extract_with_openai, extract_with_groq]:
+    for fn in [call_openai, call_groq]:
         result = fn(prompt)
         if result:
             return result
     
-    # Check if all available LLMs are blocked
+    # Check if all blocked
     available = []
     if OPENAI_API_KEY: available.append("openai")
     if GROQ_API_KEY: available.append("groq")
-    
     if available and all(LLM_BLOCKED[k] for k in available):
-        raise AllLLMsExhausted("All available LLMs are rate-limited. Saving progress and exiting.")
+        raise AllLLMsExhausted("All LLMs rate-limited")
     
-    return None
-
-
-# ============================================================================
-# HELPERS
-# ============================================================================
-
-def categorise(services: list, filename: str) -> str:
-    blob = (filename + " " + " ".join(services or [])).lower()
-    scores = {cat: sum(1 for kw in kws if kw in blob) for cat, kws in CATEGORY_HINTS.items()}
-    best = max(scores, key=scores.get)
-    return best if scores[best] > 0 else "Other"
-
-
-def normalise_region_country(country: str, region: str) -> tuple:
-    if not country:
-        return (region or "Global", "Multi-Region")
-    key = country.lower().strip()
-    if key in REGION_MAP:
-        return REGION_MAP[key]
-    return (region or "Global", country)
+    return {}
 
 
 # ============================================================================
@@ -189,47 +163,67 @@ def normalise_region_country(country: str, region: str) -> tuple:
 # ============================================================================
 
 def extract_quote(file_path: Path, project_folder: str) -> dict:
-    """Full pipeline: local parse → LLM structure → dashboard record."""
     print(f"  📄 {file_path.name}")
     project = PROJECT_MAP.get(project_folder.lower(), project_folder.title())
     
-    # Step 1: Local parsing (no API call)
+    # Step 1: Parse locally
     parsed = process_file(file_path)
     if not parsed["ok"]:
-        err = parsed.get("error", "unknown")
-        print(f"     ❌ Parse failed: {err[:100]}")
+        print(f"     ❌ Parse failed: {parsed.get('error', 'unknown')[:100]}")
         return None
     
     text = parsed["text"]
     if len(text.strip()) < 50:
-        print(f"     ⚠️ Empty/scanned document")
+        print(f"     ⚠️ Empty/scanned document ({len(text)} chars)")
         return None
     
-    print(f"     📊 Parsed: {parsed['pages']} page(s), {len(text):,} chars")
+    method = parsed.get("method", "default")
+    print(f"     📊 Parsed: {len(text):,} chars ({method})")
     
-    # Step 2: LLM structuring
-    extracted = extract_with_llm(text, file_path.name, project)
-    if not extracted:
-        return None
+    # Step 2: Heuristic extraction (NO AI)
+    partial = heuristic_extract(text, file_path.name)
     
-    # Step 3: Build record
-    services = extracted.get("services") or []
-    cat = categorise(services, file_path.name)
-    region, country = normalise_region_country(
-        extracted.get("country"), extracted.get("region")
-    )
+    # Step 3: Decide if AI is needed
+    if is_heuristic_complete(partial):
+        # 🎉 Got everything locally — ZERO tokens used
+        print(f"     🎯 Heuristic complete — skipping AI")
+        final = partial
+    else:
+        print(f"     🤖 Calling AI to fill gaps...")
+        ai_data = ai_fill_gaps(text, partial, file_path.name)
+        
+        # Merge: AI fills gaps, but heuristics win when present
+        final = dict(partial)
+        for k, v in ai_data.items():
+            if k == "vendor" and partial.get("vendor") == "Unknown" and v:
+                final["vendor"] = v
+            elif k == "price" and partial.get("price", 0) == 0 and v:
+                try: final["price"] = int(float(v))
+                except: pass
+            elif k == "services" and not partial.get("services") and v:
+                final["services"] = v if isinstance(v, list) else [v]
+    
+    # Step 4: Build final record
+    services = final.get("services") or []
+    cat = categorise(services, file_path.name, final.get("vendor", ""))
     
     record = {
         "proj": project,
-        "region": region,
-        "country": country,
+        "region": final.get("region", "Global"),
+        "country": final.get("country", "Multi-Region"),
         "cat": cat,
-        "vendor": extracted.get("vendor", "Unknown"),
+        "vendor": final.get("vendor", "Unknown"),
         "file": file_path.name,
         "services": services,
-        "price": int(float(extracted.get("price") or 0)),
-        "year": int(extracted.get("year") or 2025),
-        "quarter": extracted.get("quarter") or "Q1",
+        "price": int(final.get("price") or 0),
+        "year": int(final.get("year") or 2025),
+        "quarter": final.get("quarter") or "Q1",
     }
+    
+    # Sanity check: reject if no useful data
+    if record["vendor"] == "Unknown" and record["price"] == 0 and not record["services"]:
+        print(f"     ⚠️ No data extracted — skipping")
+        return None
+    
     print(f"     ✅ {record['vendor']} · ${record['price']:,} · {len(services)} services")
     return record
