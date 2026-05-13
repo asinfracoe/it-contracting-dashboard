@@ -5,7 +5,7 @@ on:
     paths:
       - 'quotes/**'
       - 'extractor/**'
-  workflow_dispatch:  # Manual trigger button
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -30,23 +30,27 @@ jobs:
       
       - name: Install dependencies
         run: |
-          cd extractor
           pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r extractor/requirements.txt
       
       - name: Run extractor
         env:
           LLAMA_API_KEY: ${{ secrets.LLAMA_API_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-        run: |
-          cd extractor
-          cd ..
-          python extractor/main.py
+        run: python extractor/main.py
       
-      - name: Commit catalog_data.json
+      - name: Commit and push catalog_data.json
+        env:
+          G_TOKEN: ${{ secrets.G_TOKEN }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin https://x-access-token:${G_TOKEN}@github.com/${{ github.repository }}.git
           git add catalog_data.json
-          git diff --staged --quiet || git commit -m "🤖 Auto-update catalog from quotes [skip ci]"
-          git push
+          if git diff --staged --quiet; then
+            echo "ℹ️ No changes to commit"
+          else
+            git commit -m "🤖 Auto-update catalog from quotes [skip ci]"
+            git push origin HEAD:${{ github.ref_name }}
+            echo "✅ Pushed catalog_data.json update"
+          fi
