@@ -45,6 +45,7 @@ def extract_quote(file_path: Path, project_folder: str) -> dict:
         "cat": data["category"],
         "vendor": data["vendor"],
         "file": file_path.name,
+        "folder": project_folder.lower(),
         "services": data["services"],
         "price": data["price"],
         "year": data["year"],
