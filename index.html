@@ -1005,6 +1005,42 @@ function set(id,v){const e=document.getElementById(id);if(e)e.textContent=v;}
 function fmtHtml(t){return String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n\n/g,'<br><br>').replace(/\n/g,'<br>');}
 function dlCSV(csv,name){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download=name;a.click();toast('Exported '+name,'ok');}
 
+function fileLink(record){
+  // Only return a real URL when in Live mode AND record has folder info
+  if(DATA_MODE!=='live'||!record||!record.folder||!record.file)return null;
+  // GitHub raw URL: github.com/{owner}/{repo}/raw/main/quotes/{folder}/{filename}
+  const owner=GITHUB_CONFIG.owner;
+  const repo=GITHUB_CONFIG.repo;
+  // URL-encode the filename to handle spaces and special chars
+  const encodedFile=encodeURIComponent(record.file);
+  const encodedFolder=encodeURIComponent(record.folder);
+  return `https://github.com/${owner}/${repo}/raw/main/quotes/${encodedFolder}/${encodedFile}`;
+}
+
+function fileBtn(record){
+  // Returns either a clickable button (live) or plain text (demo)
+  const url=fileLink(record);
+  const fname=esc(record.file);
+  if(!url){
+    return `<span style="font-size:.70rem">${fname}</span>`;
+  }
+  return `<a href="${url}" target="_blank" rel="noopener noreferrer" 
+    style="display:inline-flex;align-items:center;gap:6px;padding:5px 10px;
+    background:var(--or);color:white;border-radius:var(--r);
+    text-decoration:none;font-size:.72rem;font-weight:700;
+    transition:background .15s" 
+    onmouseover="this.style.background='var(--ord)'" 
+    onmouseout="this.style.background='var(--or)'"
+    title="Open ${fname} in new tab">
+    📄 Open File
+    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+      <polyline points="15 3 21 3 21 9"/>
+      <line x1="10" y1="14" x2="21" y2="3"/>
+    </svg>
+  </a>`;
+}
+  
 function filteredDB(){
   let d=CUR_PROJ==='All'?[...DB]:DB.filter(r=>r.proj===CUR_PROJ);
   if(CUR_REGION!=='All')d=d.filter(r=>r.region===CUR_REGION);
@@ -1507,12 +1543,22 @@ function drillCategory(c){
       ${vens.slice(0,5).map(v=>{const vd=data.filter(r=>r.vendor===v);const vp=vd.map(r=>r.price).filter(p=>p>0);return `<div class="sp-row"><span class="sp-k">${esc(v)}</span><span class="sp-v">${vd.length} quotes · ${fmt(vp.length?Math.min(...vp):0)}</span></div>`;}).join('')}
     </div>
     <div style="margin-top:16px"><div class="sec-lbl" style="margin:0 0 10px">Quote Files</div>
-      ${data.slice(0,10).map(r=>`<div class="sp-row"><span class="sp-k" style="font-size:.66rem">${esc(r.file.substring(0,30))}</span><span class="sp-v pr">${fmt(r.price)}</span></div>`).join('')}
+      ${data.slice(0,10).map(r=>`
+        <div style="padding:10px;background:var(--bg);border-radius:var(--r);margin-bottom:6px">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px">
+            <div style="font-size:.74rem;font-weight:700;flex:1;overflow:hidden;text-overflow:ellipsis">${esc(r.file)}</div>
+            <span class="sp-v pr" style="font-size:.85rem">${fmt(r.price)}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+            <span style="font-size:.66rem;color:var(--mid)">${esc(r.vendor)} · ${r.year}</span>
+            ${fileBtn(r)}
+          </div>
+        </div>
+      `).join('')}
     </div>
   `;
   panel.classList.add('on');
 }
-
 function renderHeatmap(data,cats,vens){
   const el=document.getElementById('ov-heatmap');
   if(!el)return;
@@ -1620,10 +1666,13 @@ function hmDrill(v,c){
     <div style="margin-top:14px"><div class="sec-lbl" style="margin:0 0 10px">Quote Files</div>
       ${data.map(r=>`
         <div style="padding:10px;background:var(--bg);border-radius:var(--r);margin-bottom:6px">
-          <div style="font-size:.74rem;font-weight:700;color:var(--ink);margin-bottom:4px">${esc(r.file)}</div>
-          <div style="display:flex;justify-content:space-between;font-size:.68rem;color:var(--mid)">
-            <span>${esc(r.proj)} · ${esc(r.country||r.region)} · ${r.year} ${r.quarter||''}</span>
-            <span style="color:var(--or);font-weight:700">${fmt(r.price)}</span>
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px">
+            <div style="font-size:.74rem;font-weight:700;color:var(--ink);flex:1">${esc(r.file)}</div>
+            <span style="color:var(--or);font-weight:700;font-family:var(--serif)">${fmt(r.price)}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+            <span style="font-size:.66rem;color:var(--mid)">${esc(r.proj)} · ${esc(r.country||r.region)} · ${r.year} ${r.quarter||''}</span>
+            ${fileBtn(r)}
           </div>
         </div>
       `).join('')}
@@ -2015,12 +2064,17 @@ function selRender(){
     }).join('')}
   `;
   
-
   const filesEl=document.getElementById('sel-files');
   filesEl.innerHTML=matches.slice(0,10).map(r=>`
-    <div style="padding:10px;background:var(--bg);border-radius:var(--r);margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="selShowFile('${esc(r.file).replace(/'/g,"\\'")}')">
-      <div style="flex:1"><div style="font-size:.76rem;font-weight:700">${esc(r.file)}</div><div style="font-size:.66rem;color:var(--mid);margin-top:2px">${esc(r.proj)} · ${vbadge(r.vendor)} · ${r.year}${r.quarter||''}</div></div>
-      <div style="font-family:var(--serif);color:var(--or);font-weight:700">${fmt(r.price)}</div>
+    <div style="padding:10px;background:var(--bg);border-radius:var(--r);margin-bottom:6px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:6px">
+        <div style="flex:1;cursor:pointer" onclick="selShowFile('${esc(r.file).replace(/'/g,"\\'")}')">
+          <div style="font-size:.76rem;font-weight:700">${esc(r.file)}</div>
+          <div style="font-size:.66rem;color:var(--mid);margin-top:2px">${esc(r.proj)} · ${vbadge(r.vendor)} · ${r.year}${r.quarter||''}</div>
+        </div>
+        <div style="font-family:var(--serif);color:var(--or);font-weight:700">${fmt(r.price)}</div>
+      </div>
+      <div style="display:flex;justify-content:flex-end">${fileBtn(r)}</div>
     </div>
   `).join('');
   set('sel-files-meta',matches.length+' files');
@@ -2115,7 +2169,7 @@ function selShowQuote(v,s){
   const panel=document.getElementById('sp-panel');
   set('sp-title',v+' → '+s);
   document.getElementById('sp-body').innerHTML=`
-    <div class="sp-row"><span class="sp-k">File</span><span class="sp-v" style="font-size:.70rem">${esc(r.file)}</span></div>
+    <div class="sp-row"><span class="sp-k">File</span><span class="sp-v">${fileBtn(r)}</span></div>
     <div class="sp-row"><span class="sp-k">Vendor</span><span class="sp-v">${vbadge(r.vendor)}</span></div>
     <div class="sp-row"><span class="sp-k">Project</span><span class="sp-v">${esc(r.proj)}</span></div>
     <div class="sp-row"><span class="sp-k">Category</span><span class="sp-v">${esc(r.cat)}</span></div>
