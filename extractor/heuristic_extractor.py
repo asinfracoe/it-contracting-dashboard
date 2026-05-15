@@ -1,369 +1,517 @@
 """
-Heuristic (regex-based) primary extractor.
-Extracts ALL data locally — vendor, price, services, country, region, year, quarter.
-This is the MAIN extractor — AI is no longer called during extraction.
+Heuristic extractor for IT contracting quotes.
+Extracts: vendor, services, price, country/region, year/quarter, category,
+          AND line items (SKU, qty, unit_price, line_total).
 """
 import re
-from typing import Dict, List
+from typing import Dict, List, Tuple
 from collections import Counter
 
 
 # ============================================================================
-# KNOWN VENDORS (expand based on your existing 48-record dataset)
+# KNOWN ENTITIES — extend these lists as you onboard more vendors/services
 # ============================================================================
 
-KNOWN_VENDORS = [
-    # Tier 1 — Primary integrators
-    ("NTT Data", ["ntt data", "ntt-data", "nttdata"]),
-    ("NTT DOCOMO", ["ntt docomo", "docomo"]),
-    ("CDW", ["cdw", "cdw·g", "cdw-g"]),
-    ("SHI", ["shi international", "shi corp", "shi inc"]),
-    ("Proquire LLC", ["proquire"]),
-    ("PC Connection", ["pc connection", "pcconnection"]),
-    ("Thrive", ["thrive networks", "thrive operations"]),
-    ("Honeywell", ["honeywell"]),
-    ("Copeland LP", ["copeland lp", "copeland l.p."]),
-    ("Copeland", ["copeland"]),
-    
-    # Tier 2 — Software vendors
-    ("Microsoft", ["microsoft corporation", "microsoft corp", "microsoft inc", "microsoft"]),
-    ("ServiceNow", ["servicenow", "service-now", "service now"]),
-    ("Cisco", ["cisco systems", "cisco"]),
-    ("Trend Micro", ["trend micro", "trendmicro"]),
-    ("KnowBe4", ["knowbe4", "know be 4"]),
-    ("Zscaler", ["zscaler"]),
-    ("CyberArk", ["cyberark", "cyber-ark"]),
-    ("Palo Alto", ["palo alto networks", "palo alto"]),
-    ("VMware", ["vmware", "vm-ware"]),
-    ("Oracle", ["oracle corporation", "oracle"]),
-    ("NetApp", ["netapp", "net app"]),
-    ("Forescout", ["forescout"]),
-    ("IBM", ["ibm corporation", "international business machines", "ibm"]),
-    ("Pure Storage", ["pure storage"]),
-    ("Quest", ["quest software", "quest"]),
-    ("Equinix", ["equinix"]),
+KNOWN_VENDORS = {
+    "ntt data": "NTT Data",
+    "ntt docomo": "NTT DOCOMO",
+    "ntt": "NTT Data",
+    "cdw": "CDW",
+    "shi": "SHI",
+    "pc connection": "PC Connection",
+    "microsoft": "Microsoft",
+    "msft": "Microsoft",
+    "trendmicro": "TrendMicro",
+    "trend micro": "TrendMicro",
+    "knowbe4": "KnowBe4",
+    "equinix": "Equinix",
+    "servicenow": "ServiceNow",
+    "service-now": "ServiceNow",
+    "quest": "Quest",
+    "proquire": "Proquire LLC",
+    "honeywell": "Honeywell",
+    "thrive": "Thrive",
+    "copeland": "Copeland LP",
+    "cisco": "Cisco",
+    "palo alto": "Palo Alto",
+    "zscaler": "Zscaler",
+    "cyberark": "CyberArk",
+    "forescout": "Forescout",
+    "vmware": "VMware",
+    "oracle": "Oracle",
+    "netapp": "NetApp",
+    "ibm": "IBM",
+    "pure storage": "Pure Storage",
+}
+
+SERVICE_KEYWORDS = {
+    # Cybersecurity
+    "trend vision one": "Trend Vision One Endpoint Security",
+    "apex one": "Apex One SaaS",
+    "trend micro email": "Trend Micro Email Security Advanced",
+    "cloud app security": "Cloud App Security XDR",
+    "knowbe4 phisher": "KnowBe4 PhishER Subscription",
+    "security awareness": "Security Awareness Training",
+    "zscaler zia": "Zscaler ZIA Transformation Edition",
+    "zero trust network": "Zero Trust Network Access",
+    "zscaler internet": "Zscaler Internet Access",
+    "cyberark secure": "CyberArk Secure IT Ops Standard",
+    "privileged access": "Privileged Access Management",
+    "cyberark endpoint": "CyberArk Endpoint Privilege Manager",
+    "forescout": "Forescout Network Access Control",
+    "endpoint visibility": "Endpoint Visibility",
+    # Network & Telecom
+    "catalyst c8300": "Cisco Catalyst C8300",
+    "c8300": "Cisco Catalyst C8300",
+    "catalyst 9800": "Cisco Catalyst 9800-L",
+    "9800-l": "Cisco Catalyst 9800-L",
+    "catalyst 9200": "Cisco Catalyst 9200-L",
+    "catalyst 9400": "Cisco Catalyst 9400",
+    "catalyst 8500": "Cisco Catalyst 8500",
+    "wireless 9176": "Cisco Wireless 9176I",
+    "9176i": "Cisco Wireless 9176I",
+    "nexus 9200": "Cisco Nexus 9200L",
+    "nexus 9300": "Cisco Nexus 9300",
+    "nexus 9000": "Cisco Nexus 9000",
+    "meraki mr46": "Cisco Meraki MR46E",
+    "smartnet": "Cisco SMARTnet",
+    "firepower 1150": "Cisco Firepower 1150 NGFW",
+    "pa 445": "Palo Alto PA 445",
+    "pa-445": "Palo Alto PA 445",
+    "ngfw firewall": "Palo Alto NGFW Firewall",
+    "equinix": "Equinix Network Interconnect Lines",
+    "global wan": "Global WAN Connectivity",
+    "cloud connectivity": "Cloud Connectivity",
+    # Hosting
+    "vmware cloud foundation": "VMware Cloud Foundation",
+    "vmware vsphere": "VMware vSphere Enterprise",
+    "mds9148": "Cisco MDS9148T",
+    "netapp aff": "NetApp AFF A30 HA System",
+    "oracle database appliance": "Oracle Database Appliance X11-L",
+    "oracle database enterprise": "Oracle Database Enterprise Edition",
+    "colocation power": "Colocation Power and Space",
+    "internet access": "Internet Access",
+    "windows server": "Microsoft Windows Server Datacenter",
+    "sql server": "Microsoft SQL Server Standard Core",
+    "ibm power9": "IBM Power9 Server",
+    "pure storage": "Pure Storage FlashArray",
+    "data center build": "Data Center Build Services",
+    # M365
+    "m365 e5": "M365 E5 License",
+    "m365 e3": "M365 E3 License",
+    "m365 f3": "M365 F3 License",
+    "o365 e1": "O365 E1 License",
+    "visio p1": "Visio P1",
+    "visio p2": "Visio P2",
+    "windows 365": "Windows 365",
+    "microsoft defender": "Microsoft Defender",
+    "power platform": "Power Platform",
+    "power bi premium": "Power BI Premium",
+    "power bi pro": "Power BI Pro",
+    "m365 copilot": "M365 Copilot",
+    "teams essentials": "Teams Essentials",
+    # Service Management
+    "servicenow itsm": "ServiceNow IT Service Management Professional",
+    "servicenow it service management": "ServiceNow IT Service Management Professional",
+    "servicenow app engine": "ServiceNow App Engine Enterprise",
+    "servicenow itom": "ServiceNow IT Operations Management",
+    # IdAM
+    "on-demand migration suite t5": "Quest On-Demand Migration Suite T5",
+    "odm t5": "Quest On-Demand Migration Suite T5",
+    "odmt5": "Quest On-Demand Migration Suite T5",
+    "active directory migration": "Active Directory Migration",
+    "quest professional": "Quest Professional Services",
+    "on-demand migration m365": "Quest On-Demand Migration M365",
+}
+
+CATEGORY_RULES = {
+    "Cybersecurity": [
+        "trend", "apex", "knowbe4", "phishing", "zscaler", "cyberark",
+        "forescout", "ngfw", "firepower", "endpoint", "xdr", "edr",
+        "security awareness", "privileged access", "zero trust",
+    ],
+    "Network & Telecom": [
+        "cisco", "catalyst", "nexus", "meraki", "wireless", "smartnet",
+        "palo alto", "router", "switch", "wan", "lan", "equinix",
+        "interconnect", "network",
+    ],
+    "Hosting": [
+        "vmware", "vsphere", "netapp", "oracle database", "colocation",
+        "datacenter", "data center", "windows server", "sql server",
+        "ibm power", "pure storage", "storage array", "hosting",
+    ],
+    "M365 & Power Platform": [
+        "m365", "o365", "office 365", "microsoft 365", "visio",
+        "windows 365", "defender", "power platform", "power bi",
+        "copilot", "teams essentials",
+    ],
+    "Service Management (SNow)": [
+        "servicenow", "service-now", "itsm", "itom", "app engine",
+    ],
+    "IdAM": [
+        "active directory", "ad migration", "odm", "on-demand migration",
+        "quest", "identity", "sso", "iam",
+    ],
+}
+
+COUNTRY_KEYWORDS = {
+    "germany": ("Germany", "EMEA"),
+    "deutschland": ("Germany", "EMEA"),
+    "japan": ("Japan", "APAC"),
+    "india": ("India", "APAC"),
+    "singapore": ("Singapore", "APAC"),
+    "malaysia": ("Malaysia", "APAC"),
+    "united states": ("United States", "Americas"),
+    "usa": ("United States", "Americas"),
+    "u.s.": ("United States", "Americas"),
+    "us ": ("United States", "Americas"),
+    "czech republic": ("Czech Republic", "EMEA"),
+    "czech": ("Czech Republic", "EMEA"),
+    "global": ("Multi-Region", "Global"),
+    "multi-region": ("Multi-Region", "Global"),
+    "worldwide": ("Multi-Region", "Global"),
+}
+
+
+# ============================================================================
+# SKU PATTERN DETECTION (for line items)
+# ============================================================================
+
+SKU_PATTERNS = [
+    r"\b([A-Z]{2,5}[-_]\d{3,8}[-_]?[A-Z0-9]*)\b",      # AAA-12345, ABC_678
+    r"\b([A-Z0-9]{4,12}[-#][A-Z0-9]{2,8})\b",          # 9X7-12345 style
+    r"\b(C\d{4,5}[A-Z0-9-]*)\b",                       # Cisco C8300
+    r"\b(N\d{1,2}K-[A-Z0-9-]+)\b",                     # Nexus N9K-C9300
+    r"\b(MR\d{2,3}[A-Z]?-?[A-Z]*)\b",                  # Meraki MR46E
+    r"\b(PA-\d{3,4}[A-Z]*)\b",                         # Palo Alto PA-445
+    r"\b([A-Z]{3,}-[A-Z]{2,}-[A-Z0-9]+)\b",            # ENT-PRD-XYZ
+    r"\b(\d{3,5}[A-Z]{2,5}\d{2,6}[A-Z0-9]*)\b",        # Microsoft-style 9X7-12345
 ]
 
+# Words that look like SKU candidates but should be rejected
+SKU_BLACKLIST = {
+    "USA", "USD", "EUR", "JPY", "GBP", "INR", "PDF", "DOCX", "XLSX",
+    "PO", "ID", "URL", "HTTP", "HTTPS", "WWW", "API", "SKU", "REF",
+}
+
+
+# ============================================================================
+# VENDOR EXTRACTION
+# ============================================================================
 
 def extract_vendor(text: str, filename: str) -> str:
-    """Score-based vendor matching — longer/more specific names win."""
-    blob = (text[:5000] + " " + filename).lower()
+    """Identify vendor from text content and filename."""
+    haystack = (filename + " " + text[:5000]).lower()
     
-    matches = []
-    for canonical, aliases in KNOWN_VENDORS:
-        for alias in aliases:
-            if alias in blob:
-                # Score: occurrence count × specificity (longer name = more specific)
-                count = blob.count(alias)
-                score = count * len(alias)
-                matches.append((canonical, score, alias))
-                break  # one alias match per vendor is enough
+    # Score each vendor by occurrence count in first 5000 chars
+    scores = Counter()
+    for keyword, canonical in KNOWN_VENDORS.items():
+        count = haystack.count(keyword)
+        if count > 0:
+            scores[canonical] += count
     
-    if matches:
-        matches.sort(key=lambda x: -x[1])
-        return matches[0][0]
-    
-    # Fallback: try to extract from common header patterns
-    header_patterns = [
-        r"(?:from|vendor|supplier|seller|prepared by|quote from)[\s:]+([A-Z][A-Za-z0-9 &.,'-]{2,40})",
-        r"^([A-Z][A-Z0-9 &.,'-]{3,40})(?:\s+(?:Inc|LLC|Corp|Ltd|GmbH|AG|Co))",
-    ]
-    for pat in header_patterns:
-        m = re.search(pat, text[:2000], re.MULTILINE)
-        if m:
-            candidate = m.group(1).strip()
-            if 3 < len(candidate) < 50:
-                return candidate
-    
+    if scores:
+        return scores.most_common(1)[0][0]
     return "Unknown"
 
 
 # ============================================================================
-# SERVICES (expanded keyword catalog)
+# SERVICE EXTRACTION
 # ============================================================================
 
-SERVICE_KEYWORDS = {
-    # Cybersecurity
-    "Trend Vision One": ["trend vision one", "vision one"],
-    "Apex One": ["apex one"],
-    "Trend Micro Email Security": ["trend micro email security", "tm email security"],
-    "Cloud App Security": ["cloud app security"],
-    "KnowBe4": ["knowbe4"],
-    "PhishER": ["phisher", "phish er"],
-    "Security Awareness Training": ["security awareness training", "sat"],
-    "Zscaler ZIA": ["zscaler zia", "zscaler internet access", "zia"],
-    "Zero Trust Network Access": ["zero trust network access", "ztna"],
-    "CyberArk PAM": ["cyberark pam", "privileged access management"],
-    "Endpoint Privilege Manager": ["endpoint privilege manager", "epm"],
-    "Forescout NAC": ["forescout", "network access control"],
-    
-    # Network
-    "Cisco Catalyst C8300": ["catalyst c8300", "c8300"],
-    "Cisco Catalyst 9800": ["catalyst 9800", "c9800"],
-    "Cisco Catalyst 9200": ["catalyst 9200", "c9200"],
-    "Cisco Catalyst 9400": ["catalyst 9400", "c9400"],
-    "Cisco Catalyst 9500": ["catalyst 9500", "c9500"],
-    "Cisco Nexus 9200": ["nexus 9200", "n9k-9200", "n9200"],
-    "Cisco Nexus 9300": ["nexus 9300", "n9k-9300", "n9300"],
-    "Cisco Nexus 9000": ["nexus 9000", "n9k"],
-    "Cisco Wireless 9176I": ["9176i", "wireless 9176"],
-    "Cisco Meraki MR46E": ["meraki mr46e", "mr46e"],
-    "Cisco Meraki": ["meraki"],
-    "Cisco SMARTnet": ["smartnet", "smart net"],
-    "Cisco MDS9148T": ["mds9148t", "mds 9148"],
-    "Cisco Firepower": ["firepower", "ftd"],
-    "Palo Alto NGFW": ["palo alto", "pa-445", "ngfw"],
-    "Equinix Network Interconnect": ["equinix network", "equinix interconnect", "equinix fabric"],
-    "Global WAN Connectivity": ["global wan", "wan connectivity"],
-    "Cloud Connectivity": ["cloud connectivity", "cloud connect"],
-    
-    # Hosting
-    "VMware Cloud Foundation": ["vmware cloud foundation", "vcf"],
-    "VMware vSphere": ["vsphere"],
-    "NetApp AFF": ["netapp aff", "aff a-series"],
-    "Oracle Database Appliance": ["oracle database appliance", "oda"],
-    "Oracle Database Enterprise": ["oracle database enterprise", "oracle db enterprise"],
-    "Colocation Power": ["colocation", "co-location", "colo "],
-    "Internet Access": ["internet access", "internet bandwidth"],
-    "Microsoft Windows Server": ["windows server"],
-    "Microsoft SQL Server": ["sql server"],
-    "Pure Storage FlashArray": ["pure storage", "flasharray"],
-    "Data Center Build": ["data center build", "datacenter build", "dc build"],
-    "IBM Power9": ["power9", "ibm power"],
-    
-    # M365
-    "M365 E5": ["m365 e5", "microsoft 365 e5", "office 365 e5"],
-    "M365 E3": ["m365 e3", "microsoft 365 e3", "office 365 e3"],
-    "M365 F3": ["m365 f3", "microsoft 365 f3", "office 365 f3"],
-    "O365 E1": ["o365 e1", "office 365 e1"],
-    "Visio P1": ["visio plan 1", "visio p1"],
-    "Visio P2": ["visio plan 2", "visio p2"],
-    "Windows 365": ["windows 365", "w365"],
-    "Microsoft Defender": ["microsoft defender", "ms defender"],
-    "Power Platform": ["power platform"],
-    "Power BI Premium": ["power bi premium"],
-    "Power BI Pro": ["power bi pro"],
-    "M365 Copilot": ["m365 copilot", "microsoft 365 copilot", "copilot for m365"],
-    "Teams Essentials": ["teams essentials"],
-    
-    # ServiceNow
-    "ServiceNow App Engine": ["app engine", "servicenow app engine"],
-    "ServiceNow ITSM": ["it service management", "itsm"],
-    "ServiceNow ITOM": ["it operations management", "itom"],
-    
-    # IdAM
-    "Quest On-Demand Migration T5": ["on-demand migration t5", "odm t5"],
-    "Quest On-Demand Migration M365": ["on-demand migration m365", "odm m365"],
-    "Active Directory Migration": ["active directory migration", "ad migration"],
-    "Quest Professional Services": ["quest professional services"],
-}
-
-
 def extract_services(text: str) -> List[str]:
-    """Match service keywords against text."""
-    found = set()
+    """Extract service names mentioned in the document."""
     text_lower = text.lower()
-    
-    for canonical, aliases in SERVICE_KEYWORDS.items():
-        for alias in aliases:
-            if alias in text_lower:
-                found.add(canonical)
-                break
-    
+    found = set()
+    for keyword, canonical in SERVICE_KEYWORDS.items():
+        if keyword in text_lower:
+            found.add(canonical)
     return sorted(found)
 
 
 # ============================================================================
-# COUNTRIES
+# PRICE EXTRACTION
 # ============================================================================
 
-COUNTRIES = [
-    ("Germany", ["germany", "deutschland", "frankfurt", "langen", "hamburg",
-                 "munich", "münchen", "neumunster", "neumünster", "ottobrunn", "berlin"]),
-    ("Japan", ["japan", "tokyo", "osaka", "yokohama", "nagoya"]),
-    ("India", ["india", "gurgaon", "gurugram", "mumbai", "bangalore", "bengaluru", 
-               "delhi", "chennai", "hyderabad", "pune"]),
-    ("Singapore", ["singapore", "singapor"]),
-    ("Malaysia", ["malaysia", "kuala lumpur", "kl ", "selangor", "penang"]),
-    ("Czech Republic", ["czech republic", "czechia", "czech", "prague", "praha", "brno"]),
-    ("United States", ["united states", "u.s.a.", " usa ", " us ", "u.s.", 
-                       "new york", "california", "texas", "illinois"]),
-    ("United Kingdom", ["united kingdom", " uk ", "england", "london", "manchester"]),
-    ("France", ["france", "paris", "lyon", "marseille"]),
+PRICE_PATTERNS = [
+    r"(?:total|grand\s*total|sum|amount|price)[\s:]*\$?\s*([\d,]+(?:\.\d{2})?)",
+    r"\$\s*([\d,]+(?:\.\d{2})?)",
+    r"(?:USD|EUR|GBP)\s*([\d,]+(?:\.\d{2})?)",
 ]
 
-REGION_FOR_COUNTRY = {
-    "Germany": "EMEA",
-    "Czech Republic": "EMEA",
-    "United Kingdom": "EMEA",
-    "France": "EMEA",
-    "Japan": "APAC",
-    "India": "APAC",
-    "Singapore": "APAC",
-    "Malaysia": "APAC",
-    "United States": "Americas",
-    "Multi-Region": "Global",
-}
-
-
-def extract_country_region(text: str, filename: str) -> tuple:
-    blob = (text[:5000] + " " + filename).lower()
-    
-    # Score each country by keyword hits
-    scores = {}
-    for country, keywords in COUNTRIES:
-        count = 0
-        for kw in keywords:
-            count += blob.count(kw.lower())
-        if count > 0:
-            scores[country] = count
-    
-    if scores:
-        best = max(scores.items(), key=lambda x: x[1])
-        country = best[0]
-        return (country, REGION_FOR_COUNTRY.get(country, "Global"))
-    
-    return ("Multi-Region", "Global")
-
-
-# ============================================================================
-# PRICE EXTRACTION (smart total detection)
-# ============================================================================
-
 def extract_price(text: str) -> int:
-    """Find the most likely TOTAL price."""
+    """Extract the largest dollar amount as the total quote price."""
     candidates = []
-    
-    # Highest priority: explicit "grand total", "total amount", etc.
-    high_priority_patterns = [
-        r"(?:grand\s*total|total\s*amount|total\s*price|total\s*cost|net\s*total|"
-        r"contract\s*total|order\s*total|total\s*due|amount\s*due|invoice\s*total)"
-        r"[\s:]*(?:USD|US\$|\$)?\s*([\d,]+(?:\.\d{1,2})?)",
-    ]
-    for pat in high_priority_patterns:
+    for pat in PRICE_PATTERNS:
         for m in re.finditer(pat, text, re.IGNORECASE):
             try:
                 val = float(m.group(1).replace(",", ""))
-                if 100 <= val <= 100_000_000:
-                    candidates.append((val, 100))
-            except: pass
-    
-    # Medium priority: lines starting with "Total"
-    for m in re.finditer(r"\btotal\b[\s:]+(?:USD|US\$|\$)?\s*([\d,]+(?:\.\d{1,2})?)", text, re.IGNORECASE):
-        try:
-            val = float(m.group(1).replace(",", ""))
-            if 100 <= val <= 100_000_000:
-                candidates.append((val, 50))
-        except: pass
-    
-    # Low priority: any USD/$ amount
-    for m in re.finditer(r"(?:USD|US\$|\$)\s*([\d,]+(?:\.\d{1,2})?)", text):
-        try:
-            val = float(m.group(1).replace(",", ""))
-            if 1000 <= val <= 100_000_000:
-                candidates.append((val, 5))
-        except: pass
-    
-    # Lowest: number followed by USD
-    for m in re.finditer(r"([\d,]+(?:\.\d{1,2})?)\s*USD", text):
-        try:
-            val = float(m.group(1).replace(",", ""))
-            if 1000 <= val <= 100_000_000:
-                candidates.append((val, 3))
-        except: pass
-    
+                if 100 <= val <= 50_000_000:  # sanity bounds
+                    candidates.append(val)
+            except (ValueError, IndexError):
+                continue
     if not candidates:
         return 0
-    
-    # Best candidate = highest priority. Tie-break by largest value.
-    candidates.sort(key=lambda x: (-x[1], -x[0]))
-    return int(candidates[0][0])
+    # Use the largest value as it's likely the total
+    return int(max(candidates))
 
 
 # ============================================================================
-# YEAR & QUARTER
+# LINE ITEM EXTRACTION (SKU + Qty + Unit Price + Line Total)
+# ============================================================================
+
+def _is_valid_sku(candidate: str) -> bool:
+    """Reject obviously non-SKU strings."""
+    if not candidate or len(candidate) < 4:
+        return False
+    if candidate.upper() in SKU_BLACKLIST:
+        return False
+    # Reject pure years (2024, 2025, etc.)
+    if re.match(r"^(19|20)\d{2}$", candidate):
+        return False
+    # Must contain at least one digit and one letter (or dash/underscore)
+    has_digit = any(c.isdigit() for c in candidate)
+    has_alpha = any(c.isalpha() for c in candidate)
+    return has_digit and has_alpha
+
+
+def _find_sku_in_line(line: str) -> str:
+    """Find the first valid SKU pattern in a line."""
+    for pat in SKU_PATTERNS:
+        m = re.search(pat, line)
+        if m:
+            sku = m.group(1)
+            if _is_valid_sku(sku):
+                return sku
+    return ""
+
+
+def _find_service_in_line(line: str, services_found: List[str]) -> str:
+    """Match a known service against this line."""
+    line_low = line.lower()
+    # Try exact service match first
+    for svc in services_found:
+        if svc.lower() in line_low:
+            return svc
+    # Try keyword match (the original keywords from SERVICE_KEYWORDS)
+    for keyword, canonical in SERVICE_KEYWORDS.items():
+        if keyword in line_low and canonical in services_found:
+            return canonical
+    return ""
+
+
+def _extract_numbers(line: str) -> List[float]:
+    """Extract all numeric values from a line."""
+    nums = []
+    for n in re.findall(r"[\d,]+(?:\.\d{1,4})?", line):
+        try:
+            v = float(n.replace(",", ""))
+            if v > 0:
+                nums.append(v)
+        except ValueError:
+            continue
+    return nums
+
+
+def _find_qty_unit_total(numbers: List[float]) -> Tuple[int, float, int]:
+    """
+    Given a list of numbers from a line, try to identify which is qty,
+    which is unit_price, and which is line_total such that qty × unit ≈ total.
+    
+    Returns (qty, unit_price, line_total) or (None, None, None) if no match.
+    """
+    if len(numbers) < 2:
+        return None, None, None
+    
+    sorted_nums = sorted(numbers, reverse=True)
+    
+    # Try all triplet combinations to find qty × unit = total (within 2% tolerance)
+    if len(sorted_nums) >= 3:
+        for i, a in enumerate(sorted_nums):
+            if a < 100:
+                continue  # total should be reasonably large
+            for j, b in enumerate(sorted_nums):
+                if i == j:
+                    continue
+                for k, c in enumerate(sorted_nums):
+                    if k == i or k == j:
+                        continue
+                    product = b * c
+                    if product > 0 and abs(product - a) / a < 0.02:
+                        # b and c are qty/unit; a is total
+                        # qty is usually integer-like
+                        if b == int(b) and 1 <= b <= 1_000_000:
+                            return int(b), c, int(a)
+                        elif c == int(c) and 1 <= c <= 1_000_000:
+                            return int(c), b, int(a)
+                        else:
+                            # Pick smaller as qty
+                            return int(min(b, c)), max(b, c), int(a)
+    
+    # Fallback: 2 numbers — one is qty (integer), other is line_total or unit_price
+    if len(sorted_nums) == 2:
+        a, b = sorted_nums[0], sorted_nums[1]
+        if b == int(b) and 1 <= b <= 1_000_000 and a > b:
+            qty = int(b)
+            unit = a / qty if qty > 0 else 0
+            return qty, round(unit, 2), int(a)
+    
+    return None, None, None
+
+
+def extract_line_items(text: str, services_found: List[str]) -> List[Dict]:
+    """
+    Walk through every line of the document and try to extract:
+      service · sku · qty · unit_price · line_total · unit_type
+    
+    Returns deduplicated list of line items (max 50).
+    """
+    lines_out = []
+    
+    for raw_line in text.split("\n"):
+        line = raw_line.strip()
+        if len(line) < 10:
+            continue
+        
+        sku = _find_sku_in_line(line)
+        service = _find_service_in_line(line, services_found)
+        
+        # If neither SKU nor service is found, skip this line
+        if not sku and not service:
+            continue
+        
+        numbers = _extract_numbers(line)
+        if len(numbers) < 2:
+            continue
+        
+        qty, unit_price, line_total = _find_qty_unit_total(numbers)
+        
+        # Sanity filter
+        if qty is not None and (qty < 1 or qty > 1_000_000):
+            qty = None
+        if unit_price is not None and (unit_price < 0.01 or unit_price > 10_000_000):
+            unit_price = None
+        if line_total is not None and line_total < 1:
+            line_total = None
+        
+        # Need at least qty + unit_price OR line_total to be useful
+        if not (qty and unit_price) and not line_total:
+            continue
+        
+        # Detect unit type heuristically
+        line_low = line.lower()
+        unit_type = "per unit"
+        if "per user" in line_low or "/user" in line_low:
+            unit_type = "per user/year" if "year" in line_low or "annual" in line_low else "per user/month"
+        elif "per device" in line_low or "/device" in line_low:
+            unit_type = "per device"
+        elif "per seat" in line_low or "/seat" in line_low:
+            unit_type = "per seat"
+        elif "monthly" in line_low or "/month" in line_low:
+            unit_type = "per month"
+        elif "annual" in line_low or "/year" in line_low or "yearly" in line_low:
+            unit_type = "per year"
+        
+        lines_out.append({
+            "service": service or "Unknown Service",
+            "sku": sku or "",
+            "description": line[:140],
+            "qty": qty or 0,
+            "unit_price": round(unit_price, 2) if unit_price else 0,
+            "line_total": int(line_total) if line_total else 0,
+            "unit_type": unit_type,
+        })
+    
+    # Deduplicate by (sku, service, qty, unit_price)
+    seen = set()
+    deduped = []
+    for ln in lines_out:
+        key = (ln["sku"], ln["service"], ln["qty"], ln["unit_price"])
+        if key not in seen:
+            seen.add(key)
+            deduped.append(ln)
+    
+    return deduped[:50]
+
+
+# ============================================================================
+# COUNTRY / REGION
+# ============================================================================
+
+def extract_country_region(text: str, filename: str) -> Tuple[str, str]:
+    """Identify primary country and region."""
+    haystack = (filename + " " + text[:3000]).lower()
+    for keyword, (country, region) in COUNTRY_KEYWORDS.items():
+        if keyword in haystack:
+            return country, region
+    return "Unknown", "Global"
+
+
+# ============================================================================
+# YEAR / QUARTER
 # ============================================================================
 
 def extract_year(text: str, filename: str) -> int:
-    blob = text[:3000] + " " + filename
-    years = re.findall(r"\b(202[3-7])\b", blob)
+    """Extract the most likely year (YYYY between 2020-2030)."""
+    haystack = filename + " " + text[:3000]
+    years = []
+    for m in re.finditer(r"\b(20[2-3]\d)\b", haystack):
+        years.append(int(m.group(1)))
     if years:
-        return int(Counter(years).most_common(1)[0][0])
-    return 2025
-
-
-MONTH_TO_QUARTER = {
-    "january": "Q1", "jan": "Q1", "february": "Q1", "feb": "Q1", "march": "Q1", "mar": "Q1",
-    "april": "Q2", "apr": "Q2", "may": "Q2", "june": "Q2", "jun": "Q2",
-    "july": "Q3", "jul": "Q3", "august": "Q3", "aug": "Q3", "september": "Q3", "sep": "Q3", "sept": "Q3",
-    "october": "Q4", "oct": "Q4", "november": "Q4", "nov": "Q4", "december": "Q4", "dec": "Q4",
-}
+        # Most recent year mentioned wins
+        return max(set(years), key=years.count)
+    return 2025  # default
 
 
 def extract_quarter(text: str, filename: str) -> str:
-    blob = (text[:3000] + " " + filename).lower()
-    
-    # Direct Q1-Q4 mention
-    m = re.search(r"\bq([1-4])\b", blob)
+    """Extract Q1/Q2/Q3/Q4."""
+    haystack = (filename + " " + text[:2000]).lower()
+    m = re.search(r"\bq([1-4])\b", haystack)
     if m:
         return f"Q{m.group(1)}"
-    
-    # Find from month names
-    month_hits = []
-    for month, quarter in MONTH_TO_QUARTER.items():
-        if re.search(rf"\b{month}\b", blob):
-            month_hits.append(quarter)
-    
-    if month_hits:
-        return Counter(month_hits).most_common(1)[0][0]
-    
+    # Try by month name
+    months_q = {
+        "january": "Q1", "february": "Q1", "march": "Q1",
+        "april": "Q2", "may": "Q2", "june": "Q2",
+        "july": "Q3", "august": "Q3", "september": "Q3",
+        "october": "Q4", "november": "Q4", "december": "Q4",
+    }
+    for month, q in months_q.items():
+        if month in haystack:
+            return q
+    # Try MM-DD pattern
+    m = re.search(r"(\d{1,2})[-/](\d{1,2})", haystack)
+    if m:
+        try:
+            month = int(m.group(1))
+            if 1 <= month <= 3:
+                return "Q1"
+            elif 4 <= month <= 6:
+                return "Q2"
+            elif 7 <= month <= 9:
+                return "Q3"
+            elif 10 <= month <= 12:
+                return "Q4"
+        except ValueError:
+            pass
     return "Q1"
 
 
 # ============================================================================
-# CATEGORY (smart category detection)
+# CATEGORY CLASSIFICATION
 # ============================================================================
 
-CATEGORY_RULES = [
-    ("Cybersecurity", ["zscaler", "trend micro", "cyberark", "knowbe4", "forescout",
-                       "endpoint", "phishing", "siem", "antivirus", "edr", "xdr", "ngfw",
-                       "vision one", "apex one", "phisher", "security awareness"]),
-    ("Network & Telecom", ["cisco catalyst", "cisco nexus", "cisco meraki", "cisco wireless",
-                            "cisco smartnet", "cisco mds", "firepower", "palo alto",
-                            "firewall", "switch", "router", "equinix", "wan", "interconnect",
-                            "smartnet"]),
-    ("Hosting", ["vmware", "netapp", "oracle database", "datacenter", "data center",
-                 "colocation", "co-location", "server", "storage", "ibm", "honeywell",
-                 "vsphere", "vcf", "flasharray", "power9", "windows server", "sql server"]),
-    ("M365 & Power Platform", ["m365", "microsoft 365", "office 365", "o365", "visio",
-                                "power bi", "copilot", "windows 365", "defender", "teams",
-                                "power platform", "power apps"]),
-    ("IdAM", ["quest", "odm", "on-demand migration", "active directory", "ad migration",
-              "identity", "iam", "privileged"]),
-    ("Service Management (SNow)", ["servicenow", "service-now", "snow", "itsm", "itom",
-                                    "app engine"]),
-]
-
-
-def categorise(text: str, filename: str, services: list, vendor: str) -> str:
-    """Score-based category matching."""
-    blob = (
-        text[:5000].lower() + " " +
-        filename.lower() + " " +
-        " ".join(services).lower() + " " +
-        vendor.lower()
-    )
+def categorise(text: str, filename: str, services: List[str], vendor: str) -> str:
+    """Score each category by keyword frequency and pick the highest."""
+    haystack = (filename + " " + " ".join(services) + " " + text[:5000]).lower()
     
-    scores = {}
-    for cat, keywords in CATEGORY_RULES:
-        score = 0
+    scores = Counter()
+    for category, keywords in CATEGORY_RULES.items():
         for kw in keywords:
-            score += blob.count(kw)
-        if score > 0:
-            scores[cat] = score
+            scores[category] += haystack.count(kw)
     
-    if scores:
-        return max(scores.items(), key=lambda x: x[1])[0]
+    if scores and scores.most_common(1)[0][1] > 0:
+        return scores.most_common(1)[0][0]
     
     return "Other"
 
@@ -373,15 +521,34 @@ def categorise(text: str, filename: str, services: list, vendor: str) -> str:
 # ============================================================================
 
 def heuristic_extract(text: str, filename: str) -> Dict:
-    """Extract everything we can locally — NO AI CALLS."""
+    """
+    Run all heuristic extractors and return a unified record.
+    """
     vendor = extract_vendor(text, filename)
     services = extract_services(text)
     country, region = extract_country_region(text, filename)
+    lines = extract_line_items(text, services)
+    
+    # Compute total from line items if available, else use text-extracted total
+    line_sum = sum(ln.get("line_total", 0) for ln in lines)
+    text_total = extract_price(text)
+    
+    # Prefer line-item total if it matches text total within 25% (sanity check)
+    if line_sum > 0 and text_total > 0:
+        if abs(line_sum - text_total) / max(text_total, 1) < 0.25:
+            final_price = line_sum
+        else:
+            final_price = text_total  # discrepancy → trust the explicit total
+    elif line_sum > 0:
+        final_price = line_sum
+    else:
+        final_price = text_total
     
     return {
         "vendor": vendor,
-        "price": extract_price(text),
+        "price": final_price,
         "services": services,
+        "lines": lines,
         "country": country,
         "region": region,
         "year": extract_year(text, filename),
