@@ -1006,14 +1006,28 @@ function fmtHtml(t){return String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt
 function dlCSV(csv,name){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download=name;a.click();toast('Exported '+name,'ok');}
 
 function fileLink(record){
-  // Only return a real URL when in Live mode AND record has folder info
-  if(DATA_MODE!=='live'||!record||!record.folder||!record.file)return null;
-  // GitHub raw URL: github.com/{owner}/{repo}/raw/main/quotes/{folder}/{filename}
+  // Only return a real URL when in Live mode AND record has file info
+  if(DATA_MODE!=='live'||!record||!record.file)return null;
+  
+  // Derive folder: use record.folder if available, else fallback to proj name
+  // (matching the actual GitHub folder naming convention)
+  let folder = record.folder;
+  if(!folder && record.proj){
+    // Map project name to actual GitHub folder name
+    // Adjust these mappings to match your actual repo folders!
+    const folderMap = {
+      'Panasonic': 'panasonic',
+      'Idemia': 'Idemia',      // ← change to lowercase 'idemia' if your folder is lowercase
+      'Tenneco': 'Tenneco'     // ← change to lowercase 'tenneco' if your folder is lowercase
+    };
+    folder = folderMap[record.proj] || record.proj.toLowerCase();
+  }
+  if(!folder) return null;
+  
   const owner=GITHUB_CONFIG.owner;
   const repo=GITHUB_CONFIG.repo;
-  // URL-encode the filename to handle spaces and special chars
   const encodedFile=encodeURIComponent(record.file);
-  const encodedFolder=encodeURIComponent(record.folder);
+  const encodedFolder=encodeURIComponent(folder);
   return `https://github.com/${owner}/${repo}/raw/main/quotes/${encodedFolder}/${encodedFile}`;
 }
 
@@ -2168,8 +2182,32 @@ function selShowQuote(v,s){
   const r=rs[0];
   const panel=document.getElementById('sp-panel');
   set('sp-title',v+' → '+s);
+  
+  // Build prominent open-file button section (only in live mode with valid link)
+  const url = fileLink(r);
+  const openFileSection = url 
+    ? `<div style="margin-bottom:14px;padding:12px 14px;background:linear-gradient(90deg,var(--ort),transparent);border-left:3px solid var(--or);border-radius:var(--r)">
+         <div style="font-size:.62rem;font-weight:800;color:var(--or);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">📄 Quotation File</div>
+         <div style="font-size:.74rem;color:var(--ink2);margin-bottom:8px;word-break:break-all">${esc(r.file)}</div>
+         <a href="${url}" target="_blank" rel="noopener noreferrer" 
+            style="display:inline-flex;align-items:center;gap:8px;padding:8px 16px;
+                   background:var(--or);color:white;border-radius:var(--r);
+                   text-decoration:none;font-size:.78rem;font-weight:700;
+                   transition:background .15s"
+            onmouseover="this.style.background='var(--ord)'"
+            onmouseout="this.style.background='var(--or)'">
+           📂 Open Quotation
+           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+             <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+             <polyline points="15 3 21 3 21 9"/>
+             <line x1="10" y1="14" x2="21" y2="3"/>
+           </svg>
+         </a>
+       </div>`
+    : `<div class="sp-row"><span class="sp-k">File</span><span class="sp-v" style="font-size:.70rem">${esc(r.file)}</span></div>`;
+  
   document.getElementById('sp-body').innerHTML=`
-    <div class="sp-row"><span class="sp-k">File</span><span class="sp-v">${fileBtn(r)}</span></div>
+    ${openFileSection}
     <div class="sp-row"><span class="sp-k">Vendor</span><span class="sp-v">${vbadge(r.vendor)}</span></div>
     <div class="sp-row"><span class="sp-k">Project</span><span class="sp-v">${esc(r.proj)}</span></div>
     <div class="sp-row"><span class="sp-k">Category</span><span class="sp-v">${esc(r.cat)}</span></div>
@@ -2181,6 +2219,7 @@ function selShowQuote(v,s){
   panel.classList.add('on');
 }
 
+  
 function selShowFile(f){
   const pool=filteredDB();
   const r=pool.find(x=>x.file===f);
