@@ -1,89 +1,65 @@
 """
-AI Validator — runs ONCE on the entire catalog after local extraction.
-Optional step. If AI fails, no harm done — extraction is already committed.
+Optional AI validation pass.
+Uses xAI Grok (or any OpenAI-compatible API) to review extracted records
+and correct obvious errors in category, line items, SKUs, etc.
 
-Sends the catalog to AI in batches and asks: "Are these categories/regions correct?"
-Marks each record as _validated:true if AI confirms.
+To enable: set XAI_API_KEY or OPENAI_API_KEY environment variable.
 """
 import os
 import json
-import re
-from pathlib import Path
+import logging
+from typing import List, Dict
 
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-
-CATALOG_FILE = Path("catalog_data.json")
-BATCH_SIZE = 10  # records per AI call
+logger = logging.getLogger(__name__)
 
 
-def parse_json(raw: str) -> dict:
-    raw = raw.strip()
-    raw = re.sub(r"^```json\s*|\s*```$", "", raw, flags=re.MULTILINE).strip()
-    raw = re.sub(r"^```\s*|\s*```$", "", raw, flags=re.MULTILINE).strip()
-    try:
-        return json.loads(raw)
-    except json.JSONDecodeError:
-        m = re.search(r"\{.*\}", raw, re.DOTALL)
-        if m:
-            try: return json.loads(m.group())
-            except: pass
-    return {}
-
-
-def call_openai(prompt: str) -> dict:
-    if not OPENAI_API_KEY:
-        return None
-    try:
-        from openai import OpenAI
-        client = OpenAI(api_key=OPENAI_API_KEY)
-        r = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0,
-            max_tokens=2000,
-            response_format={"type": "json_object"},
-        )
-        return parse_json(r.choices[0].message.content)
-    except Exception as e:
-        print(f"  ⚠️ OpenAI error: {str(e)[:100]}")
-        return None
-
-
-def call_groq(prompt: str) -> dict:
-    if not GROQ_API_KEY:
-        return None
-    try:
-        from groq import Groq
-        client = Groq(api_key=GROQ_API_KEY)
-        r = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0,
-            max_tokens=2000,
-        )
-        return parse_json(r.choices[0].message.content)
-    except Exception as e:
-        print(f"  ⚠️ Groq error: {str(e)[:100]}")
-        return None
-
-
-def build_validation_prompt(batch: list) -> str:
-    valid_categories = ["Cybersecurity", "Network & Telecom", "Hosting",
-                        "M365 & Power Platform", "IdAM", "Service Management (SNow)", "Other"]
-    valid_regions = ["EMEA", "APAC", "Americas", "Global"]
+def _call_grok(prompt: str, model: str = "grok-2-latest") -> str:
+    """Call xAI Grok API with the given prompt."""
+    api_key = os.environ.get("XAI_API_KEY", "").strip()
+    if not api_key:
+        raise RuntimeError("XAI_API_KEY not set")
     
-    return f"""You are validating an IT contracting catalog. Review these records and suggest corrections ONLY where the existing values are clearly wrong.
+    try:
+        import requests
+    except ImportError:
+        raise RuntimeError("`requests` library required for AI validation")
+    
+    response = requests.post(
+        "https://api.x.ai/v1/chat/completions",
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+        json={
+            "model": model,
+            "messages": [
+                {"role": "system", "content": "You are a meticulous IT contracting auditor. Return only valid JSON."},
+                {"role": "user", "content": prompt},
+            ],
+            "temperature": 0.1,
+            "max_tokens": 4000,
+        },
+        timeout=60,
+    )
+    response.raise_for_status()
+    return response.json()["choices"][0]["message"]["content"]
 
-VALID CATEGORIES: {valid_categories}
-VALID REGIONS: {valid_regions}
 
-For each record, return a correction object ONLY if something is clearly wrong. If a record looks fine, omit it from corrections.
+def _build_validation_prompt(batch: List[Dict]) -> str:
+    """Construct a validation prompt for a batch of records."""
+    return f"""You are auditing IT contracting quote extractions. Review each record and suggest corrections only when you are highly confident.
 
-Records to validate:
-{json.dumps(batch, indent=2)}
+Check:
+1. **Category** — does the assigned category match the services/vendor?
+2. **Vendor** — is the vendor name correctly canonicalised?
+3. **Line items** — for each line: does qty × unit_price ≈ line_total (within 1%)?
+4. **SKUs** — do they look like real part numbers (alphanumeric, with dashes)?
+5. **Country/Region** — consistent with file content?
 
-Return JSON with this structure:
+Records to audit:
+{json.dumps(batch, indent=2, ensure_ascii=False)}
+
+Return STRICTLY this JSON format (no markdown, no commentary):
 {{
   "corrections": [
     {{
@@ -91,105 +67,114 @@ Return JSON with this structure:
       "field": "cat",
       "current_value": "Other",
       "suggested_value": "Cybersecurity",
-      "reason": "Vendor is Trend Micro and services include Apex One"
+      "reason": "Services list contains Trend Micro and Apex One — clearly cybersecurity"
     }}
   ]
 }}
 
-Return ONLY JSON. If everything looks good, return {{"corrections": []}}."""
+If no corrections needed, return: {{"corrections": []}}
+"""
 
 
-def validate_batch(batch: list) -> dict:
-    """Try OpenAI first, fall back to Groq."""
-    prompt = build_validation_prompt(batch)
+def _apply_corrections(records: List[Dict], corrections: List[Dict]) -> List[Dict]:
+    """Apply suggested corrections in-place and mark records as validated."""
+    by_file = {r["file"]: r for r in records}
+    applied = 0
     
-    print(f"  🤖 Sending {len(batch)} records to AI...")
-    result = call_openai(prompt)
-    if result is None:
-        print(f"  🔄 Trying Groq...")
-        result = call_groq(prompt)
-    
-    return result or {"corrections": []}
-
-
-def apply_corrections(records: list, corrections: list) -> int:
-    """Apply AI suggestions to records. Returns number of changes."""
-    changes = 0
-    for corr in corrections:
-        target_file = corr.get("file")
-        field = corr.get("field")
-        new_value = corr.get("suggested_value")
+    for c in corrections:
+        fname = c.get("file")
+        field = c.get("field", "")
+        new_val = c.get("suggested_value")
         
-        if not (target_file and field and new_value is not None):
+        if fname not in by_file or new_val is None:
             continue
         
-        for record in records:
-            if record["file"] == target_file:
-                old_value = record.get(field)
-                if old_value != new_value:
-                    print(f"     🔧 {target_file} · {field}: '{old_value}' → '{new_value}'")
-                    print(f"        Reason: {corr.get('reason', 'AI suggestion')}")
-                    record[field] = new_value
-                    changes += 1
-                break
-    return changes
-
-
-def main():
-    print("🔍 AI Validation Pass — checking catalog quality\n")
-    
-    if not (OPENAI_API_KEY or GROQ_API_KEY):
-        print("⚠️ No AI keys available — skipping validation")
-        return 0
-    
-    if not CATALOG_FILE.exists():
-        print(f"❌ {CATALOG_FILE} not found")
-        return 1
-    
-    records = json.loads(CATALOG_FILE.read_text())
-    if not records:
-        print("ℹ️ Catalog is empty — nothing to validate")
-        return 0
-    
-    # Validate only un-validated records
-    unvalidated = [r for r in records if not r.get("_validated")]
-    print(f"📊 Total records: {len(records)} · To validate: {len(unvalidated)}")
-    
-    if not unvalidated:
-        print("✅ All records already validated")
-        return 0
-    
-    total_changes = 0
-    for i in range(0, len(unvalidated), BATCH_SIZE):
-        batch = unvalidated[i:i + BATCH_SIZE]
-        batch_num = i // BATCH_SIZE + 1
-        total_batches = (len(unvalidated) + BATCH_SIZE - 1) // BATCH_SIZE
+        rec = by_file[fname]
         
-        print(f"\n[Batch {batch_num}/{total_batches}]")
-        result = validate_batch(batch)
-        corrections = result.get("corrections", [])
-        
-        if corrections:
-            print(f"  📝 {len(corrections)} suggested correction(s)")
-            changes = apply_corrections(records, corrections)
-            total_changes += changes
+        # Handle nested fields like "lines[0].unit_price"
+        if "." in field or "[" in field:
+            try:
+                # Simple parser for lines[idx].field
+                if field.startswith("lines["):
+                    idx_end = field.index("]")
+                    idx = int(field[6:idx_end])
+                    sub_field = field[idx_end + 2:]  # skip "]."
+                    if 0 <= idx < len(rec.get("lines", [])):
+                        rec["lines"][idx][sub_field] = new_val
+                        applied += 1
+                        logger.info(f"  ✏️ {fname}: lines[{idx}].{sub_field} → {new_val}")
+            except (ValueError, IndexError, KeyError) as e:
+                logger.warning(f"  ⚠️ Could not apply nested correction: {e}")
         else:
-            print(f"  ✅ All records in batch look good")
+            # Simple top-level field
+            if field in rec:
+                old_val = rec[field]
+                rec[field] = new_val
+                applied += 1
+                logger.info(f"  ✏️ {fname}: {field}: {old_val!r} → {new_val!r} ({c.get('reason', '')[:60]})")
+    
+    # Mark all touched records as validated
+    for fname in {c.get("file") for c in corrections}:
+        if fname in by_file:
+            by_file[fname]["_validated"] = True
+    
+    logger.info(f"✅ Applied {applied} AI corrections")
+    return records
+
+
+def validate_records(records: List[Dict], batch_size: int = 5) -> List[Dict]:
+    """
+    Validate records in batches via AI.
+    Skips silently if no API key configured.
+    """
+    if not os.environ.get("XAI_API_KEY"):
+        logger.info("XAI_API_KEY not set — skipping AI validation")
+        return records
+    
+    if not records:
+        return records
+    
+    logger.info(f"🤖 AI validating {len(records)} records in batches of {batch_size}...")
+    
+    all_corrections = []
+    
+    for i in range(0, len(records), batch_size):
+        batch = records[i:i + batch_size]
         
-        # Mark as validated regardless of changes
-        for r in batch:
-            for full_record in records:
-                if full_record["file"] == r["file"]:
-                    full_record["_validated"] = True
+        # Slim down each record for the prompt (drop verbose fields)
+        slim_batch = [
+            {
+                "file": r["file"],
+                "vendor": r["vendor"],
+                "cat": r["cat"],
+                "services": r["services"],
+                "lines": r.get("lines", [])[:5],  # first 5 lines only
+                "price": r["price"],
+                "country": r["country"],
+                "region": r["region"],
+            }
+            for r in batch
+        ]
+        
+        try:
+            prompt = _build_validation_prompt(slim_batch)
+            response = _call_grok(prompt)
+            
+            # Parse response (strip code fences if present)
+            response = response.strip()
+            if response.startswith("```"):
+                response = response.split("```")[1]
+                if response.startswith("json"):
+                    response = response[4:]
+            response = response.strip()
+            
+            parsed = json.loads(response)
+            corrections = parsed.get("corrections", [])
+            all_corrections.extend(corrections)
+            
+            logger.info(f"  Batch {i // batch_size + 1}: {len(corrections)} suggestions")
+        except Exception as e:
+            logger.error(f"  ❌ Batch {i // batch_size + 1} failed: {e}")
+            continue
     
-    # Save updated catalog
-    CATALOG_FILE.write_text(json.dumps(records, indent=2))
-    
-    print("\n" + "=" * 60)
-    print(f"✅ Validation complete · {total_changes} correction(s) applied")
-    print("=" * 60)
-    return 0
-
-
-if __name__ == "__main__":
-    exit(main())
+    return _apply_corrections(records, all_corrections)
