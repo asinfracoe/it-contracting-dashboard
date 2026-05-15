@@ -2949,13 +2949,6 @@ function renderRqPicked(){
 function rqClear(){rqSvcs.clear();document.querySelectorAll('#rq-svcs .chip').forEach(c=>c.classList.remove('on'));set('rq-count','0 services');renderRqPicked();rqRender();}
 function rqSelectAll(){document.querySelectorAll('#rq-svcs .chip').forEach(c=>{const s=c.textContent.trim();if(!rqSvcs.has(s)){rqSvcs.add(s);c.classList.add('on');}});set('rq-count',rqSvcs.size+' services');renderRqPicked();rqRender();}
 
-function rqApplySize(){
-  const size=document.getElementById('rq-size').value;
-  const users={small:250,mid:2000,large:6000,ent:25000}[size];
-  document.getElementById('rq-users').value=users;
-  rqRender();
-}
-
 function loadDemoRFQ(){
   rqSvcs.clear();
   ['M365 E5 License','M365 Copilot','Power BI Premium'].forEach(s=>rqSvcs.add(s));
