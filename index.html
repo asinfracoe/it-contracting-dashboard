@@ -725,21 +725,31 @@ html,body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-siz
   </div>
 
   <div class="card" style="padding:16px 18px;margin-bottom:16px">
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px">
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px">
       <div class="input-g" style="margin-bottom:0">
-        <label class="input-lbl">Project</label>
+        <label class="input-lbl">Project <span style="color:var(--mid);text-transform:none;letter-spacing:0;font-weight:500" data-tip="Which project/client this RFQ is for. Filters historical quotes to that project. Use 'All' for master data.">ⓘ</span></label>
         <select class="select-f" id="rq-proj" onchange="rqRender()">
           <option value="All">All Projects (master data)</option>
         </select>
         <div style="font-size:.68rem;color:var(--mid);margin-top:4px;line-height:1.4">Scopes quotes to this project's history</div>
       </div>
       <div class="input-g" style="margin-bottom:0">
-        <label class="input-lbl">Quantity (Units / Seats / Licences) <span style="color:var(--or)">📦</span></label>
-        <input class="input-f" type="number" id="rq-qty" value="2000" min="1" oninput="rqRender()">
-        <div style="font-size:.68rem;color:var(--mid);margin-top:4px;line-height:1.4">Total units to be procured · drives per-unit budget math</div>
+        <label class="input-lbl">Company Size <span style="color:var(--mid);text-transform:none;letter-spacing:0;font-weight:500" data-tip="Auto-fills user count. Small=250, Mid=2000, Large=6000, Enterprise=25000. Affects per-user pricing calculation.">ⓘ</span></label>
+        <select class="select-f" id="rq-size" onchange="rqApplySize()">
+          <option value="small">Small (1–500)</option>
+          <option value="mid" selected>Mid-Market (501–2K)</option>
+          <option value="large">Large (2K–10K)</option>
+          <option value="ent">Enterprise (10K+)</option>
+        </select>
+        <div style="font-size:.68rem;color:var(--mid);margin-top:4px;line-height:1.4">Auto-scales user count &amp; unit economics</div>
       </div>
       <div class="input-g" style="margin-bottom:0">
-        <label class="input-lbl">Contract Term</label>
+        <label class="input-lbl">User Count <span style="color:var(--mid);text-transform:none;letter-spacing:0;font-weight:500" data-tip="Total number of end users/seats for the contract. Drives per-user cost normalisation.">ⓘ</span></label>
+        <input class="input-f" type="number" id="rq-users" value="2000" min="1" oninput="rqRender()">
+        <div style="font-size:.68rem;color:var(--mid);margin-top:4px;line-height:1.4">Seats/licences in the contract</div>
+      </div>
+      <div class="input-g" style="margin-bottom:0">
+        <label class="input-lbl">Contract Term <span style="color:var(--mid);text-transform:none;letter-spacing:0;font-weight:500" data-tip="Contract length in years. Uses 5% growth per year to project Year 2 and Year 3 costs.">ⓘ</span></label>
         <select class="select-f" id="rq-term" onchange="rqRender()">
           <option value="1">1 Year (pilot)</option>
           <option value="3" selected>3 Years (standard)</option>
@@ -812,7 +822,7 @@ html,body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-siz
           <div class="card-head" style="padding:14px 18px"><div class="card-title"><span class="card-title-ico">📊</span>Service-Level Pricing</div><div class="card-meta bl">Historical ranges</div></div>
           <div style="overflow:auto;max-height:380px">
             <table class="cat-table" id="rq-table">
-              <thead><tr><th>Service</th><th>Unit Quotes</th><th>Min Unit</th><th>Avg Unit</th><th>Max Unit</th><th>Target Unit (−10%)</th><th>Line Budget (× Qty)</th><th>Best Vendor</th></tr></thead>
+              <thead><tr><th>Service</th><th>Quotes</th><th>Min</th><th>Avg</th><th>Max</th><th>Target (−10%)</th><th>Best Vendor</th></tr></thead>
               <tbody></tbody>
             </table>
           </div>
@@ -939,7 +949,6 @@ const RAW=[
   {proj:'Panasonic',region:'APAC',country:'Japan',cat:'Hosting',vendor:'NTT Data',file:'NTT VMWare Quote.docx',services:['VMware vSphere Enterprise','VMware Cloud Foundation'],price:152000,year:2025,quarter:'Q4'},
   {proj:'Panasonic',region:'APAC',country:'Japan',cat:'Hosting',vendor:'Equinix',file:'TY10 5Cab 41kVA.pdf',services:['Colocation Power and Space','Internet Access'],price:124000,year:2026,quarter:'Q2'},
   {proj:'Panasonic',region:'Global',country:'Multi-Region',cat:'M365 & Power Platform',vendor:'Microsoft',file:'Microsoft EA FINAL.xlsx',services:['M365 E5 License','Visio P1','Visio P2','Windows 365','Microsoft Defender','Power Platform'],price:248600,year:2025,quarter:'Q1'},
-  {proj:'Panasonic',region:'Global',country:'Multi-Region',cat:'M365 & Power Platform',vendor:'Microsoft',file:'Microsoft EA FINAL.xlsx',services:['M365 E5 License','Visio P1','Visio P2','Windows 365','Microsoft Defender','Power Platform'],price:248600,year:2025,quarter:'Q1',lines:[{service:'M365 E5 License',sku:'AAA-12345',qty:2000,unit_price:57.00,line_total:114000,unit_type:'per user/year'}, {service:'Visio P1',sku:'BBB-67890',qty:500,unit_price:5.00,line_total:30000,unit_type:'per user/year'}, {service:'Visio P2',sku:'BBB-67891',qty:300,unit_price:15.00,line_total:54000,unit_type:'per user/year'}, {service:'Windows 365',sku:'WIN-365-E3',qty:1500,unit_price:21.40,line_total:32100,unit_type:'per user/month'}, {service:'Microsoft Defender',sku:'DEF-P2',qty:2000,unit_price:5.20,line_total:12500,unit_type:'per user/month'}, {service:'Power Platform',sku:'PWR-PLT-PRM',qty:200,unit_price:30.00,line_total:6000,unit_type:'per user/month'}]},
   {proj:'Panasonic',region:'Global',country:'Multi-Region',cat:'M365 & Power Platform',vendor:'Microsoft',file:'PAS Tenant migration.pdf',services:['M365 E5 License','M365 E3 License','O365 E1 License'],price:186400,year:2025,quarter:'Q3'},
   {proj:'Panasonic',region:'Global',country:'Multi-Region',cat:'M365 & Power Platform',vendor:'Microsoft',file:'PJ Star Phase 1.xlsb',services:['M365 E5 License','Power BI Premium','M365 Copilot','Microsoft Defender'],price:198600,year:2026,quarter:'Q1'},
   {proj:'Panasonic',region:'Global',country:'Multi-Region',cat:'Service Management (SNow)',vendor:'ServiceNow',file:'OCTOBER ORDER FORM.pdf',services:['ServiceNow App Engine Enterprise','ServiceNow IT Service Management Professional','ServiceNow IT Operations Management'],price:312400,year:2024,quarter:'Q4'},
@@ -1045,80 +1054,6 @@ function fileBtn(record){
     </svg>
   </a>`;
 }
-
-function ensureLines(record){
-  // If record has real lines, use them. Otherwise synthesize plausible ones.
-  if(record.lines && Array.isArray(record.lines) && record.lines.length>0) return record.lines;
-  if(!record.services || record.services.length===0) return [];
-  
-  // Synthesize: distribute total price across services
-  const baseQty = 2000; // typical seat count
-  const services = record.services;
-  const totalPrice = record.price || 0;
-  return services.map((s,i)=>{
-    const lineShare = totalPrice / services.length;
-    const qty = baseQty;
-    const unitPrice = qty>0 ? +(lineShare/qty).toFixed(2) : 0;
-    return {
-      service: s,
-      sku: 'SYN-'+s.replace(/[^A-Za-z0-9]/g,'').substring(0,4).toUpperCase()+'-'+(i+1).toString().padStart(3,'0'),
-      qty: qty,
-      unit_price: unitPrice,
-      line_total: Math.round(lineShare),
-      unit_type: 'per unit',
-      _synthetic: true
-    };
-  });
-}
-
-function fmtUnit(price){
-  if(!price || isNaN(price) || price<=0) return '—';
-  if(price < 1) return '$'+price.toFixed(3);
-  if(price < 100) return '$'+price.toFixed(2);
-  return '$'+Math.round(price).toLocaleString();
-}
-
-// Get min/avg/max per-unit price stats for a service across a pool of records
-function getUnitStats(serviceName, pool){
-  const allUnits = [];
-  pool.forEach(r=>{
-    const lines = ensureLines(r);
-    lines.forEach(ln=>{
-      if(ln.service===serviceName && ln.unit_price>0){
-        allUnits.push({
-          unit:ln.unit_price,
-          qty:ln.qty,
-          total:ln.line_total,
-          sku:ln.sku||'',
-          unit_type:ln.unit_type||'per unit',
-          synthetic:!!ln._synthetic,
-          vendor:r.vendor,
-          file:r.file,
-          year:r.year,
-          quarter:r.quarter,
-          country:r.country,
-          totalQuotePrice:r.price,
-          record:r
-        });
-      }
-    });
-  });
-  if(allUnits.length===0) return null;
-  const units = allUnits.map(u=>u.unit);
-  const sorted = [...units].sort((a,b)=>a-b);
-  return {
-    min: sorted[0],
-    max: sorted[sorted.length-1],
-    avg: units.reduce((a,b)=>a+b,0)/units.length,
-    median: sorted[Math.floor(sorted.length/2)],
-    count: units.length,
-    quotes: allUnits.sort((a,b)=>a.unit-b.unit)
-  };
-}
-
-
-
-  
   
 function filteredDB(){
   let d=CUR_PROJ==='All'?[...DB]:DB.filter(r=>r.proj===CUR_PROJ);
@@ -2162,7 +2097,6 @@ function selRender(){
 function renderSelSvcBreakdown(sel,pool){
   const el=document.getElementById('sel-svc-breakdown');
   if(!el)return;
-  
   const breakdownHtml=sel.map(s=>{
     const quotes=pool.filter(r=>(r.services||[]).includes(s));
     if(quotes.length===0){
@@ -2171,99 +2105,65 @@ function renderSelSvcBreakdown(sel,pool){
         <div class="b rd">❌ No historical quotes</div>
       </div>`;
     }
-    
-    // Total quote prices (existing)
     const prices=quotes.map(r=>r.price).filter(p=>p>0);
-    const tMn=prices.length?Math.min(...prices):0;
-    const tMx=prices.length?Math.max(...prices):0;
-    const tAv=prices.length?prices.reduce((a,b)=>a+b,0)/prices.length:0;
-    
-    // Per-unit price stats (NEW)
-    const unitStats=getUnitStats(s,pool);
-    
-    const vendors=[...new Set(quotes.map(r=>r.vendor))];
+    const mn=prices.length?Math.min(...prices):0;
+    const mx=prices.length?Math.max(...prices):0;
+    const av=prices.length?prices.reduce((a,b)=>a+b,0)/prices.length:0;
+    const minQ=quotes.find(r=>r.price===mn);
+    const maxQ=quotes.find(r=>r.price===mx);
+    const regions=[...new Set(quotes.map(r=>r.region))];
     const countries=[...new Set(quotes.map(r=>r.country))];
+    const vendors=[...new Set(quotes.map(r=>r.vendor))];
     const uid='svcBD-'+s.replace(/[^a-z0-9]/gi,'').substring(0,20);
     
     return `<div style="background:var(--white);border:1px solid var(--line);border-radius:var(--r2);margin-bottom:12px;overflow:hidden">
-      <div style="padding:14px 16px;background:linear-gradient(90deg,var(--ort),transparent);border-bottom:1px solid var(--line2);cursor:pointer" onclick="toggleSvcBD('${uid}')">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:12px">
-          <div style="flex:1">
-            <div style="font-weight:700;color:var(--ink);font-size:.88rem;margin-bottom:4px">${esc(s)}</div>
-            <div style="display:flex;gap:6px;flex-wrap:wrap;font-size:.66rem;font-weight:600">
-              <span class="b bl">${quotes.length} quote${quotes.length>1?'s':''}</span>
-              <span class="b nt">${vendors.length} vendor${vendors.length>1?'s':''}</span>
-              <span class="b nt">${countries.length} countr${countries.length>1?'ies':'y'}</span>
-              ${unitStats?`<span class="b or">${unitStats.count} unit price${unitStats.count>1?'s':''}</span>`:''}
-            </div>
+      <div style="padding:14px 16px;background:linear-gradient(90deg,var(--ort),transparent);border-bottom:1px solid var(--line2);display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="toggleSvcBD('${uid}')">
+        <div style="flex:1">
+          <div style="font-weight:700;color:var(--ink);font-size:.88rem;margin-bottom:4px">${esc(s)}</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;font-size:.70rem;color:var(--mid);font-weight:600">
+            <span class="b bl">${quotes.length} quote${quotes.length>1?'s':''}</span>
+            <span class="b nt">${vendors.length} vendor${vendors.length>1?'s':''}</span>
+            <span class="b nt">${countries.length} countr${countries.length>1?'ies':'y'}</span>
           </div>
-          <span id="${uid}-arrow" style="color:var(--mid);font-size:.9rem;align-self:center">▼</span>
         </div>
-        
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-          <!-- PER-UNIT PRICE -->
-          <div style="padding:10px 12px;background:var(--white);border:1px solid var(--gnl);border-left:3px solid var(--gn);border-radius:var(--r)">
-            <div style="font-size:.62rem;font-weight:800;color:var(--gnd);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">💰 Per-Unit Price</div>
-            ${unitStats?`
-              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px">
-                <div style="text-align:center;padding:4px"><div style="font-size:.58rem;color:var(--mid);font-weight:700">MIN</div><div style="font-family:var(--serif);font-size:1rem;font-weight:700;color:var(--gn)">${fmtUnit(unitStats.min)}</div></div>
-                <div style="text-align:center;padding:4px;border-left:1px solid var(--line2);border-right:1px solid var(--line2)"><div style="font-size:.58rem;color:var(--mid);font-weight:700">AVG</div><div style="font-family:var(--serif);font-size:1rem;font-weight:700;color:var(--or)">${fmtUnit(unitStats.avg)}</div></div>
-                <div style="text-align:center;padding:4px"><div style="font-size:.58rem;color:var(--mid);font-weight:700">MAX</div><div style="font-family:var(--serif);font-size:1rem;font-weight:700;color:var(--rd)">${fmtUnit(unitStats.max)}</div></div>
-              </div>
-            `:'<div style="text-align:center;color:var(--mid);font-size:.70rem;padding:8px">No unit-price data</div>'}
-          </div>
-          <!-- TOTAL QUOTE PRICE -->
-          <div style="padding:10px 12px;background:var(--white);border:1px solid var(--bll);border-left:3px solid var(--bl);border-radius:var(--r)">
-            <div style="font-size:.62rem;font-weight:800;color:var(--bld);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">📦 Total Quote Price</div>
-            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px">
-              <div style="text-align:center;padding:4px"><div style="font-size:.58rem;color:var(--mid);font-weight:700">MIN</div><div style="font-family:var(--serif);font-size:1rem;font-weight:700;color:var(--gn)">${fmt(tMn)}</div></div>
-              <div style="text-align:center;padding:4px;border-left:1px solid var(--line2);border-right:1px solid var(--line2)"><div style="font-size:.58rem;color:var(--mid);font-weight:700">AVG</div><div style="font-family:var(--serif);font-size:1rem;font-weight:700;color:var(--or)">${fmt(tAv)}</div></div>
-              <div style="text-align:center;padding:4px"><div style="font-size:.58rem;color:var(--mid);font-weight:700">MAX</div><div style="font-family:var(--serif);font-size:1rem;font-weight:700;color:var(--rd)">${fmt(tMx)}</div></div>
-            </div>
-          </div>
+        <div style="display:flex;gap:18px;align-items:center">
+          <div style="text-align:right"><div style="font-size:.62rem;color:var(--mid);font-weight:700;text-transform:uppercase">Min</div><div style="font-family:var(--serif);font-size:1.05rem;color:var(--gn);font-weight:700">${fmt(mn)}</div></div>
+          <div style="text-align:right"><div style="font-size:.62rem;color:var(--mid);font-weight:700;text-transform:uppercase">Avg</div><div style="font-family:var(--serif);font-size:1.05rem;color:var(--or);font-weight:700">${fmt(av)}</div></div>
+          <div style="text-align:right"><div style="font-size:.62rem;color:var(--mid);font-weight:700;text-transform:uppercase">Max</div><div style="font-family:var(--serif);font-size:1.05rem;color:var(--rd);font-weight:700">${fmt(mx)}</div></div>
+          <span id="${uid}-arrow" style="color:var(--mid);font-size:.9rem;transition:transform .2s">▼</span>
         </div>
       </div>
-      
       <div id="${uid}" style="display:none;padding:12px 16px;background:var(--bg)">
-        <div style="font-size:.68rem;font-weight:700;color:var(--mid);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">All Quotes — SKU · Qty · Per-Unit · Total</div>
-        <div style="overflow-x:auto">
-          <table class="cat-table" style="background:var(--white);border-radius:var(--r);overflow:hidden;min-width:900px">
-            <thead>
-              <tr>
-                <th>Vendor</th>
-                <th style="text-align:left !important">SKU</th>
-                <th>Qty</th>
-                <th>Unit Price</th>
-                <th>Line Total</th>
-                <th>Total Quote</th>
-                <th style="text-align:left !important">Country</th>
-                <th>Year</th>
+        <div style="font-size:.68rem;font-weight:700;color:var(--mid);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">All Quotes (click row for details)</div>
+        <table class="cat-table" style="background:var(--white);border-radius:var(--r);overflow:hidden">
+          <thead>
+            <tr>
+              <th>Vendor</th>
+              <th style="text-align:left !important">Project</th>
+              <th style="text-align:left !important">Country</th>
+              <th style="text-align:left !important">Region</th>
+              <th>Year</th>
+              <th>Price</th>
+              <th style="text-align:left !important">File</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${quotes.sort((a,b)=>a.price-b.price).map(r=>`
+              <tr onclick="selShowQuote('${esc(r.vendor).replace(/'/g,"\\'")}','${esc(s).replace(/'/g,"\\'")}')" style="cursor:pointer">
+                <td style="text-align:left">${vbadge(r.vendor)}</td>
+                <td style="text-align:left">${esc(r.proj)}</td>
+                <td style="text-align:left">${esc(r.country||'—')}</td>
+                <td style="text-align:left">${esc(r.region||'—')}</td>
+                <td>${r.year}${r.quarter?' '+r.quarter:''}</td>
+                <td class="num" style="color:${r.price===mn?'var(--gn)':r.price===mx?'var(--rd)':'var(--ink)'};font-weight:700">${fmt(r.price)}${r.price===mn?' 🏆':r.price===mx?' ⚠️':''}</td>
+                <td style="text-align:left;font-size:.70rem;color:var(--mid)">${esc(r.file.length>26?r.file.substring(0,26)+'…':r.file)}</td>
               </tr>
-            </thead>
-            <tbody>
-              ${quotes.sort((a,b)=>a.price-b.price).map(r=>{
-                const lines=ensureLines(r);
-                const ln=lines.find(l=>l.service===s);
-                const unitColor = ln && unitStats ? (ln.unit_price===unitStats.min?'var(--gn)':ln.unit_price===unitStats.max?'var(--rd)':'var(--ink)') : 'var(--mid)';
-                return `<tr onclick="selShowQuote('${esc(r.vendor).replace(/'/g,"\\'")}','${esc(s).replace(/'/g,"\\'")}')" style="cursor:pointer">
-                  <td style="text-align:left">${vbadge(r.vendor)}</td>
-                  <td style="text-align:left;font-family:monospace;font-size:.70rem;color:var(--ink2)">${ln?(ln.sku?esc(ln.sku):'<span style="color:var(--mid)">—</span>'):'—'}${ln&&ln._synthetic?' <span style="color:var(--mid);font-size:.58rem">(est)</span>':''}</td>
-                  <td class="num">${ln?ln.qty.toLocaleString():'—'}</td>
-                  <td class="num" style="color:${unitColor};font-weight:700">${ln?fmtUnit(ln.unit_price):'—'}${ln&&unitStats&&ln.unit_price===unitStats.min?' 🏆':''}</td>
-                  <td class="num">${ln?fmt(ln.line_total):'—'}</td>
-                  <td class="num" style="color:var(--or);font-weight:700">${fmt(r.price)}</td>
-                  <td style="text-align:left">${esc(r.country||'—')}</td>
-                  <td>${r.year}${r.quarter?' '+r.quarter:''}</td>
-                </tr>`;
-              }).join('')}
-            </tbody>
-          </table>
-        </div>
-        ${unitStats && unitStats.quotes.some(q=>q.synthetic) ? '<div style="margin-top:8px;padding:6px 10px;background:var(--aml);border-radius:var(--r);font-size:.66rem;color:var(--amd)">ℹ️ Some unit prices are <strong>estimates</strong> derived from total quote ÷ services. Live extraction will produce exact values.</div>' : ''}
+            `).join('')}
+          </tbody>
+        </table>
       </div>
     </div>`;
   }).join('');
-  
   el.innerHTML=breakdownHtml;
   set('sel-svc-breakdown-meta',sel.length+' service'+(sel.length>1?'s':''));
 }
@@ -2949,6 +2849,13 @@ function renderRqPicked(){
 function rqClear(){rqSvcs.clear();document.querySelectorAll('#rq-svcs .chip').forEach(c=>c.classList.remove('on'));set('rq-count','0 services');renderRqPicked();rqRender();}
 function rqSelectAll(){document.querySelectorAll('#rq-svcs .chip').forEach(c=>{const s=c.textContent.trim();if(!rqSvcs.has(s)){rqSvcs.add(s);c.classList.add('on');}});set('rq-count',rqSvcs.size+' services');renderRqPicked();rqRender();}
 
+function rqApplySize(){
+  const size=document.getElementById('rq-size').value;
+  const users={small:250,mid:2000,large:6000,ent:25000}[size];
+  document.getElementById('rq-users').value=users;
+  rqRender();
+}
+
 function loadDemoRFQ(){
   rqSvcs.clear();
   ['M365 E5 License','M365 Copilot','Power BI Premium'].forEach(s=>rqSvcs.add(s));
@@ -2964,89 +2871,50 @@ function rqRender(){
   document.getElementById('rq-results').style.display='block';
 
   const proj=document.getElementById('rq-proj').value;
-  const qty=parseInt(document.getElementById('rq-qty').value)||2000;
+  const users=parseInt(document.getElementById('rq-users').value)||2000;
   const term=parseInt(document.getElementById('rq-term').value)||3;
   let pool=DB.filter(r=>sel.some(s=>(r.services||[]).includes(s))&&r.price>0);
   if(proj!=='All')pool=pool.filter(r=>r.proj===proj);
 
   const matchedCount=pool.length;
   const vendors=[...new Set(pool.map(r=>r.vendor))];
+  const allPrices=pool.map(r=>r.price);
+  const minPrice=allPrices.length?Math.min(...allPrices):0;
+  const avgPrice=allPrices.length?allPrices.reduce((a,b)=>a+b,0)/allPrices.length:0;
+  const targetPrice=avgPrice*0.9;
+  const totalBudget=targetPrice*term;
 
-  // PER-UNIT pricing per service (NEW math)
-  const svcUnitData=sel.map(s=>{
-    const stats=getUnitStats(s,pool);
-    const tgt=stats?stats.avg*0.9:0;
-    return{service:s,stats,target:tgt};
-  });
-  
-  // Total budget = sum of (target unit price × quantity) across all services × term
-  let unitTotalMin=0, unitTotalAvg=0, unitTotalMax=0, unitTotalTarget=0;
-  let svcWithData=0;
-  svcUnitData.forEach(d=>{
-    if(d.stats){
-      unitTotalMin += d.stats.min*qty;
-      unitTotalAvg += d.stats.avg*qty;
-      unitTotalMax += d.stats.max*qty;
-      unitTotalTarget += d.target*qty;
-      svcWithData++;
-    }
-  });
-  const totalBudget=unitTotalTarget*term;
-
-  // ===== VERDICT (now uses unit-price confidence) =====
   let verdict='gn',vtitle='',vbody='';
-  if(matchedCount>=10 && svcWithData===sel.length){
-    verdict='gn';
-    vtitle='Strong Historical Data — High Confidence';
-    vbody=`${matchedCount} prior quotes across ${vendors.length} vendors. Per-unit price history available for all ${sel.length} services. Use target of <strong>${fmt(unitTotalTarget)}</strong> (Year 1) with high confidence.`;
-  } else if(matchedCount>=4){
-    verdict='am';
-    vtitle='Moderate Data — Validate with Fresh Bids';
-    vbody=`${matchedCount} prior quotes · ${svcWithData}/${sel.length} services have unit-price history. Target: <strong>${fmt(unitTotalTarget)}</strong>. Request 3+ fresh bids to validate.`;
-  } else {
-    verdict='rd';
-    vtitle='Limited History — Issue Broad RFQ';
-    vbody=`Only ${matchedCount} prior quote${matchedCount!==1?'s':''}. Issue RFQ to 4-5 vendors to establish market price.`;
-  }
+  if(matchedCount>=10){verdict='gn';vtitle='Strong Historical Data';vbody=`${matchedCount} prior quotes across ${vendors.length} vendors. Use target price of ${fmt(targetPrice)} with confidence.`;}
+  else if(matchedCount>=4){verdict='am';vtitle='Moderate Data';vbody=`${matchedCount} prior quotes — enough to benchmark, but request 3+ fresh bids to validate.`;}
+  else{verdict='rd';vtitle='Limited History';vbody=`Only ${matchedCount} prior quote${matchedCount!==1?'s':''}. Issue broad RFQ to 4-5 vendors to establish market price.`;}
   document.getElementById('rq-verdict').innerHTML=`<div class="verdict ${verdict}"><div class="verdict-ico">${verdict==='gn'?'✅':verdict==='am'?'⚠️':'❌'}</div><div><div class="verdict-t">${vtitle}</div><div class="verdict-b">${vbody}</div></div></div>`;
 
-  // ===== KPIs (now quantity-based) =====
-  const perUnitTarget = qty>0 ? unitTotalTarget/sel.length : 0;
   const kpis=[
-    {lbl:'Services',val:sel.length,sub:`${svcWithData} with unit data`},
-    {lbl:'Quantity',val:qty.toLocaleString(),sub:'units / seats'},
-    {lbl:'Year-1 Target',val:fmt(unitTotalTarget),sub:'qty × per-unit avg × 90%'},
-    {lbl:term+'-Yr Budget',val:fmt(totalBudget),sub:vendors.length+' vendors with history'}
+    {lbl:'Services',val:sel.length,sub:'in RFQ'},
+    {lbl:'Prior Quotes',val:matchedCount,sub:vendors.length+' vendors'},
+    {lbl:'Target Price',val:fmt(targetPrice),sub:'10% below avg'},
+    {lbl:term+'-Yr Budget',val:fmt(totalBudget),sub:users.toLocaleString()+' users'}
   ];
   document.getElementById('rq-kpis').innerHTML=kpis.map(k=>`<div class="kpi"><div class="kpi-lbl">${k.lbl}</div><div class="kpi-val">${k.val}</div><div class="kpi-sub">${k.sub}</div></div>`).join('');
 
-  // ===== Prior Quotes table =====
   set('rq-prior-meta',matchedCount+' prior quotes');
   document.querySelector('#rq-prior-table tbody').innerHTML=pool.slice(0,20).sort((a,b)=>a.price-b.price).map(r=>{
     const matched=sel.filter(s=>(r.services||[]).includes(s)).length;
     return `<tr><td>${vbadge(r.vendor)}</td><td>${esc(r.proj)}</td><td><span class="b nt">${matched}/${sel.length}</span></td><td class="num">${fmt(r.price)}</td><td>${r.year}${r.quarter||''}</td><td style="font-size:.70rem;color:var(--mid)">${esc(r.file.substring(0,24))}${r.file.length>24?'…':''}</td></tr>`;
   }).join('');
 
-  // ===== Service-Level pricing table (now PER-UNIT) =====
-  document.querySelector('#rq-table tbody').innerHTML=svcUnitData.map(d=>{
-    if(!d.stats){
-      return `<tr><td style="font-weight:600">${esc(d.service)}</td><td colspan="7" style="text-align:center;color:var(--mid);font-style:italic">No historical unit-price data</td></tr>`;
-    }
-    const lineBudget=d.target*qty;
-    const bestQuote=d.stats.quotes[0];
-    return `<tr>
-      <td style="font-weight:600">${esc(d.service)}</td>
-      <td><span class="b nt">${d.stats.count}</span></td>
-      <td class="num" style="color:var(--gn);font-weight:700">${fmtUnit(d.stats.min)}</td>
-      <td class="num" style="color:var(--or);font-weight:700">${fmtUnit(d.stats.avg)}</td>
-      <td class="num" style="color:var(--rd)">${fmtUnit(d.stats.max)}</td>
-      <td class="num" style="color:var(--or);font-weight:700">${fmtUnit(d.target)}</td>
-      <td class="num" style="font-weight:700">${fmt(lineBudget)}</td>
-      <td>${vbadge(bestQuote.vendor)}</td>
-    </tr>`;
-  }).join('');
+  const svcStats=sel.map(s=>{
+    const rs=pool.filter(r=>(r.services||[]).includes(s));
+    const ps=rs.map(r=>r.price);
+    const mn=ps.length?Math.min(...ps):0;
+    const mx=ps.length?Math.max(...ps):0;
+    const av=ps.length?ps.reduce((a,b)=>a+b,0)/ps.length:0;
+    const best=ps.length?rs.find(r=>r.price===mn)?.vendor:'—';
+    return{s,count:rs.length,min:mn,max:mx,avg:av,target:av*0.9,best};
+  });
+  document.querySelector('#rq-table tbody').innerHTML=svcStats.map(d=>`<tr><td style="font-weight:600">${esc(d.s)}</td><td><span class="b nt">${d.count}</span></td><td class="num">${fmt(d.min)}</td><td class="num">${fmt(d.avg)}</td><td class="num">${fmt(d.max)}</td><td class="num" style="color:var(--or);font-weight:700">${fmt(d.target)}</td><td>${d.best!=='—'?vbadge(d.best):'—'}</td></tr>`).join('');
 
-  // ===== Vendor coverage / shortlist =====
   const venCov={};
   pool.forEach(r=>{
     const matched=(r.services||[]).filter(s=>sel.includes(s));
@@ -3058,7 +2926,6 @@ function rqRender(){
   });
   const venList=Object.entries(venCov).map(([v,d])=>({v,cov:d.covered.size,pct:(d.covered.size/sel.length)*100,avg:d.ps.reduce((a,b)=>a+b,0)/d.ps.length})).sort((a,b)=>b.cov-a.cov||a.avg-b.avg);
 
-  // ===== Charts =====
   destroyChart('rq-benchmark-chart');
   const ctxb=document.getElementById('rq-benchmark-chart');
   if(ctxb&&venList.length>0){
@@ -3072,9 +2939,9 @@ function rqRender(){
   destroyChart('rq-scenario-chart');
   const ctxs=document.getElementById('rq-scenario-chart');
   if(ctxs){
-    const best=unitTotalMin*term;
-    const tgt=unitTotalTarget*term;
-    const worst=unitTotalMax*term;
+    const best=minPrice*term;
+    const tgt=targetPrice*term;
+    const worst=Math.max(...allPrices,avgPrice)*term;
     CHARTS['rq-scenario-chart']=new Chart(ctxs,{
       type:'bar',
       data:{labels:['Best Case','Target','Worst Case'],datasets:[{data:[best,tgt,worst],backgroundColor:[GN,OR,RD],borderRadius:4,maxBarThickness:70}]},
@@ -3085,18 +2952,10 @@ function rqRender(){
   destroyChart('rq-spread-chart');
   const ctxSp=document.getElementById('rq-spread-chart');
   if(ctxSp){
-    const validSvc=svcUnitData.filter(d=>d.stats);
     CHARTS['rq-spread-chart']=new Chart(ctxSp,{
       type:'bar',
-      data:{
-        labels:validSvc.map(d=>d.service.length>14?d.service.substring(0,14)+'…':d.service),
-        datasets:[
-          {label:'Min Unit',data:validSvc.map(d=>d.stats.min),backgroundColor:GN,borderRadius:3,maxBarThickness:22},
-          {label:'Avg Unit',data:validSvc.map(d=>d.stats.avg-d.stats.min),backgroundColor:OR,borderRadius:3,maxBarThickness:22},
-          {label:'Max Unit',data:validSvc.map(d=>d.stats.max-d.stats.avg),backgroundColor:RD,borderRadius:3,maxBarThickness:22}
-        ]
-      },
-      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:10}}},tooltip:{callbacks:{label:(c)=>c.dataset.label+': '+fmtUnit(c.parsed.y)}}},scales:{x:{stacked:true,ticks:{font:{size:9},color:INK,maxRotation:45},grid:{display:false}},y:{stacked:true,beginAtZero:true,ticks:{callback:(v)=>fmtUnit(v),font:{size:10},color:MID},grid:{color:'#F3F4F6'}}}}
+      data:{labels:svcStats.map(d=>d.s.length>14?d.s.substring(0,14)+'…':d.s),datasets:[{label:'Min',data:svcStats.map(d=>d.min),backgroundColor:GN,borderRadius:3,maxBarThickness:22},{label:'Avg',data:svcStats.map(d=>d.avg-d.min),backgroundColor:OR,borderRadius:3,maxBarThickness:22},{label:'Max',data:svcStats.map(d=>d.max-d.avg),backgroundColor:RD,borderRadius:3,maxBarThickness:22}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:10}}}},scales:{x:{stacked:true,ticks:{font:{size:9},color:INK,maxRotation:45},grid:{display:false}},y:{stacked:true,beginAtZero:true,ticks:{callback:(v)=>fmt(v),font:{size:10},color:MID},grid:{color:'#F3F4F6'}}}}
     });
   }
 
@@ -3112,7 +2971,6 @@ function rqRender(){
     });
   }
 
-  // ===== Strategy section =====
   const stratEl=document.getElementById('rq-strategy');
   const singleVendor=venList.filter(v=>v.cov===sel.length);
   stratEl.innerHTML=`
@@ -3124,10 +2982,10 @@ function rqRender(){
     ${venList.slice(0,5).map((d,i)=>`<div style="padding:10px;background:var(--bg);border-radius:var(--r);margin-bottom:6px;display:flex;justify-content:space-between;align-items:center"><div style="display:flex;align-items:center;gap:10px"><div style="font-family:var(--serif);font-size:1rem;font-weight:700;color:${i===0?OR:MID}">#${i+1}</div>${vbadge(d.v)}<div style="font-size:.70rem;color:var(--mid)">${d.cov}/${sel.length} services (${d.pct.toFixed(0)}%)</div></div><div style="font-family:var(--serif);color:var(--or);font-weight:700">${fmt(d.avg)}</div></div>`).join('')}
     <div class="sec-lbl" style="margin-top:14px">Negotiation Playbook</div>
     <ol style="padding-left:20px;font-size:.82rem;line-height:1.8;color:var(--ink2)">
-      <li>Issue RFQ to top ${Math.min(4,venList.length)} vendors with target <strong style="color:var(--or)">${fmt(unitTotalTarget)}</strong> (Year 1) for ${qty.toLocaleString()} units</li>
-      <li>Request <strong>itemized SKU-level pricing</strong> with unit price × quantity (prevents bundling games)</li>
+      <li>Issue RFQ to top ${Math.min(4,venList.length)} vendors with target of <strong style="color:var(--or)">${fmt(targetPrice)}</strong> as anchor</li>
+      <li>Request itemized pricing per service line (prevents bundling games)</li>
       <li>Lock in ${term}-year term with ≤5% annual escalator</li>
-      <li>Include benchmark clause: if market unit-price drops >7%, we get it</li>
+      <li>Include benchmark clause: if market drops >7%, we get it</li>
       <li>Close within 45 days to maintain competitive tension</li>
     </ol>
   `;
@@ -3135,9 +2993,9 @@ function rqRender(){
 
 function rqExport(){
   const sel=[...rqSvcs];
-  const qty=document.getElementById('rq-qty').value;
+  const users=document.getElementById('rq-users').value;
   const term=document.getElementById('rq-term').value;
-  let csv='RFQ Export\n\nProject,'+document.getElementById('rq-proj').value+'\nQuantity,'+qty+'\nTerm,'+term+' years\n\nServices\n';
+  let csv='RFQ Export\n\nProject,'+document.getElementById('rq-proj').value+'\nUsers,'+users+'\nTerm,'+term+' years\n\nServices\n';
   sel.forEach(s=>{csv+='"'+s+'"\n';});
   dlCSV(csv,'rfq_export.csv');
 }
