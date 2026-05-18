@@ -997,7 +997,52 @@ const CHARTS={};
 
 function fmt(n){if(!n||isNaN(n)||n<=0)return '—';if(n>=1e6)return '$'+(n/1e6).toFixed(2)+'M';if(n>=1e3)return '$'+(n/1e3).toFixed(0)+'K';return '$'+Math.round(n).toLocaleString();}
 function fmtFull(n){if(!n)return '—';return '$'+Math.round(n).toLocaleString();}
+
+// ✅ NEW: Format unit prices (always show decimals)
+function fmtUnit(n){
+  if(!n||isNaN(n)||n<=0)return '—';
+  if(n<1)return '$'+n.toFixed(3);
+  if(n<100)return '$'+n.toFixed(2);
+  if(n<10000)return '$'+n.toFixed(0);
+  return '$'+Math.round(n).toLocaleString();
+}
+
+// ✅ NEW: Format quantity
+function fmtQty(n){
+  if(!n||isNaN(n)||n<=0)return '—';
+  return n.toLocaleString();
+}
+
+// ✅ NEW: Get service object by name (handles BOTH old flat array AND new object array)
+function getSvcObj(record, svcName){
+  if(!record||!record.services)return null;
+  if(typeof record.services[0] === 'string'){
+    // Old format fallback - estimate values
+    return {
+      name:svcName, 
+      sku:'—', 
+      qty:1, 
+      unitPrice:record.price/record.services.length
+    };
+  }
+  return record.services.find(s => s.name === svcName) || null;
+}
+
+// ✅ NEW: Get all service names (handles both formats)
+function getSvcNames(record){
+  if(!record||!record.services)return [];
+  if(typeof record.services[0] === 'string')return record.services;
+  return record.services.map(s => s.name);
+}
+
+// ✅ NEW: Check if record contains a service
+function hasService(record, svcName){
+  return getSvcNames(record).includes(svcName);
+}
+
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+  
 function vcol(v){const vs=[...new Set(DB.map(r=>r.vendor))].sort();const i=vs.indexOf(v);const pal=[OR,INK,'#3B82F6','#10B981','#F59E0B','#8B5CF6','#EC4899','#14B8A6','#F97316','#6366F1'];return pal[i%pal.length];}
 function vbadge(v){return `<span class="vb" style="background:${vcol(v)}">${esc(v)}</span>`;}
 function toast(m,t){const e=document.getElementById('toast');e.textContent=m;e.className='toast '+(t||'ok')+' on';setTimeout(()=>e.classList.remove('on'),2600);}
