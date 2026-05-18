@@ -43,7 +43,7 @@ jobs:
       # =====================================================================
       - name: Stage 1 — Local extraction (regex/heuristic)
         id: extract
-        run: python extractor/main.py
+        run: python -m extractor.main --skip-ai --force
       
       - name: Commit extracted catalog (Stage 1)
         if: always()
@@ -81,7 +81,7 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-        run: python extractor/ai_validator.py
+        run: python -m extractor.ai_validator
       
       - name: Commit AI validation results (Stage 2)
         if: always()
