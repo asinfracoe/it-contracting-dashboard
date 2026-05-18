@@ -121,6 +121,67 @@ def _apply_corrections(records: List[Dict], corrections: List[Dict]) -> List[Dic
     logger.info(f"✅ Applied {applied} AI corrections")
     return records
 
+def validate_unit_pricing(record: dict) -> tuple[bool, list]:
+    """
+    Validate that the record has proper unit pricing structure.
+    Returns (is_valid, list_of_warnings).
+    """
+    warnings = []
+    
+    services = record.get('services', [])
+    if not services:
+        return False, ['No services in record']
+    
+    # Check if services are in NEW format (objects) vs OLD format (strings)
+    if isinstance(services[0], str):
+        warnings.append('Services are in legacy string format — should be objects with sku/qty/unitPrice')
+        return False, warnings
+    
+    for i, svc in enumerate(services):
+        if not isinstance(svc, dict):
+            warnings.append(f'Service #{i+1} is not a dict')
+            continue
+        
+        if not svc.get('name'):
+            warnings.append(f'Service #{i+1}: missing "name" field')
+        
+        if not svc.get('sku'):
+            warnings.append(f'Service #{i+1} ({svc.get("name", "?")}): missing SKU')
+        
+        qty = svc.get('qty', 0)
+        unit_price = svc.get('unitPrice', 0)
+        line_total = svc.get('lineTotal', 0)
+        
+        if qty <= 0:
+            warnings.append(f'Service #{i+1} ({svc.get("name", "?")}): invalid quantity ({qty})')
+        
+        if unit_price <= 0:
+            warnings.append(f'Service #{i+1} ({svc.get("name", "?")}): invalid unit price ({unit_price})')
+        
+        # Cross-check math: qty × unitPrice should ≈ lineTotal
+        if qty > 0 and unit_price > 0 and line_total > 0:
+            expected = qty * unit_price
+            if abs(expected - line_total) / line_total > 0.05:
+                warnings.append(
+                    f'Service #{i+1} ({svc.get("name", "?")}): math mismatch — '
+                    f'{qty} × ${unit_price} = ${expected:.2f}, but lineTotal = ${line_total}'
+                )
+    
+    # Check sum of line totals vs total price
+    line_sum = sum(s.get('lineTotal', 0) for s in services if isinstance(s, dict))
+    total_price = record.get('price', 0)
+    if total_price > 0 and line_sum > 0:
+        deviation = abs(line_sum - total_price) / total_price
+        if deviation > 0.10:
+            warnings.append(
+                f'Sum of line totals (${line_sum:.0f}) deviates from quote total '
+                f'(${total_price}) by {deviation*100:.1f}%'
+            )
+    
+    is_valid = len([w for w in warnings if 'invalid' in w or 'missing' in w]) == 0
+    return is_valid, warnings
+
+
 
 def validate_records(records: List[Dict], batch_size: int = 5) -> List[Dict]:
     """
