@@ -174,26 +174,155 @@ COUNTRY_KEYWORDS = {
 
 
 # ============================================================================
-# SKU PATTERN DETECTION (for line items)
+# SKU & QUANTITY EXTRACTION HELPERS (NEW)
 # ============================================================================
 
+# Common SKU patterns for major vendors
 SKU_PATTERNS = [
-    r"\b([A-Z]{2,5}[-_]\d{3,8}[-_]?[A-Z0-9]*)\b",      # AAA-12345, ABC_678
-    r"\b([A-Z0-9]{4,12}[-#][A-Z0-9]{2,8})\b",          # 9X7-12345 style
-    r"\b(C\d{4,5}[A-Z0-9-]*)\b",                       # Cisco C8300
-    r"\b(N\d{1,2}K-[A-Z0-9-]+)\b",                     # Nexus N9K-C9300
-    r"\b(MR\d{2,3}[A-Z]?-?[A-Z]*)\b",                  # Meraki MR46E
-    r"\b(PA-\d{3,4}[A-Z]*)\b",                         # Palo Alto PA-445
-    r"\b([A-Z]{3,}-[A-Z]{2,}-[A-Z0-9]+)\b",            # ENT-PRD-XYZ
-    r"\b(\d{3,5}[A-Z]{2,5}\d{2,6}[A-Z0-9]*)\b",        # Microsoft-style 9X7-12345
+    # Cisco SKUs (e.g., C9300-48P-A, N9K-C9336C-FX2, FPR1150-NGFW-K9)
+    r'\b([A-Z]{1,4}\d{4,5}[A-Z0-9]?-[A-Z0-9]{2,8}(?:-[A-Z0-9]{1,5})?)\b',
+    # Microsoft SKUs (e.g., CFQ7TTC0LF8R, MSFT-WS-DC)
+    r'\b(CFQ7[A-Z0-9]{8})\b',
+    r'\b(MSFT-[A-Z]{2,5}-[A-Z]{2,5})\b',
+    # Generic vendor SKU (e.g., ABC-DEF-123, TM-VO-EP-STD)
+    r'\b([A-Z]{2,5}-[A-Z0-9]{2,8}(?:-[A-Z0-9]{1,8}){0,3})\b',
+    # Numeric SKUs (e.g., 730-12345-AB)
+    r'\b(\d{3}-\d{4,6}-[A-Z]{2,4})\b',
 ]
 
-# Words that look like SKU candidates but should be rejected
-SKU_BLACKLIST = {
-    "USA", "USD", "EUR", "JPY", "GBP", "INR", "PDF", "DOCX", "XLSX",
-    "PO", "ID", "URL", "HTTP", "HTTPS", "WWW", "API", "SKU", "REF",
-}
+QUANTITY_KEYWORDS = ['qty', 'quantity', 'units', 'seats', 'licenses', 'count', 'amount', 'no.', 'nos.']
+UNIT_PRICE_KEYWORDS = ['unit price', 'price/unit', 'rate', 'each', 'per seat', 'per unit', 'unit cost']
+LINE_TOTAL_KEYWORDS = ['line total', 'extended', 'subtotal', 'amount', 'total price']
 
+
+def extract_sku(text: str, vendor: str = '') -> str:
+    """
+    Extract SKU/Part Number from text.
+    Returns the first matching SKU pattern.
+    """
+    if not text:
+        return ''
+    
+    for pattern in SKU_PATTERNS:
+        match = re.search(pattern, text)
+        if match:
+            return match.group(1)
+    
+    return ''
+
+
+def generate_sku(vendor: str, service_name: str) -> str:
+    """Generate a fallback SKU when none is found in the document."""
+    if not vendor or not service_name:
+        return 'UNKNOWN-SKU'
+    
+    v_prefix = re.sub(r'[^A-Z]', '', vendor.upper())[:3]
+    s_words = service_name.upper().split()[:2]
+    s_prefix = '-'.join(re.sub(r'[^A-Z0-9]', '', w)[:3] for w in s_words if w)
+    
+    if not v_prefix:
+        v_prefix = 'GEN'
+    if not s_prefix:
+        s_prefix = 'SVC'
+    
+    return f"{v_prefix}-{s_prefix}"
+
+
+def extract_quantity(text: str, default: int = 1) -> int:
+    """
+    Extract quantity from text. Looks for patterns like "Qty: 100", "100 units", etc.
+    """
+    if not text:
+        return default
+    
+    # Pattern: "Qty 100", "Qty: 100", "Quantity: 100"
+    for kw in QUANTITY_KEYWORDS:
+        pattern = rf'{kw}\s*[:=]?\s*(\d+(?:,\d{{3}})*)'
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            return int(match.group(1).replace(',', ''))
+    
+    # Pattern: "100 units", "100 seats"
+    pattern = r'(\d+(?:,\d{3})*)\s*(?:units?|seats?|licenses?|users?)'
+    match = re.search(pattern, text, re.IGNORECASE)
+    if match:
+        return int(match.group(1).replace(',', ''))
+    
+    return default
+
+
+def extract_unit_price(text: str) -> float:
+    """Extract unit price from text."""
+    if not text:
+        return 0.0
+    
+    for kw in UNIT_PRICE_KEYWORDS:
+        # Pattern: "Unit Price: $123.45" or "$123.45 per unit"
+        pattern = rf'{kw}\s*[:=]?\s*\$?\s*([\d,]+\.?\d*)'
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            try:
+                return float(match.group(1).replace(',', ''))
+            except ValueError:
+                continue
+    
+    return 0.0
+
+
+def calculate_line_economics(qty: int, unit_price: float, line_total: float) -> dict:
+    """
+    Auto-calculate missing values from the available ones.
+    If you have any 2 of (qty, unit_price, line_total), derive the third.
+    """
+    result = {'qty': qty, 'unitPrice': unit_price, 'lineTotal': line_total}
+    
+    if qty and unit_price and not line_total:
+        result['lineTotal'] = round(qty * unit_price, 2)
+    elif line_total and qty and not unit_price:
+        result['unitPrice'] = round(line_total / qty, 2) if qty > 0 else 0
+    elif line_total and unit_price and not qty:
+        result['qty'] = round(line_total / unit_price) if unit_price > 0 else 1
+    
+    # Sanity defaults
+    if not result['qty'] or result['qty'] <= 0:
+        result['qty'] = 1
+    if not result['unitPrice'] or result['unitPrice'] <= 0:
+        if result['lineTotal'] and result['qty']:
+            result['unitPrice'] = round(result['lineTotal'] / result['qty'], 2)
+        else:
+            result['unitPrice'] = 0
+    if not result['lineTotal']:
+        result['lineTotal'] = round(result['qty'] * result['unitPrice'], 2)
+    
+    return result
+
+
+def build_service_object(name: str, vendor: str = '', text_context: str = '', 
+                         qty: int = None, unit_price: float = None, 
+                         line_total: float = None) -> dict:
+    """
+    Build a complete service object with SKU, qty, unitPrice, lineTotal.
+    All fields are auto-derived where possible.
+    """
+    # Try to find SKU in surrounding context
+    sku = extract_sku(text_context, vendor)
+    if not sku:
+        sku = generate_sku(vendor, name)
+    
+    # Use provided values or extract from context
+    final_qty = qty if qty is not None else extract_quantity(text_context, 1)
+    final_unit = unit_price if unit_price is not None else extract_unit_price(text_context)
+    final_line = line_total if line_total is not None else 0.0
+    
+    economics = calculate_line_economics(final_qty, final_unit, final_line)
+    
+    return {
+        'name': name,
+        'sku': sku,
+        'qty': economics['qty'],
+        'unitPrice': economics['unitPrice'],
+        'lineTotal': economics['lineTotal']
+    }
 
 # ============================================================================
 # VENDOR EXTRACTION
