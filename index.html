@@ -1366,29 +1366,31 @@ function fmtHtml(t){return String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt
 function dlCSV(csv,name){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download=name;a.click();toast('Exported '+name,'ok');}
 
 function fileLink(record){
-  // Only return a real URL when in Live mode AND record has file info
-  if(DATA_MODE!=='live'||!record||!record.file)return null;
+  if(DATA_MODE !== 'live' || !record || !record.file)return null;
   
-  // Derive folder: use record.folder if available, else fallback to proj name
-  // (matching the actual GitHub folder naming convention)
+  // Use folder from record if present
   let folder = record.folder;
-  if(!folder && record.proj){
-    // Map project name to actual GitHub folder name
-    // Adjust these mappings to match your actual repo folders!
-    const folderMap = {
-      'Panasonic': 'panasonic',
-      'Idemia': 'Idemia',      // ← change to lowercase 'idemia' if your folder is lowercase
-      'Tenneco': 'Tenneco'     // ← change to lowercase 'tenneco' if your folder is lowercase
-    };
-    folder = folderMap[record.proj] || record.proj.toLowerCase();
-  }
-  if(!folder) return null;
   
-  const owner=GITHUB_CONFIG.owner;
-  const repo=GITHUB_CONFIG.repo;
-  const encodedFile=encodeURIComponent(record.file);
-  const encodedFolder=encodeURIComponent(folder);
-  return `https://github.com/${owner}/${repo}/raw/main/quotes/${encodedFolder}/${encodedFile}`;
+  // Fallback 1: derive from project name with case variants
+  if(!folder && record.proj){
+    const projName = record.proj;
+    // Try common folder casing variants — the GitHub URL is case-sensitive
+    folder = projName; // will try as-is first
+  }
+  
+  if(!folder)return null;
+  
+  const owner = GITHUB_CONFIG.owner;
+  const repo  = GITHUB_CONFIG.repo;
+  const encodedFile = encodeURIComponent(record.file);
+  const encodedFolder = encodeURIComponent(folder);
+  
+  // Use blob URL (renders in browser) instead of raw (downloads) for PDFs
+  const ext = record.file.toLowerCase().split('.').pop();
+  const useBlob = ['pdf','txt','md','csv'].includes(ext);
+  const urlType = useBlob ? 'blob' : 'raw';
+  
+  return `https://github.com/${owner}/${repo}/${urlType}/main/quotes/${encodedFolder}/${encodedFile}`;
 }
 
 function fileBtn(record){
@@ -1555,34 +1557,152 @@ async function checkBackendStatus() {
 }
 
 async function tryLoadJSON(){
-  for(const u of ['./catalog_data.json','catalog_data.json']){
+  // Try the dashboard-shaped (grouped) file first, then fall back to flat
+  for(const u of ['./catalog_data.json','catalog_data.json','./catalog_grouped.json']){
     try{
-      const r=await fetch(u);if(!r.ok)continue;
+      const r=await fetch(u);
+      if(!r.ok)continue;
       const d=await r.json();
-      if(Array.isArray(d)&&d.length){
-        LIVE_DB=[...d];
-        // Enable the Live toggle button visually
-        const liveBtn=document.querySelector('.mode-tog[data-mode="live"]');
-        if(liveBtn){
-          liveBtn.style.opacity='1';
-          liveBtn.title='Switch to live extracted data ('+d.length+' records)';
-        }
-        toast('Live data available: '+d.length+' records','ok');
-        updateLivePill();
-        return;
+      if(!Array.isArray(d) || !d.length)continue;
+      
+      // ─── Format detection & normalisation ──────────────────
+      const sample = d[0];
+      let normalised = d;
+      let formatType = 'grouped';
+      
+      // Detect FLAT format (per-line records with snake_case)
+      if(sample.unit_price !== undefined && sample.service !== undefined && !sample.services){
+        formatType = 'flat';
+        console.warn('Detected FLAT format — auto-aggregating into grouped format for dashboard');
+        normalised = aggregateFlatToGrouped(d);
+        toast(`Auto-converted ${d.length} flat records → ${normalised.length} grouped`,'warn');
       }
-    }catch(e){}
+      // Detect GROUPED with snake_case services (new pipeline output)
+      else if(sample.services && sample.services[0] && typeof sample.services[0] === 'object'){
+        const svcSample = sample.services[0];
+        if(svcSample.unit_price !== undefined && svcSample.unitPrice === undefined){
+          console.warn('Detected snake_case services — converting to camelCase');
+          normalised = d.map(rec => ({
+            ...rec,
+            services: (rec.services||[]).map(s => ({
+              name:      s.name || s.service,
+              sku:       s.sku || '',
+              qty:       s.qty || 1,
+              unitPrice: s.unitPrice ?? s.unit_price ?? 0,
+              lineTotal: s.lineTotal ?? s.line_total ?? ((s.qty||1) * (s.unitPrice ?? s.unit_price ?? 0))
+            }))
+          }));
+        }
+      }
+      
+      // ─── Validate that records have minimum required fields ──
+      const validRecords = normalised.filter(r => 
+        r && r.vendor && r.cat && r.services && Array.isArray(r.services)
+      );
+      
+      if(validRecords.length === 0){
+        console.error('No valid records in '+u);
+        continue;
+      }
+      
+      LIVE_DB = [...validRecords];
+      
+      // Enable Live toggle button
+      const liveBtn = document.querySelector('.mode-tog[data-mode="live"]');
+      if(liveBtn){
+        liveBtn.style.opacity = '1';
+        liveBtn.style.cursor = 'pointer';
+        liveBtn.title = `Live data: ${validRecords.length} records (${formatType} format)`;
+      }
+      
+      toast(`Live data ready: ${validRecords.length} records (${formatType})`,'ok');
+      updateLivePill();
+      
+      // Try to load validation report alongside
+      tryLoadValidationReport();
+      return;
+    }catch(e){
+      console.warn('Failed to load '+u+':', e);
+    }
   }
-  // No live data found — disable the Live button
-  const liveBtn=document.querySelector('.mode-tog[data-mode="live"]');
+  
+  // No live data found
+  const liveBtn = document.querySelector('.mode-tog[data-mode="live"]');
   if(liveBtn){
-    liveBtn.style.opacity='.4';
-    liveBtn.style.cursor='not-allowed';
-    liveBtn.title='No catalog_data.json found — extract quotes first';
+    liveBtn.style.opacity = '.4';
+    liveBtn.style.cursor = 'not-allowed';
+    liveBtn.title = 'No catalog_data.json found — run extraction first';
   }
   updateLivePill();
 }
 
+// ─── NEW: Aggregate flat per-line records into grouped per-file records ──
+function aggregateFlatToGrouped(flatRecords){
+  const byFile = {};
+  
+  flatRecords.forEach(r => {
+    const key = `${r.folder||''}/${r.file||''}`;
+    if(!byFile[key]){
+      byFile[key] = {
+        proj:       r.proj || 'Unknown',
+        region:     r.region || 'Global',
+        country:    r.country || '',
+        cat:        r.cat || 'Other',
+        vendor:     r.vendor || 'Unknown',
+        file:       r.file || '',
+        folder:     r.folder || '',
+        year:       r.year || 2025,
+        quarter:    r.quarter || 'Q1',
+        services:   [],
+        price:      0,
+        confidence: r.confidence || 0,
+      };
+    }
+    
+    const qty = r.qty || 1;
+    const up  = r.unit_price || 0;
+    const lt  = r.line_total || (qty * up);
+    
+    byFile[key].services.push({
+      name:      r.service || 'Unknown',
+      sku:       r.sku || '',
+      qty:       qty,
+      unitPrice: up,
+      lineTotal: lt,
+    });
+    byFile[key].price += lt;
+  });
+  
+  return Object.values(byFile).map(rec => ({
+    ...rec,
+    price: Math.round(rec.price),
+  }));
+}
+
+// ─── NEW: Load and surface validation report if available ──
+async function tryLoadValidationReport(){
+  try{
+    const r = await fetch('./validation_report.json');
+    if(!r.ok)return;
+    const report = await r.json();
+    window._validationReport = report;
+    
+    // Show a subtle indicator if there are issues
+    if(report.summary){
+      const issues = (report.summary.structural_warnings||0) + 
+                     (report.summary.sku_outliers||0);
+      if(issues > 0){
+        const pill = document.getElementById('live-pill');
+        if(pill && DATA_MODE === 'live'){
+          pill.title = `${issues} validation issue(s) — see console for details`;
+          console.info('📋 Validation report:', report.summary);
+        }
+      }
+    }
+  }catch(e){
+    // Silent — report is optional
+  }
+}
 function updateLivePill(){
   const pill=document.getElementById('live-pill');
   if(!pill)return;
@@ -1597,6 +1717,45 @@ function updateLivePill(){
   }
 }
 
+async function showDataFreshness(){
+  if(DATA_MODE !== 'live')return;
+  try{
+    // Try to load extraction state for last-run timestamp
+    const r = await fetch('./.extraction_state.json');
+    if(!r.ok){
+      // Fallback: check catalog_stats.json
+      const r2 = await fetch('./catalog_stats.json');
+      if(!r2.ok)return;
+      const stats = await r2.json();
+      if(stats.generated_at){
+        const ageHours = (Date.now() - new Date(stats.generated_at).getTime()) / (1000*60*60);
+        const pill = document.getElementById('live-pill');
+        if(pill){
+          let freshness = '';
+          if(ageHours < 1) freshness = 'just now';
+          else if(ageHours < 24) freshness = `${Math.round(ageHours)}h ago`;
+          else freshness = `${Math.round(ageHours/24)}d ago`;
+          pill.textContent = `${DB.length} Records · ${freshness}`;
+        }
+      }
+      return;
+    }
+    const state = await r.json();
+    if(state.last_run){
+      const ageHours = (Date.now() - new Date(state.last_run).getTime()) / (1000*60*60);
+      let freshness = '';
+      if(ageHours < 1) freshness = 'just now';
+      else if(ageHours < 24) freshness = `${Math.round(ageHours)}h ago`;
+      else freshness = `${Math.round(ageHours/24)}d ago`;
+      const pill = document.getElementById('live-pill');
+      if(pill) pill.title = `Last extracted ${freshness} (${state.last_run})`;
+    }
+  }catch(e){
+    // Silent
+  }
+}
+
+  
 function setDataMode(mode){
   if(mode==='live' && (!LIVE_DB || LIVE_DB.length===0)){
     toast('No live data available — extract quotes first via GitHub Actions','warn');
@@ -1652,7 +1811,9 @@ function setDataMode(mode){
   inFilterSvc();
   updateLivePill();
   
+  
   toast(`Switched to ${mode==='demo'?'🎯 Demo':'🦙 Live'} data (${DB.length} records)`,'ok');
+  showDataFreshness();
 }
 
 function initTabs(){
@@ -2653,6 +2814,15 @@ function selShowQuote(v,s){
     ${openFileSection}
     ${svcDetailBlock}
     <div class="sp-row"><span class="sp-k">Vendor</span><span class="sp-v">${vbadge(r.vendor)}</span></div>
+    // Insert after Vendor row, before Project row
+    ${typeof r.confidence === 'number' ? `
+      <div class="sp-row">
+        <span class="sp-k">Extraction Confidence</span>
+        <span class="sp-v">
+          <span class="b ${r.confidence >= 80 ? 'gn' : r.confidence >= 60 ? 'am' : 'rd'}">${r.confidence}%</span>
+        </span>
+      </div>
+    ` : ''}
     <div class="sp-row"><span class="sp-k">Project</span><span class="sp-v">${esc(r.proj)}</span></div>
     <div class="sp-row"><span class="sp-k">Category</span><span class="sp-v">${esc(r.cat)}</span></div>
     <div class="sp-row"><span class="sp-k">Location</span><span class="sp-v">${esc(r.country||r.region)}</span></div>
@@ -3644,28 +3814,66 @@ function openModal(id){document.getElementById(id+'-ov').classList.add('on');doc
 function closeModal(id){document.getElementById(id+'-ov').classList.remove('on');document.getElementById(id+'-modal').classList.remove('on');}
 
 function spLoad(inp){
-  const f=inp.files[0];
+  const f = inp.files[0];
   if(!f)return;
-  const reader=new FileReader();
-  reader.onload=(e)=>{
+  const reader = new FileReader();
+  reader.onload = (e) => {
     try{
-      const data=JSON.parse(e.target.result);
-      if(Array.isArray(data)&&data.length){
-        LIVE_DB=[...data];
-        // Enable the Live toggle button
-        const liveBtn=document.querySelector('.mode-tog[data-mode="live"]');
-        if(liveBtn){
-          liveBtn.style.opacity='1';
-          liveBtn.style.cursor='pointer';
-          liveBtn.title='Switch to live extracted data ('+data.length+' records)';
-        }
-        document.getElementById('sp-msg').textContent='✅ Loaded '+data.length+' records · Click 🦙 Live to view';
-        toast('Live data ready: '+data.length+' records — click 🦙 Live toggle','ok');
-        // Auto-switch to live mode
-        setDataMode('live');
+      const data = JSON.parse(e.target.result);
+      if(!Array.isArray(data) || !data.length){
+        document.getElementById('sp-msg').textContent = '❌ JSON must be a non-empty array';
+        toast('Invalid JSON: must be array','err');
+        return;
       }
+      
+      // ─── Schema validation ─────────────────────────────────
+      const sample = data[0];
+      let normalised = data;
+      
+      if(sample.unit_price !== undefined && !sample.services){
+        // Flat format — auto-aggregate
+        normalised = aggregateFlatToGrouped(data);
+        toast(`Auto-aggregated ${data.length} lines → ${normalised.length} files`,'warn');
+      } else if(sample.services && sample.services[0] && sample.services[0].unit_price !== undefined){
+        // snake_case services — convert
+        normalised = data.map(rec => ({
+          ...rec,
+          services: (rec.services||[]).map(s => ({
+            name:      s.name || s.service,
+            sku:       s.sku || '',
+            qty:       s.qty || 1,
+            unitPrice: s.unitPrice ?? s.unit_price ?? 0,
+            lineTotal: s.lineTotal ?? s.line_total ?? ((s.qty||1)*(s.unit_price ?? 0))
+          }))
+        }));
+      }
+      
+      // Validate minimum required fields
+      const valid = normalised.filter(r => 
+        r && r.vendor && r.cat && Array.isArray(r.services)
+      );
+      
+      if(valid.length === 0){
+        document.getElementById('sp-msg').textContent = 
+          '❌ No valid records (missing vendor/cat/services fields)';
+        toast('Invalid record schema','err');
+        return;
+      }
+      
+      LIVE_DB = [...valid];
+      const liveBtn = document.querySelector('.mode-tog[data-mode="live"]');
+      if(liveBtn){
+        liveBtn.style.opacity = '1';
+        liveBtn.style.cursor = 'pointer';
+        liveBtn.title = `Live: ${valid.length} records`;
+      }
+      
+      document.getElementById('sp-msg').textContent = 
+        `✅ Loaded ${valid.length} records · Click 🦙 Live to view`;
+      toast(`Live data ready: ${valid.length} records`,'ok');
+      setDataMode('live');
     }catch(err){
-      document.getElementById('sp-msg').textContent='❌ Invalid JSON';
+      document.getElementById('sp-msg').textContent = '❌ Invalid JSON: '+err.message;
       toast('Invalid JSON file','err');
     }
   };
