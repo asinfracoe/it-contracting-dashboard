@@ -30,3 +30,10 @@ uvicorn[standard]
 httpx
 python-multipart
 pydantic
+PyPDF
+beautifulsoup4
+lxml
+duckduckgo-search
+msal
+office365-rest-python-client
+tenacity
