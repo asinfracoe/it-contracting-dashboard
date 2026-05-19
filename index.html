@@ -1075,7 +1075,28 @@ const GITHUB_CONFIG = {
 
 const OR='#D04A02',ORD='#A33A00',INK='#1F2937',MID='#6B7280';
 const GN='#10B981',AM='#F59E0B',RD='#EF4444',BL='#3B82F6',PP='#8B5CF6';
-const CAT_COL={'Cybersecurity':'#D04A02','Network & Telecom':'#1F2937','Hosting':'#3B82F6','M365 & Power Platform':'#8B5CF6','IdAM':'#F59E0B','Service Management (SNow)':'#10B981'};
+const CAT_COL={
+  'Cybersecurity':           '#D04A02',
+  'Network & Telecom':       '#1F2937',
+  'Hosting':                 '#3B82F6',
+  'M365 & Power Platform':   '#8B5CF6',
+  'IdAM':                    '#F59E0B',
+  'Service Management (SNow)':'#10B981',
+  'Professional Services':   '#64748B',
+  'Uncategorized':           '#9CA3AF'
+};
+
+// Auto-assign colors for any AI-discovered categories not in the map
+function getCatColor(cat){
+  if(CAT_COL[cat]) return CAT_COL[cat];
+  // Generate a deterministic color based on category name hash
+  const palette=['#06B6D4','#EC4899','#84CC16','#F97316','#A855F7','#14B8A6','#F43F5E','#6366F1'];
+  let hash=0;
+  for(let i=0;i<cat.length;i++) hash=(hash*31+cat.charCodeAt(i))|0;
+  const color=palette[Math.abs(hash)%palette.length];
+  CAT_COL[cat]=color; // cache it
+  return color;
+}
 const PROJ_COL={'Idemia':'#D04A02','Tenneco':'#3B82F6','Panasonic':'#10B981','All':'#1F2937'};
 
 const RAW=[
@@ -1452,12 +1473,22 @@ function selPopulateSubcat(){
   const cat = document.getElementById('sel-cat').value;
   const el = document.getElementById('sel-subcat');
   if(!el) return;
+  
+  // Pull service-level subcategories from the AI-built tree
+  const tree = buildCategoryTree(DB);
   let subcats = [];
+  
   if(cat === 'All'){
-    subcats = [...new Set(DB.map(r => r.subcat).filter(s => s))].sort();
-  } else {
-    subcats = [...new Set(DB.filter(r => r.cat === cat).map(r => r.subcat).filter(s => s))].sort();
+    // Aggregate all subcats across all categories
+    const allSubs = new Set();
+    Object.values(tree).forEach(catNode => {
+      Object.keys(catNode.subcats).forEach(sub => allSubs.add(sub));
+    });
+    subcats = [...allSubs].sort();
+  } else if(tree[cat]) {
+    subcats = Object.keys(tree[cat].subcats).sort();
   }
+  
   el.innerHTML = '<option value="All">All Subcategories</option>' + 
     subcats.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
 }
@@ -1484,6 +1515,116 @@ function getSvcObj(record, svcName){
   return record.services.find(s => s.name === svcName) || null;
 }
 
+// ===== AI-DRIVEN CATEGORY TREE HELPERS =====
+
+// Read service-level cat/subcat (from AI categorizer) with fallbacks
+function svcCat(svc, record){
+  if(svc && typeof svc === 'object'){
+    return svc.category || record?.cat || 'Uncategorized';
+  }
+  return record?.cat || 'Uncategorized';
+}
+
+function svcSubcat(svc, record){
+  if(svc && typeof svc === 'object'){
+    return svc.subcategory || record?.subcat || 'General';
+  }
+  return record?.subcat || 'General';
+}
+
+// Build the tree: { cat: { subcats: { sub: {count, services:Set} }, count, services:Set } }
+function buildCategoryTree(records){
+  const tree = {};
+  records.forEach(r => {
+    const svcs = r.services || [];
+    if(typeof svcs[0] === 'string'){
+      // Old flat format — fall back to record-level cat/subcat
+      const cat = r.cat || 'Uncategorized';
+      const sub = r.subcat || 'General';
+      if(!tree[cat]) tree[cat] = {subcats:{}, count:0, services:new Set()};
+      if(!tree[cat].subcats[sub]) tree[cat].subcats[sub] = {count:0, services:new Set()};
+      svcs.forEach(name => {
+        tree[cat].count++;
+        tree[cat].services.add(name);
+        tree[cat].subcats[sub].count++;
+        tree[cat].subcats[sub].services.add(name);
+      });
+    } else {
+      svcs.forEach(s => {
+        if(!s || !s.name) return;
+        const cat = svcCat(s, r);
+        const sub = svcSubcat(s, r);
+        if(!tree[cat]) tree[cat] = {subcats:{}, count:0, services:new Set()};
+        if(!tree[cat].subcats[sub]) tree[cat].subcats[sub] = {count:0, services:new Set()};
+        tree[cat].count++;
+        tree[cat].services.add(s.name);
+        tree[cat].subcats[sub].count++;
+        tree[cat].subcats[sub].services.add(s.name);
+      });
+    }
+  });
+  return tree;
+}
+
+// Get a unique list of services across DB with their dominant cat/subcat
+function getAllServicesEnriched(records){
+  const map = {};
+  records.forEach(r => {
+    const svcs = r.services || [];
+    if(typeof svcs[0] === 'string'){
+      svcs.forEach(name => {
+        if(!map[name]) map[name] = {name, sku:'—', category:r.cat||'Uncategorized', subcategory:r.subcat||'General', count:0};
+        map[name].count++;
+      });
+    } else {
+      svcs.forEach(s => {
+        if(!s || !s.name) return;
+        const key = s.name;
+        if(!map[key]){
+          map[key] = {
+            name: s.name,
+            sku: s.sku || '—',
+            category: svcCat(s, r),
+            subcategory: svcSubcat(s, r),
+            count: 0
+          };
+        }
+        map[key].count++;
+      });
+    }
+  });
+  return Object.values(map).sort((a,b) => b.count - a.count);
+}
+
+// Find the dominant category/subcat for a given service name
+function getServiceTaxonomy(svcName, records){
+  const cats = {}, subcats = {};
+  records.forEach(r => {
+    const svcs = r.services || [];
+    if(typeof svcs[0] === 'string'){
+      if(svcs.includes(svcName)){
+        cats[r.cat||'Uncategorized'] = (cats[r.cat||'Uncategorized']||0)+1;
+        subcats[r.subcat||'General'] = (subcats[r.subcat||'General']||0)+1;
+      }
+    } else {
+      svcs.forEach(s => {
+        if(s && s.name === svcName){
+          const c = svcCat(s, r);
+          const sc = svcSubcat(s, r);
+          cats[c] = (cats[c]||0)+1;
+          subcats[sc] = (subcats[sc]||0)+1;
+        }
+      });
+    }
+  });
+  const cat = Object.entries(cats).sort((a,b)=>b[1]-a[1])[0]?.[0] || 'Uncategorized';
+  const sub = Object.entries(subcats).sort((a,b)=>b[1]-a[1])[0]?.[0] || 'General';
+  return {cat, sub};
+}
+
+// ===== END AI-DRIVEN TREE HELPERS =====
+  
+  
 // ===== CART HELPERS =====
 
 // Convert year+quarter to a real date string (or use stored quoteDate)
@@ -1524,7 +1665,8 @@ function getSvcStats(svcName, dataset){
           if(s.unitPrice > 0) unitPrices.push(s.unitPrice);
           if(s.qty > 0) qtys.push(s.qty);
           if(s.sku && s.sku !== '—') sampleSku = s.sku;
-          if(r.cat) sampleCat = r.cat;
+          // Prefer service-level category from AI categorizer
+          sampleCat = svcCat(s, r);
         }
       });
     }
@@ -1726,7 +1868,7 @@ function renderSimpleCharts(data,cats){
       type:'bar',
       data:{
         labels:catQuotes.map(d=>d.cat.length>14?d.cat.substring(0,14)+'…':d.cat),
-        datasets:[{label:'Quotes',data:catQuotes.map(d=>d.count),backgroundColor:catQuotes.map(d=>CAT_COL[d.cat]||OR),borderRadius:6,borderSkipped:false,maxBarThickness:50}]
+        datasets:[{label:'Quotes',data:catQuotes.map(d=>d.count),backgroundColor:catQuotes.map(d=>getCatColor(d.cat)),borderRadius:6,borderSkipped:false,maxBarThickness:50}]
       },
       options:{
         responsive:true,maintainAspectRatio:false,
@@ -1744,7 +1886,7 @@ function renderSimpleCharts(data,cats){
       type:'bar',
       data:{
         labels:catSvcs.map(d=>d.cat.length>18?d.cat.substring(0,18)+'…':d.cat),
-        datasets:[{label:'Services',data:catSvcs.map(d=>d.count),backgroundColor:catSvcs.map(d=>CAT_COL[d.cat]||OR),borderRadius:6,borderSkipped:false,maxBarThickness:28}]
+        datasets:[{label:'Services',data:catSvcs.map(d=>d.count),backgroundColor:catSvcs.map(d=>getCatColor(d.cat)),borderRadius:6,borderSkipped:false,maxBarThickness:28}]
       },
       options:{
         indexAxis:'y',responsive:true,maintainAspectRatio:false,
@@ -1910,6 +2052,7 @@ function setDataMode(mode){
   initProjTabs();
   initRegionCountryFilters();
   populateDropdowns();
+  selPopulateSubcat();   // ✅ refresh subcat dropdown with AI tree
   renderOverview();
   renderActiveFilters();
   selFilterChips();
@@ -2014,22 +2157,39 @@ function clearAllFilters(){
 function initPersonaTabs(){}
 
 function populateDropdowns(){
-  const cats=[...new Set(DB.map(r=>r.cat))].sort();
-  const projsFromDB=[...new Set(DB.map(r=>r.proj))].sort();
+  // Build category list from the AI-derived tree (service-level cats)
+  const tree = buildCategoryTree(DB);
+  const aiCats = Object.keys(tree).sort();
   
-  [['sel-cat',cats],['in-cat',cats]].forEach(([id,arr])=>{
-    const el=document.getElementById(id);
-    if(!el)return;
-    // Reset to just "All Categories"
-    el.innerHTML='<option value="All">All Categories</option>';
-    arr.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;el.appendChild(o);});
+  // Also include any record-level cats not covered (safety net)
+  const recCats = [...new Set(DB.map(r => r.cat).filter(c => c))];
+  const cats = [...new Set([...aiCats, ...recCats])].sort();
+  
+  const projsFromDB = [...new Set(DB.map(r => r.proj))].sort();
+  
+  [['sel-cat', cats], ['in-cat', cats]].forEach(([id, arr]) => {
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.innerHTML = '<option value="All">All Categories</option>';
+    arr.forEach(v => {
+      const o = document.createElement('option');
+      o.value = v;
+      o.textContent = v + (tree[v] ? ` (${tree[v].count})` : '');
+      el.appendChild(o);
+    });
   });
   
-  ['in-proj','rq-proj'].forEach(id=>{
-    const el=document.getElementById(id);
-    if(!el)return;
-    el.innerHTML='<option value="All">All Projects (master data)</option>';
-    projsFromDB.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;el.appendChild(o);});
+  ['in-proj', 'rq-proj'].forEach(id => {
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.innerHTML = '<option value="All">All Projects (master data)</option>';
+    projsFromDB.forEach(v => {
+      const cnt = DB.filter(r => r.proj === v).length;
+      const o = document.createElement('option');
+      o.value = v;
+      o.textContent = `${v} (${cnt})`;
+      el.appendChild(o);
+    });
   });
 }
 
@@ -2100,7 +2260,7 @@ function renderOverview(){
     const avPct=globalMax?(av/globalMax*100):0;
     const mxPct=globalMax?(mx/globalMax*100):0;
     return `<tr onclick="drillCategory('${esc(c)}')" style="cursor:pointer">
-      <td><span class="cat-chip"><span class="cat-dot" style="background:${CAT_COL[c]||MID}"></span>${esc(c)}</span></td>
+      <td><span class="cat-chip"><span class="cat-dot" style="background:${getCatColor(c)}"></span>${esc(c)}</span></td>
       <td><span class="num">${rs.length}</span></td>
       <td><span class="num">${cs.length}</span></td>
       <td><span class="num">${cv.length}</span></td>
@@ -2219,7 +2379,7 @@ function renderHeatmap(data,cats,vens){
   const catChips=document.getElementById('hm-cat-chips');
   catChips.innerHTML=cats.map(c=>{
     const cnt=data.filter(r=>r.cat===c).length;
-    return `<div class="chip ${hmCats.has(c)?'on':''}" onclick="hmTogCat('${esc(c).replace(/'/g,"\\'")}',this)"><span class="cat-dot" style="background:${CAT_COL[c]||MID}"></span><span>${esc(c)}</span><span class="chip-cnt">${cnt}</span></div>`;
+    return `<div class="chip ${hmCats.has(c)?'on':''}" onclick="hmTogCat('${esc(c).replace(/'/g,"\\'")}',this)"><span class="cat-dot" style="background:${getCatColor(c)}"></span><span>${esc(c)}</span><span class="chip-cnt">${cnt}</span></div>`;
   }).join('');
   set('hm-cat-cnt',hmCats.size===cats.length?'All':hmCats.size+' of '+cats.length);
 
@@ -2249,7 +2409,7 @@ function renderHeatmap(data,cats,vens){
 
   let html=`<div style="overflow:auto;max-height:460px;border:1px solid var(--line);border-radius:var(--r)"><table style="border-collapse:collapse;width:100%;font-size:.76rem;min-width:${Math.max(600,activeCats.length*130+200)}px">`;
   html+='<thead><tr><th style="position:sticky;left:0;top:0;background:var(--ink);color:white;padding:10px 12px;text-align:left;z-index:3;min-width:180px;font-size:.70rem;font-weight:700">Vendor</th>';
-  activeCats.forEach(c=>{html+=`<th style="background:var(--ink2);color:white;padding:10px 8px;text-align:center;font-size:.66rem;font-weight:700;position:sticky;top:0;z-index:2;min-width:120px"><div style="display:flex;align-items:center;justify-content:center;gap:5px"><span class="cat-dot" style="background:${CAT_COL[c]||MID}"></span>${esc(c.length>18?c.substring(0,18)+'…':c)}</div></th>`;});
+  activeCats.forEach(c=>{html+=`<th style="background:var(--ink2);color:white;padding:10px 8px;text-align:center;font-size:.66rem;font-weight:700;position:sticky;top:0;z-index:2;min-width:120px"><div style="display:flex;align-items:center;justify-content:center;gap:5px"><span class="cat-dot" style="background:${getCatColor(c)}"></span>${esc(c.length>18?c.substring(0,18)+'…':c)}</div></th>`;});
   html+='<th style="background:var(--or);color:white;padding:10px 12px;text-align:right;font-size:.70rem;font-weight:700;position:sticky;top:0;z-index:2">Total</th>';
   html+='</tr></thead><tbody>';
 
@@ -2338,7 +2498,7 @@ function renderTreemap(data){
   el.innerHTML=catSpend.map(d=>{
     const pct=(d.spend/totalSpend*100);
     const flex=Math.max(pct,8);
-    return `<div onclick="drillCategory('${esc(d.cat).replace(/'/g,"\\'")}')" style="flex:${flex} 1 140px;min-height:100px;background:${CAT_COL[d.cat]||OR};padding:16px;color:white;cursor:pointer;display:flex;flex-direction:column;justify-content:space-between;border-radius:4px;transition:transform .15s" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform=''">
+    return `<div onclick="drillCategory('${esc(d.cat).replace(/'/g,"\\'")}')" style="flex:${flex} 1 140px;min-height:100px;background:${getCatColor(d.cat)};padding:16px;color:white;cursor:pointer;display:flex;flex-direction:column;justify-content:space-between;border-radius:4px;transition:transform .15s" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform=''">
       <div style="font-size:.78rem;font-weight:700;line-height:1.25">${esc(d.cat)}</div>
       <div>
         <div style="font-family:var(--serif);font-size:1.35rem;font-weight:800;letter-spacing:-.5px">${fmt(d.spend)}</div>
@@ -2361,7 +2521,7 @@ function renderCategoryAvgPrice(data,cats){
     type:'bar',
     data:{
       labels:catStats.map(d=>d.cat.length>20?d.cat.substring(0,20)+'…':d.cat),
-      datasets:[{label:'Avg Price',data:catStats.map(d=>d.avg),backgroundColor:catStats.map(d=>CAT_COL[d.cat]||OR),borderRadius:4,borderSkipped:false,maxBarThickness:32}]
+      datasets:[{label:'Avg Price',data:catStats.map(d=>d.avg),backgroundColor:catStats.map(d=>getCatColor(d.cat)),borderRadius:4,borderSkipped:false,maxBarThickness:32}]
     },
     options:{
       indexAxis:'y',responsive:true,maintainAspectRatio:false,
@@ -2403,21 +2563,85 @@ function renderVendorConcentration(data){
 }
 
 function selFilterChips(){
-  const cat=document.getElementById('sel-cat').value;
-  const subcatEl=document.getElementById('sel-subcat');
-  const subcat=subcatEl?subcatEl.value:'All';
-  const s=document.getElementById('sel-search').value.toLowerCase();
-  const pool=filteredDB();
-  let svcs=[...new Set(pool.flatMap(r=>getSvcNames(r)))].sort();
-  if(cat!=='All')svcs=svcs.filter(v=>pool.some(r=>r.cat===cat&&hasService(r,v)));
-  if(subcat!=='All')svcs=svcs.filter(v=>pool.some(r=>r.subcat===subcat&&hasService(r,v)));
-  if(s)svcs=svcs.filter(v=>v.toLowerCase().includes(s));
-  document.getElementById('sel-chips').innerHTML=svcs.map(v=>{
-    const c=pool.find(r=>hasService(r,v))?.cat;
-    const on=selSvcs.has(v);
-    const qCount=pool.filter(r=>hasService(r,v)).length;
-    return `<div class="chip ${on?'on':''}" onclick="togSelSvc('${esc(v).replace(/'/g,"\\'")}',this)" title="${qCount} historical quote${qCount>1?'s':''}"><span class="cat-dot" style="background:${CAT_COL[c]||MID}"></span>${esc(v.length>28?v.substring(0,28)+'…':v)}<span class="chip-cnt">${qCount}</span></div>`;
-  }).join('');
+  const catFilter = document.getElementById('sel-cat').value;
+  const subcatEl = document.getElementById('sel-subcat');
+  const subcatFilter = subcatEl ? subcatEl.value : 'All';
+  const searchTerm = document.getElementById('sel-search').value.toLowerCase();
+  const pool = filteredDB();
+  
+  // Get all services with their AI-assigned taxonomy
+  const enriched = getAllServicesEnriched(pool);
+  
+  // Apply filters
+  let filtered = enriched.filter(svc => {
+    if(catFilter !== 'All' && svc.category !== catFilter) return false;
+    if(subcatFilter !== 'All' && svc.subcategory !== subcatFilter) return false;
+    if(searchTerm && !svc.name.toLowerCase().includes(searchTerm) 
+       && !(svc.sku || '').toLowerCase().includes(searchTerm)) return false;
+    return true;
+  });
+  
+  // Group by category → subcategory
+  const grouped = {};
+  filtered.forEach(svc => {
+    if(!grouped[svc.category]) grouped[svc.category] = {};
+    if(!grouped[svc.category][svc.subcategory]) grouped[svc.category][svc.subcategory] = [];
+    grouped[svc.category][svc.subcategory].push(svc);
+  });
+  
+  const wrap = document.getElementById('sel-chips');
+  if(!wrap) return;
+  
+  if(filtered.length === 0){
+    wrap.innerHTML = `<div style="color:var(--mid);font-size:.74rem;padding:14px;text-align:center;width:100%">
+      No services match these filters
+    </div>`;
+    return;
+  }
+  
+  // Render: Category header → Subcategory section → chips
+  let html = '';
+  const sortedCats = Object.keys(grouped).sort();
+  
+  sortedCats.forEach(cat => {
+    const catColor = getCatColor(cat);
+    const catTotal = Object.values(grouped[cat]).reduce((a,b) => a + b.length, 0);
+    
+    html += `<div style="width:100%;margin:10px 0 4px;display:flex;align-items:center;gap:6px;padding-bottom:4px;border-bottom:1px solid var(--line2)">
+      <span style="width:9px;height:9px;border-radius:50%;background:${catColor};flex-shrink:0"></span>
+      <span style="font-size:.70rem;font-weight:800;color:var(--ink);text-transform:uppercase;letter-spacing:.6px">${esc(cat)}</span>
+      <span style="font-size:.62rem;color:var(--mid);font-weight:600">${catTotal} service${catTotal!==1?'s':''}</span>
+    </div>`;
+    
+    const sortedSubs = Object.keys(grouped[cat]).sort();
+    sortedSubs.forEach(sub => {
+      const subSvcs = grouped[cat][sub];
+      
+      html += `<div style="width:100%;margin:6px 0 4px">
+        <div style="font-size:.62rem;font-weight:700;color:var(--mid);margin:4px 0 6px 4px;text-transform:uppercase;letter-spacing:.4px">
+          ↳ ${esc(sub)} <span style="color:var(--soft);font-weight:600">(${subSvcs.length})</span>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px">`;
+      
+      subSvcs.forEach(svc => {
+        const isOn = selSvcs.has(svc.name) ? 'on' : '';
+        const truncName = svc.name.length > 30 ? svc.name.substring(0,28) + '…' : svc.name;
+        const tooltipText = `${svc.name}${svc.sku && svc.sku!=='—' ? ' · SKU: ' + svc.sku : ''} · ${svc.count} quote${svc.count>1?'s':''}`;
+        
+        html += `<div class="chip ${isOn}" 
+          onclick="togSelSvc('${esc(svc.name).replace(/'/g,"\\'")}',this)" 
+          title="${esc(tooltipText)}">
+          <span class="cat-dot" style="background:${catColor}"></span>
+          ${esc(truncName)}
+          <span class="chip-cnt">${svc.count}</span>
+        </div>`;
+      });
+      
+      html += `</div></div>`;
+    });
+  });
+  
+  wrap.innerHTML = html;
 }
 
 function togSelSvc(s,el){
@@ -3083,7 +3307,7 @@ function selOpenMtxFilter(type){
     chips.innerHTML=sel.map(s=>{
       const c=pool.find(r=>hasService(r,s))?.cat;
       const on=selMtxSvcs.has(s);
-      return `<div class="chip ${on?'on':''}" onclick="togSelMtxSvc('${esc(s).replace(/'/g,"\\'")}',this)"><span class="cat-dot" style="background:${CAT_COL[c]||MID}"></span>${esc(s.length>28?s.substring(0,28)+'…':s)}</div>`;
+      return `<div class="chip ${on?'on':''}" onclick="togSelMtxSvc('${esc(s).replace(/'/g,"\\'")}',this)"><span class="cat-dot" style="background:${getCatColor(c)}"></span>${esc(s.length>28?s.substring(0,28)+'…':s)}</div>`;
     }).join('');
   }
   panel.style.display='block';
@@ -3143,7 +3367,7 @@ function inFilterSvc(){
   document.getElementById('in-svcs').innerHTML=svcs.map(v=>{
     const c=DB.find(r=>hasService(r,v))?.cat;
     const on=inSvcs.has(v);
-    return `<div class="chip ${on?'on':''}" onclick="togInSvc('${esc(v).replace(/'/g,"\\'")}',this)"><span class="cat-dot" style="background:${CAT_COL[c]||MID}"></span>${esc(v.length>28?v.substring(0,28)+'…':v)}</div>`;
+    return `<div class="chip ${on?'on':''}" onclick="togInSvc('${esc(v).replace(/'/g,"\\'")}',this)"><span class="cat-dot" style="background:${getCatColor(c)}"></span>${esc(v.length>28?v.substring(0,28)+'…':v)}</div>`;
   }).join('');
   set('in-svc-cnt',inSvcs.size);
 }
@@ -3621,27 +3845,127 @@ function exPushRFQ(){
 }
 
 function rqBuildCatList(){
-  const el=document.getElementById('rq-cat-list');
-  const cats=[...new Set(DB.map(r=>r.cat))].sort();
-  el.innerHTML=['All',...cats].map(c=>{
-    const cnt=c==='All'?DB.length:DB.filter(r=>r.cat===c).length;
-    const on=rqCat===c;
-    return `<div onclick="rqSetCat('${esc(c).replace(/'/g,"\\'")}')" style="padding:8px 10px;border-radius:var(--r);background:${on?'var(--ort)':'transparent'};border:1px solid ${on?'var(--or)':'var(--line)'};cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-size:.78rem;font-weight:600;color:${on?'var(--or)':'var(--ink2)'}">${c==='All'?'🌐 All Categories':'<span style="display:flex;align-items:center;gap:6px"><span class="cat-dot" style="background:'+(CAT_COL[c]||MID)+'"></span>'+esc(c)+'</span>'}<span class="b nt" style="font-size:.64rem">${cnt}</span></div>`;
-  }).join('');
+  const el = document.getElementById('rq-cat-list');
+  if(!el) return;
+  
+  // Use AI-derived tree
+  const tree = buildCategoryTree(DB);
+  const cats = Object.keys(tree).sort();
+  
+  let html = '';
+  
+  // "All" option
+  const allCnt = DB.length;
+  const allOn = rqCat === 'All';
+  html += `<div onclick="rqSetCat('All')" 
+    style="padding:8px 10px;border-radius:var(--r);
+    background:${allOn?'var(--ort)':'transparent'};
+    border:1px solid ${allOn?'var(--or)':'var(--line)'};
+    cursor:pointer;display:flex;justify-content:space-between;align-items:center;
+    font-size:.78rem;font-weight:600;color:${allOn?'var(--or)':'var(--ink2)'}">
+    🌐 All Categories
+    <span class="b nt" style="font-size:.64rem">${allCnt}</span>
+  </div>`;
+  
+  // AI-derived categories with subcategory counts
+  cats.forEach(cat => {
+    const node = tree[cat];
+    const on = rqCat === cat;
+    const color = getCatColor(cat);
+    const subCount = Object.keys(node.subcats).length;
+    
+    html += `<div onclick="rqSetCat('${esc(cat).replace(/'/g,"\\'")}')" 
+      style="padding:8px 10px;border-radius:var(--r);
+      background:${on?'var(--ort)':'transparent'};
+      border:1px solid ${on?'var(--or)':'var(--line)'};
+      cursor:pointer;display:flex;justify-content:space-between;align-items:center;
+      font-size:.78rem;font-weight:600;color:${on?'var(--or)':'var(--ink2)'}">
+      <span style="display:flex;align-items:center;gap:6px;flex:1;min-width:0">
+        <span class="cat-dot" style="background:${color}"></span>
+        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(cat)}</span>
+      </span>
+      <span style="display:flex;gap:4px;flex-shrink:0">
+        <span class="b nt" style="font-size:.62rem" title="${subCount} subcategories">${subCount}🗂️</span>
+        <span class="b nt" style="font-size:.64rem">${node.count}</span>
+      </span>
+    </div>`;
+  });
+  
+  el.innerHTML = html;
 }
 
 function rqSetCat(c){rqCat=c;rqBuildCatList();rqFilterSvc();}
 
 function rqFilterSvc(){
-  const s=document.getElementById('rq-svc-s').value.toLowerCase();
-  let svcs=[...new Set(DB.flatMap(r=>getSvcNames(r)))].sort();
-  if(rqCat!=='All')svcs=svcs.filter(v=>DB.some(r=>r.cat===rqCat&&hasService(r,v)));
-  if(s)svcs=svcs.filter(v=>v.toLowerCase().includes(s));
-  document.getElementById('rq-svcs').innerHTML=svcs.map(v=>{
-    const c=DB.find(r=>hasService(r,v))?.cat;
-    const on=rqSvcs.has(v);
-    return `<div class="chip ${on?'on':''}" onclick="togRqSvc('${esc(v).replace(/'/g,"\\'")}',this)"><span class="cat-dot" style="background:${CAT_COL[c]||MID}"></span>${esc(v.length>28?v.substring(0,28)+'…':v)}</div>`;
-  }).join('');
+  const searchTerm = document.getElementById('rq-svc-s').value.toLowerCase();
+  
+  let enriched = getAllServicesEnriched(DB);
+  
+  // Filter by selected category
+  if(rqCat !== 'All'){
+    enriched = enriched.filter(svc => svc.category === rqCat);
+  }
+  
+  // Filter by search
+  if(searchTerm){
+    enriched = enriched.filter(svc => 
+      svc.name.toLowerCase().includes(searchTerm) ||
+      (svc.sku || '').toLowerCase().includes(searchTerm)
+    );
+  }
+  
+  // Group by subcategory
+  const grouped = {};
+  enriched.forEach(svc => {
+    if(!grouped[svc.subcategory]) grouped[svc.subcategory] = [];
+    grouped[svc.subcategory].push(svc);
+  });
+  
+  const wrap = document.getElementById('rq-svcs');
+  if(!wrap) return;
+  
+  if(enriched.length === 0){
+    wrap.innerHTML = `<div style="color:var(--mid);font-size:.74rem;padding:14px;text-align:center;width:100%">
+      No services match
+    </div>`;
+    return;
+  }
+  
+  let html = '';
+  const sortedSubs = Object.keys(grouped).sort();
+  
+  sortedSubs.forEach(sub => {
+    const subSvcs = grouped[sub];
+    const sampleColor = getCatColor(subSvcs[0].category);
+    
+    // Subcategory header (only show if there's more than one or if filtering)
+    if(sortedSubs.length > 1){
+      html += `<div style="width:100%;margin:8px 0 4px;display:flex;align-items:center;gap:6px">
+        <span style="width:6px;height:6px;border-radius:50%;background:${sampleColor}"></span>
+        <span style="font-size:.62rem;font-weight:700;color:var(--mid);text-transform:uppercase;letter-spacing:.4px">${esc(sub)}</span>
+        <span style="font-size:.60rem;color:var(--soft);font-weight:600">(${subSvcs.length})</span>
+      </div>`;
+    }
+    
+    html += `<div style="display:flex;flex-wrap:wrap;gap:4px;width:100%">`;
+    subSvcs.forEach(svc => {
+      const on = rqSvcs.has(svc.name) ? 'on' : '';
+      const color = getCatColor(svc.category);
+      const truncName = svc.name.length > 30 ? svc.name.substring(0,28) + '…' : svc.name;
+      const tooltip = `${svc.name}${svc.sku && svc.sku !== '—' ? ' · ' + svc.sku : ''} · ${svc.count} quote${svc.count>1?'s':''}`;
+      
+      html += `<div class="chip ${on}" 
+        onclick="togRqSvc('${esc(svc.name).replace(/'/g,"\\'")}',this)"
+        title="${esc(tooltip)}">
+        <span class="cat-dot" style="background:${color}"></span>
+        ${esc(truncName)}
+        <span class="chip-cnt">${svc.count}</span>
+      </div>`;
+    });
+    html += `</div>`;
+  });
+  
+  wrap.innerHTML = html;
 }
 
 function togRqSvc(s,el){
