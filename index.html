@@ -211,7 +211,16 @@ html,body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-siz
 .msg.u{display:flex;justify-content:flex-end;}
 .msg.u .bbl{background:var(--or);color:var(--white);border-radius:14px 14px 3px 14px;padding:9px 13px;max-width:85%;font-size:.80rem;line-height:1.5;}
 .msg.b{display:flex;justify-content:flex-start;}
-.msg.b .bbl{background:var(--white);color:var(--ink);border:1px solid var(--line);border-left:3px solid var(--or);border-radius:14px 14px 14px 3px;padding:10px 13px;max-width:92%;font-size:.80rem;line-height:1.55;box-shadow:var(--sh);}
+.msg.b .bbl{background:var(--white);color:var(--ink);border:1px solid var(--line);border-left:3px solid var(--or);border-radius:14px 14px 14px 3px;padding:10px 13px;max-width:92%;font-size:.80rem;line-height:1.55;box-shadow:var(--sh);word-wrap:break-word;overflow-wrap:break-word;word-break:break-word;hyphens:auto;white-space:pre-wrap;}
+.msg.u .bbl{background:var(--or);color:var(--white);border-radius:14px 14px 3px 14px;padding:9px 13px;max-width:85%;font-size:.80rem;line-height:1.5;word-wrap:break-word;overflow-wrap:break-word;word-break:break-word;}
+.msg.b .bbl strong{color:var(--ink);font-weight:700;}
+.msg.b .bbl code{background:var(--line2);padding:1px 5px;border-radius:3px;font-family:monospace;font-size:.74rem;color:var(--or);word-break:break-all;}
+.msg.b .bbl ul,.msg.b .bbl ol{padding-left:18px;margin:6px 0;}
+.msg.b .bbl li{margin:3px 0;}
+.msg.b .bbl table{border-collapse:collapse;width:100%;margin:6px 0;font-size:.72rem;}
+.msg.b .bbl table td,.msg.b .bbl table th{border:1px solid var(--line);padding:4px 6px;text-align:left;}
+.msg.b .bbl table th{background:var(--line2);font-weight:700;}
+.chat-body{flex:1;overflow-y:auto;overflow-x:hidden;padding:16px;background:var(--bg);min-height:0;word-wrap:break-word;}
 .msg.b .bbl strong{color:var(--ink);}
 .chat-qs{background:var(--white);border-top:1px solid var(--line);padding:10px 14px;flex-shrink:0;}
 .chat-ql{font-size:.62rem;font-weight:700;color:var(--mid);text-transform:uppercase;letter-spacing:.7px;margin-bottom:7px;}
