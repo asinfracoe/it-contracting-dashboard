@@ -9,14 +9,41 @@ import sys
 from pathlib import Path
 from config import CFG
 
-def find_quote_files(quotes_dir: str = 'quotes') -> list:
-    """Walk the quotes/ tree and return all parseable files."""
-    extensions = {'.pdf', '.xlsx', '.xls', '.docx', '.csv', '.txt'}
+def find_quote_files(quotes_dir: str = None) -> list:
+    """Walk the quotes/ tree and return all parseable files.
+    Tries multiple locations so it works locally AND in CI."""
+    extensions = {'.pdf', '.xlsx', '.xls', '.docx', '.doc', '.csv', '.txt'}
+    
+    # Try multiple candidate paths
+    candidates = [
+        quotes_dir,                          # whatever was passed
+        CFG.quotes_dir,                      # from config
+        '../quotes',                         # repo root from extractor/
+        'quotes',                            # repo root if cwd is root
+        os.path.join(os.path.dirname(__file__), '..', 'quotes'),  # absolute
+    ]
+    
+    found_dir = None
+    for c in candidates:
+        if c and os.path.isdir(c):
+            found_dir = c
+            break
+    
+    if not found_dir:
+        print(f'❌ Could not find quotes/ directory.')
+        print(f'   Tried: {[c for c in candidates if c]}')
+        print(f'   CWD:   {os.getcwd()}')
+        print(f'   Files in CWD: {os.listdir(".")[:20]}')
+        return []
+    
+    print(f'📁 Using quotes directory: {os.path.abspath(found_dir)}')
+    
     files = []
-    for root, _, names in os.walk(quotes_dir):
+    for root, _, names in os.walk(found_dir):
         for n in names:
             if Path(n).suffix.lower() in extensions:
                 files.append(os.path.join(root, n))
+    
     return sorted(files)
 
 def run_hybrid_pipeline(files: list) -> list:
