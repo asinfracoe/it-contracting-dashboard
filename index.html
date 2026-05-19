@@ -256,6 +256,64 @@ html,body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-siz
 .sp-k{color:var(--mid);font-weight:600;text-transform:uppercase;font-size:.68rem;letter-spacing:.4px;}
 .sp-v{color:var(--ink);font-weight:700;text-align:right;}
 .sp-v.pr{color:var(--or);font-family:var(--serif);font-size:1.05rem;}
+/* ===== CART-STYLE INTERFACE ===== */
+.cart-panel{background:linear-gradient(180deg,var(--ort) 0%,var(--white) 100%);border:1px solid var(--orl);border-radius:var(--r2);padding:0;overflow:hidden;box-shadow:0 4px 12px rgba(208,74,2,.08);}
+.cart-head{background:var(--or);padding:12px 16px;color:var(--white);display:flex;justify-content:space-between;align-items:center;}
+.cart-head-l{display:flex;align-items:center;gap:8px;}
+.cart-head-ico{font-size:1.1rem;}
+.cart-head-t{font-family:var(--serif);font-size:.95rem;font-weight:700;letter-spacing:-.2px;}
+.cart-head-cnt{background:rgba(255,255,255,.22);padding:2px 9px;border-radius:10px;font-size:.66rem;font-weight:800;letter-spacing:.4px;}
+.cart-body{max-height:480px;overflow-y:auto;padding:0;}
+.cart-empty{padding:36px 18px;text-align:center;color:var(--mid);}
+.cart-empty-ico{font-size:2.2rem;opacity:.3;margin-bottom:8px;}
+.cart-empty-t{font-size:.82rem;font-weight:700;color:var(--ink2);margin-bottom:4px;}
+.cart-empty-s{font-size:.70rem;color:var(--mid);line-height:1.4;}
+.cart-item{padding:11px 14px;border-bottom:1px solid var(--line2);background:var(--white);transition:background .15s;}
+.cart-item:hover{background:var(--ort);}
+.cart-item:last-child{border-bottom:none;}
+.cart-item-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px;}
+.cart-item-name{font-size:.78rem;font-weight:700;color:var(--ink);line-height:1.3;flex:1;}
+.cart-item-rm{background:none;border:none;color:var(--mid);font-size:1.1rem;cursor:pointer;line-height:1;padding:0 4px;border-radius:50%;transition:all .12s;flex-shrink:0;width:22px;height:22px;display:flex;align-items:center;justify-content:center;}
+.cart-item-rm:hover{background:var(--rdl);color:var(--rd);}
+.cart-item-meta{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;}
+.cart-item-meta .pill{background:var(--line2);color:var(--ink2);padding:2px 7px;border-radius:8px;font-size:.62rem;font-weight:700;}
+.cart-item-meta .pill.sku{font-family:monospace;background:var(--bll);color:var(--bld);}
+.cart-item-meta .pill.cat{display:inline-flex;align-items:center;gap:4px;}
+.cart-item-meta .pill.cat .dot{width:6px;height:6px;border-radius:50%;}
+.cart-item-prices{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px;}
+.cart-price-cell{background:var(--bg);padding:6px 8px;border-radius:var(--r);text-align:center;border:1px solid var(--line2);}
+.cart-price-cell .lbl{font-size:.56rem;font-weight:800;color:var(--mid);text-transform:uppercase;letter-spacing:.5px;}
+.cart-price-cell .val{font-family:var(--serif);font-size:.86rem;font-weight:700;margin-top:2px;line-height:1;}
+.cart-price-cell.min .val{color:var(--gn);}
+.cart-price-cell.avg .val{color:var(--or);}
+.cart-price-cell.max .val{color:var(--rd);}
+.cart-qty-row{display:flex;align-items:center;gap:8px;background:var(--ort);border:1px solid var(--orl);border-radius:var(--r);padding:6px 10px;margin-top:6px;}
+.cart-qty-lbl{font-size:.62rem;font-weight:800;color:var(--or);text-transform:uppercase;letter-spacing:.5px;flex-shrink:0;}
+.cart-qty-ctrl{display:flex;align-items:center;gap:4px;margin-left:auto;}
+.cart-qty-btn{width:24px;height:24px;border:1px solid var(--orl);background:var(--white);color:var(--or);border-radius:4px;font-weight:700;cursor:pointer;font-size:.85rem;display:flex;align-items:center;justify-content:center;transition:all .12s;padding:0;line-height:1;}
+.cart-qty-btn:hover{background:var(--or);color:var(--white);border-color:var(--or);}
+.cart-qty-btn:disabled{opacity:.4;cursor:not-allowed;}
+.cart-qty-input{width:60px;text-align:center;border:1px solid var(--orl);border-radius:4px;padding:3px 4px;font-size:.78rem;font-weight:700;font-family:var(--sans);color:var(--or);background:var(--white);outline:none;font-variant-numeric:tabular-nums;}
+.cart-qty-input:focus{border-color:var(--or);box-shadow:0 0 0 2px rgba(208,74,2,.15);}
+.cart-line-total{display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:linear-gradient(90deg,var(--gnl),transparent);border-radius:var(--r);margin-top:6px;border-left:3px solid var(--gn);}
+.cart-line-total-l{font-size:.62rem;font-weight:800;color:var(--gnd);text-transform:uppercase;letter-spacing:.5px;}
+.cart-line-total-v{font-family:var(--serif);font-size:1rem;font-weight:800;color:var(--gnd);}
+.cart-foot{padding:12px 16px;background:var(--ink);color:var(--white);}
+.cart-foot-row{display:flex;justify-content:space-between;align-items:center;font-size:.74rem;margin-bottom:6px;}
+.cart-foot-row:last-child{margin-bottom:0;}
+.cart-foot-row.total{padding-top:8px;border-top:1px solid rgba(255,255,255,.18);margin-top:6px;}
+.cart-foot-l{color:rgba(255,255,255,.7);font-weight:600;font-size:.70rem;text-transform:uppercase;letter-spacing:.5px;}
+.cart-foot-v{font-family:var(--serif);font-weight:700;font-size:.92rem;}
+.cart-foot-v.target{color:var(--orm);font-size:1.15rem;}
+.cart-foot-v.savings{color:var(--gn);font-size:.86rem;}
+.cart-clear-btn{background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.20);color:var(--white);padding:6px 12px;font-size:.70rem;font-weight:700;border-radius:var(--r);cursor:pointer;width:100%;margin-top:8px;transition:background .12s;}
+.cart-clear-btn:hover{background:rgba(239,68,68,.25);border-color:var(--rd);}
+.cart-savings-pill{display:inline-flex;align-items:center;gap:4px;background:var(--gn);color:var(--white);padding:3px 8px;border-radius:10px;font-size:.62rem;font-weight:800;letter-spacing:.4px;}
+/* Date pill in matrix */
+.date-stamp{display:inline-block;background:var(--bll);color:var(--bld);padding:2px 6px;border-radius:3px;font-size:.62rem;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:.2px;}
+.date-stamp.recent{background:var(--gnl);color:var(--gnd);}
+.date-stamp.old{background:var(--aml);color:var(--amd);}
+/* ===== END CART-STYLE INTERFACE ===== */
 @media(max-width:1280px){.kpi-row{grid-template-columns:repeat(3,1fr);}.grid-4{grid-template-columns:repeat(2,1fr);}.grid-3{grid-template-columns:1fr 1fr;}}
 </style>
 </head>
@@ -478,12 +536,37 @@ html,body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-siz
         <div class="chip-row" id="sel-chips" style="max-height:420px"></div>
       </div>
 
-      <div class="selector-panel" style="margin-top:14px;background:var(--ort);border-color:var(--orl)">
-        <div class="card-head" style="padding-bottom:10px;margin-bottom:10px;border-bottom-color:rgba(208,74,2,.2)">
-          <div class="card-title" style="color:var(--or)"><span class="card-title-ico">🎯</span>Selected</div>
-          <span class="b or" id="sel-count">0 services</span>
+      <!-- 🛒 CART-STYLE PANEL — VENDOR-SERVICE SELECTOR -->
+      <div class="cart-panel" style="margin-top:14px">
+        <div class="cart-head">
+          <div class="cart-head-l">
+            <span class="cart-head-ico">🛒</span>
+            <span class="cart-head-t">Your Selection</span>
+          </div>
+          <span class="cart-head-cnt" id="sel-count">0 ITEMS</span>
         </div>
-        <div id="sel-picked" style="min-height:60px;font-size:.78rem;color:var(--mid);text-align:center;padding:10px">No services selected yet</div>
+        <div class="cart-body" id="sel-cart-body">
+          <div class="cart-empty">
+            <div class="cart-empty-ico">🛍️</div>
+            <div class="cart-empty-t">Cart is empty</div>
+            <div class="cart-empty-s">Click services on the left to add them here</div>
+          </div>
+        </div>
+        <div class="cart-foot" id="sel-cart-foot" style="display:none">
+          <div class="cart-foot-row">
+            <span class="cart-foot-l">📊 Market Avg (per service)</span>
+            <span class="cart-foot-v" id="sel-cart-avg">—</span>
+          </div>
+          <div class="cart-foot-row">
+            <span class="cart-foot-l">🏆 Best Available (sum)</span>
+            <span class="cart-foot-v savings" id="sel-cart-best">—</span>
+          </div>
+          <div class="cart-foot-row total">
+            <span class="cart-foot-l">🎯 Target Total (−10%)</span>
+            <span class="cart-foot-v target" id="sel-cart-target">—</span>
+          </div>
+          <button class="cart-clear-btn" onclick="selClear()">🗑️ Clear Cart</button>
+        </div>
       </div>
     </div>
 
@@ -688,7 +771,7 @@ html,body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-siz
           <div class="card-head" style="padding:14px 18px"><div class="card-title"><span class="card-title-ico">📜</span>Comparable Prior Quotes</div><span class="card-meta bl" id="ex-prior-meta">—</span></div>
           <div style="overflow:auto;max-height:340px">
             <table class="cat-table" id="ex-prior-table">
-              <thead><tr><th>Vendor</th><th>Project</th><th style="text-align:left !important">Country</th><th>Matched</th><th>Avg Unit $</th><th>Quote Total</th><th>vs Your Quote</th><th>Year</th></tr></thead>
+              <thead><tr><th>Vendor</th><th>Project</th><th style="text-align:left !important">Country</th><th>Matched</th><th>Avg Unit $</th><th>Quote Total</th><th>vs Your Quote</th><th>Quote Date</th></tr></thead>
               <tbody></tbody>
             </table>
           </div>
@@ -779,12 +862,41 @@ html,body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-siz
         <div class="chip-row" id="rq-svcs" style="max-height:320px"></div>
       </div>
 
-      <div class="selector-panel" style="margin-top:14px;background:var(--ort);border-color:var(--orl)">
-        <div class="card-head" style="padding-bottom:10px;margin-bottom:10px;border-bottom-color:rgba(208,74,2,.2)">
-          <div class="card-title" style="color:var(--or)"><span class="card-title-ico">🎯</span>Selected</div>
-          <span class="b or" id="rq-count">0 services</span>
+            <!-- 🛒 CART-STYLE PANEL — RFQ BUILDER (with quantity selectors) -->
+      <div class="cart-panel" style="margin-top:14px">
+        <div class="cart-head">
+          <div class="cart-head-l">
+            <span class="cart-head-ico">🛒</span>
+            <span class="cart-head-t">RFQ Cart</span>
+          </div>
+          <span class="cart-head-cnt" id="rq-count">0 ITEMS</span>
         </div>
-        <div id="rq-picked" style="min-height:50px;font-size:.76rem;color:var(--mid);text-align:center;padding:10px">Pick services to begin</div>
+        <div class="cart-body" id="rq-cart-body">
+          <div class="cart-empty">
+            <div class="cart-empty-ico">📋</div>
+            <div class="cart-empty-t">Build your RFQ</div>
+            <div class="cart-empty-s">Add services and adjust quantities to see totals</div>
+          </div>
+        </div>
+        <div class="cart-foot" id="rq-cart-foot" style="display:none">
+          <div class="cart-foot-row">
+            <span class="cart-foot-l">📦 Total Units</span>
+            <span class="cart-foot-v" id="rq-cart-units">—</span>
+          </div>
+          <div class="cart-foot-row">
+            <span class="cart-foot-l">📊 At Market Avg</span>
+            <span class="cart-foot-v" id="rq-cart-avg">—</span>
+          </div>
+          <div class="cart-foot-row">
+            <span class="cart-foot-l">🏆 At Best Price</span>
+            <span class="cart-foot-v savings" id="rq-cart-best">—</span>
+          </div>
+          <div class="cart-foot-row total">
+            <span class="cart-foot-l">🎯 RFQ Target Total</span>
+            <span class="cart-foot-v target" id="rq-cart-target">—</span>
+          </div>
+          <button class="cart-clear-btn" onclick="rqClear()">🗑️ Clear Cart</button>
+        </div>
       </div>
     </div>
 
@@ -852,12 +964,12 @@ html,body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-siz
                 <tr>
                   <th>Service / SKU</th>
                   <th>Quotes</th>
-                  <th>Avg Qty</th>
+                  <th>Your Qty</th>
                   <th>Unit Min</th>
                   <th>Unit Avg</th>
                   <th>Unit Max</th>
                   <th>Unit Target (−10%)</th>
-                  <th>Total Target</th>
+                  <th>Your Total Target</th>
                   <th>Best Vendor</th>
                 </tr>
               </thead>
@@ -1363,6 +1475,71 @@ function getSvcObj(record, svcName){
   return record.services.find(s => s.name === svcName) || null;
 }
 
+// ===== CART HELPERS =====
+
+// Convert year+quarter to a real date string (or use stored quoteDate)
+function getQuoteDate(record){
+  if(record.quoteDate) return record.quoteDate; // ISO string like '2024-04-15'
+  // Fallback: derive from year + quarter
+  const q = (record.quarter || 'Q1').replace('Q','');
+  const month = ((parseInt(q)-1)*3)+2; // Q1→Mar, Q2→Jun, Q3→Sep, Q4→Dec (mid-quarter)
+  return `${record.year || 2025}-${String(month).padStart(2,'0')}-15`;
+}
+
+// Format a quote date with relative age indicator
+function fmtQuoteDate(record){
+  const dateStr = getQuoteDate(record);
+  if(!dateStr) return '<span class="date-stamp">—</span>';
+  const d = new Date(dateStr);
+  const now = new Date();
+  const monthsAgo = (now.getFullYear()-d.getFullYear())*12 + (now.getMonth()-d.getMonth());
+  const dStr = d.toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'});
+  const cls = monthsAgo<=6 ? 'recent' : monthsAgo<=18 ? '' : 'old';
+  const age = monthsAgo<1 ? 'this month' 
+            : monthsAgo<12 ? monthsAgo+'mo ago' 
+            : Math.round(monthsAgo/12)+'yr ago';
+  return `<span class="date-stamp ${cls}" title="Quote dated ${dStr}">${dStr} <span style="opacity:.7">· ${age}</span></span>`;
+}
+
+// Compute unit-price stats for a given service across the dataset
+function getSvcStats(svcName, dataset){
+  const unitPrices = [];
+  const qtys = [];
+  let sampleSku = '—';
+  let sampleCat = '';
+  
+  dataset.forEach(r => {
+    if(r.services && typeof r.services[0] === 'object'){
+      r.services.forEach(s => {
+        if(s.name === svcName){
+          if(s.unitPrice > 0) unitPrices.push(s.unitPrice);
+          if(s.qty > 0) qtys.push(s.qty);
+          if(s.sku && s.sku !== '—') sampleSku = s.sku;
+          if(r.cat) sampleCat = r.cat;
+        }
+      });
+    }
+  });
+  
+  if(unitPrices.length === 0){
+    return {svcName, sku:sampleSku, cat:sampleCat, count:0, min:0, avg:0, max:0, target:0, avgQty:0};
+  }
+  
+  const min = Math.min(...unitPrices);
+  const max = Math.max(...unitPrices);
+  const avg = unitPrices.reduce((a,b)=>a+b,0) / unitPrices.length;
+  const target = avg * 0.9; // 10% below average
+  const avgQty = qtys.length ? Math.round(qtys.reduce((a,b)=>a+b,0)/qtys.length) : 0;
+  
+  return {
+    svcName, sku:sampleSku, cat:sampleCat,
+    count:unitPrices.length, min, avg, max, target, avgQty
+  };
+}
+
+// ===== END CART HELPERS =====
+
+  
 // ✅ NEW: Get web price comparison for a service
 function getWebPriceComparison(svcName, dataset){
   const allInstances = [];
@@ -1506,6 +1683,8 @@ document.addEventListener('DOMContentLoaded',()=>{
   checkLlamaStatus();
   tryLoadJSON();
   updateLivePill();
+  renderSelCart(); // ✅ NEW — initial empty state
+  renderRqCart();
 });
 
 function renderSimpleCharts(data,cats){
@@ -2214,12 +2393,16 @@ function selFilterChips(){
 function togSelSvc(s,el){
   if(selSvcs.has(s)){selSvcs.delete(s);el.classList.remove('on');}
   else{selSvcs.add(s);el.classList.add('on');}
-  set('sel-count',selSvcs.size+' services');
-  renderSelPicked();
+  renderSelCart(); // ✅ NEW
   selRender();
 }
 
-function selClear(){selSvcs.clear();document.querySelectorAll('#sel-chips .chip').forEach(c=>c.classList.remove('on'));set('sel-count','0 services');renderSelPicked();selRender();}
+function selClear(){selSvcs.clear();document.querySelectorAll('#sel-chips .chip').forEach(c=>c.classList.remove('on'));set('sel-count','0 services');renderSelPicked();selRender();}function selClear(){
+  selSvcs.clear();
+  document.querySelectorAll('#sel-chips .chip').forEach(c=>c.classList.remove('on'));
+  renderSelCart(); // ✅ NEW
+  selRender();
+}
 
 function renderSelPicked(){
   const el=document.getElementById('sel-picked');
@@ -2238,6 +2421,7 @@ function selLoadDemo(){
 }
 
 function selRender(){
+  renderSelCart(); // ✅ NEW — always update cart first
   const sel=[...selSvcs];
   if(sel.length===0){document.getElementById('sel-empty').style.display='block';document.getElementById('sel-results').style.display='none';return;}
   document.getElementById('sel-empty').style.display='none';
@@ -3146,7 +3330,7 @@ function scoreQuote(){
       <td class="num" style="color:var(--or);font-weight:700">${fmtUnit(avgUnit)}</td>
       <td class="num">${fmt(r.price)}</td>
       <td><span class="b ${diff<0?'gn':'rd'}">${diff>=0?'+':''}${diff}%</span></td>
-      <td>${r.year}${r.quarter||''}</td>
+      <td>${fmtQuoteDate(r)}</td>
     </tr>`;
   }).join('');
 
@@ -3431,10 +3615,16 @@ function rqFilterSvc(){
 }
 
 function togRqSvc(s,el){
-  if(rqSvcs.has(s)){rqSvcs.delete(s);el.classList.remove('on');}
-  else{rqSvcs.add(s);el.classList.add('on');}
-  set('rq-count',rqSvcs.size+' services');
-  renderRqPicked();rqRender();
+  if(rqSvcs.has(s)){
+    rqSvcs.delete(s);
+    delete rqCustomQtys[s]; // ✅ Clean up qty
+    el.classList.remove('on');
+  } else {
+    rqSvcs.add(s);
+    el.classList.add('on');
+  }
+  renderRqCart(); // ✅ NEW
+  rqRender();
 }
 
 function renderRqPicked(){
@@ -3443,7 +3633,13 @@ function renderRqPicked(){
   el.innerHTML=[...rqSvcs].map(s=>`<div class="b or" style="margin:2px;display:inline-block">${esc(s.length>28?s.substring(0,28)+'…':s)}</div>`).join('');
 }
 
-function rqClear(){rqSvcs.clear();document.querySelectorAll('#rq-svcs .chip').forEach(c=>c.classList.remove('on'));set('rq-count','0 services');renderRqPicked();rqRender();}
+function rqClear(){
+  rqSvcs.clear();
+  Object.keys(rqCustomQtys).forEach(k => delete rqCustomQtys[k]); // ✅ Clear qtys
+  document.querySelectorAll('#rq-svcs .chip').forEach(c=>c.classList.remove('on'));
+  renderRqCart(); // ✅ NEW
+  rqRender();
+}
 function rqSelectAll(){document.querySelectorAll('#rq-svcs .chip').forEach(c=>{const s=c.textContent.trim();if(!rqSvcs.has(s)){rqSvcs.add(s);c.classList.add('on');}});set('rq-count',rqSvcs.size+' services');renderRqPicked();rqRender();}
 
 function rqApplySize(){
@@ -3462,6 +3658,7 @@ function loadDemoRFQ(){
 }
 
 function rqRender(){
+  renderRqCart(); // ✅ NEW — always update cart first
   const sel=[...rqSvcs];
   if(sel.length===0){document.getElementById('rq-empty').style.display='block';document.getElementById('rq-results').style.display='none';return;}
   document.getElementById('rq-empty').style.display='none';
@@ -3563,22 +3760,29 @@ function rqRender(){
     };
   });
   
-  document.querySelector('#rq-table tbody').innerHTML=svcStats.map(d=>`
+  document.querySelector('#rq-table tbody').innerHTML=svcStats.map(d=>{
+    const userQty = rqGetQty(d.s, d.avgQty);
+    const yourTotalTarget = userQty * d.upTarget;
+    return `
     <tr>
       <td style="font-weight:600">
         ${esc(d.s)}
         <div style="font-family:monospace;font-size:.62rem;color:var(--mid);margin-top:2px">SKU: ${esc(d.sku)}</div>
       </td>
       <td><span class="b nt">${d.count}</span></td>
-      <td class="num">${fmtQty(d.avgQty)}</td>
+      <td>
+        <input type="number" min="1" value="${userQty}" 
+          onchange="rqSetQty('${esc(d.s).replace(/'/g,"\\'")}', this.value)"
+          style="width:70px;padding:4px 6px;border:1px solid var(--orl);border-radius:3px;font-size:.74rem;font-weight:700;text-align:right;font-family:var(--sans);color:var(--or);background:var(--ort);outline:none;font-variant-numeric:tabular-nums">
+      </td>
       <td class="num" style="color:var(--gn);font-weight:700">${fmtUnit(d.upMin)}</td>
       <td class="num">${fmtUnit(d.upAvg)}</td>
       <td class="num" style="color:var(--rd)">${fmtUnit(d.upMax)}</td>
       <td class="num" style="color:var(--or);font-weight:700">${fmtUnit(d.upTarget)}</td>
-      <td class="num" style="color:var(--gn);font-weight:700">${fmt(d.target)}</td>
+      <td class="num" style="color:var(--gn);font-weight:700">${fmt(yourTotalTarget)}</td>
       <td>${d.best!=='—'?vbadge(d.best):'—'}</td>
-    </tr>
-  `).join('');
+    </tr>`;
+  }).join('');
   const venCov={};
   pool.forEach(r=>{
     const matched=(r.services||[]).filter(s=>sel.includes(s));
@@ -3789,6 +3993,249 @@ function generateAnswer(q){
 function openModal(id){document.getElementById(id+'-ov').classList.add('on');document.getElementById(id+'-modal').classList.add('on');}
 function closeModal(id){document.getElementById(id+'-ov').classList.remove('on');document.getElementById(id+'-modal').classList.remove('on');}
 
+// ============================================
+// 🛒 CART-STYLE INTERFACE — RENDER FUNCTIONS
+// ============================================
+
+// Per-service custom quantities (RFQ Builder only)
+const rqCustomQtys = {};
+
+function rqGetQty(svcName, fallback){
+  return rqCustomQtys[svcName] !== undefined ? rqCustomQtys[svcName] : fallback;
+}
+
+function rqSetQty(svcName, val){
+  const n = Math.max(1, parseInt(val) || 1);
+  rqCustomQtys[svcName] = n;
+  rqRender(); // re-render the whole RFQ to update totals
+}
+
+// ─── SELECTOR CART RENDER ────────────────────────
+function renderSelCart(){
+  const body = document.getElementById('sel-cart-body');
+  const foot = document.getElementById('sel-cart-foot');
+  const cnt = document.getElementById('sel-count');
+  const sel = [...selSvcs];
+  
+  if(sel.length === 0){
+    body.innerHTML = `
+      <div class="cart-empty">
+        <div class="cart-empty-ico">🛍️</div>
+        <div class="cart-empty-t">Cart is empty</div>
+        <div class="cart-empty-s">Click services on the left to add them here</div>
+      </div>`;
+    foot.style.display = 'none';
+    cnt.textContent = '0 ITEMS';
+    return;
+  }
+  
+  cnt.textContent = sel.length + (sel.length === 1 ? ' ITEM' : ' ITEMS');
+  const pool = filteredDB();
+  
+  let totalAvg = 0, totalBest = 0, totalTarget = 0;
+  
+  body.innerHTML = sel.map(s => {
+    const stats = getSvcStats(s, pool);
+    const catCol = CAT_COL[stats.cat] || MID;
+    
+    if(stats.count === 0){
+      return `<div class="cart-item">
+        <div class="cart-item-head">
+          <div class="cart-item-name">${esc(s)}</div>
+          <button class="cart-item-rm" onclick="selRemoveCart('${esc(s).replace(/'/g,"\\'")}')" title="Remove">×</button>
+        </div>
+        <div style="padding:8px;background:var(--rdl);border-radius:var(--r);text-align:center;font-size:.70rem;color:var(--rdd);font-weight:600">⚠️ No historical data</div>
+      </div>`;
+    }
+    
+    totalAvg += stats.avg;
+    totalBest += stats.min;
+    totalTarget += stats.target;
+    
+    const savingsPct = ((stats.avg - stats.min) / stats.avg * 100);
+    
+    return `<div class="cart-item">
+      <div class="cart-item-head">
+        <div class="cart-item-name">${esc(s)}</div>
+        <button class="cart-item-rm" onclick="selRemoveCart('${esc(s).replace(/'/g,"\\'")}')" title="Remove">×</button>
+      </div>
+      <div class="cart-item-meta">
+        <span class="pill cat"><span class="dot" style="background:${catCol}"></span>${esc(stats.cat)}</span>
+        ${stats.sku !== '—' ? `<span class="pill sku">${esc(stats.sku)}</span>` : ''}
+        <span class="pill">${stats.count} quote${stats.count>1?'s':''}</span>
+        ${savingsPct > 5 ? `<span class="cart-savings-pill">💰 Save ${savingsPct.toFixed(0)}%</span>` : ''}
+      </div>
+      <div class="cart-item-prices">
+        <div class="cart-price-cell min">
+          <div class="lbl">Min</div>
+          <div class="val">${fmtUnit(stats.min)}</div>
+        </div>
+        <div class="cart-price-cell avg">
+          <div class="lbl">Avg</div>
+          <div class="val">${fmtUnit(stats.avg)}</div>
+        </div>
+        <div class="cart-price-cell max">
+          <div class="lbl">Max</div>
+          <div class="val">${fmtUnit(stats.max)}</div>
+        </div>
+      </div>
+      <div class="cart-line-total">
+        <span class="cart-line-total-l">🎯 Target unit price</span>
+        <span class="cart-line-total-v">${fmtUnit(stats.target)}</span>
+      </div>
+    </div>`;
+  }).join('');
+  
+  foot.style.display = 'block';
+  document.getElementById('sel-cart-avg').textContent = fmt(totalAvg);
+  document.getElementById('sel-cart-best').textContent = fmt(totalBest);
+  document.getElementById('sel-cart-target').textContent = fmt(totalTarget);
+}
+
+function selRemoveCart(svcName){
+  selSvcs.delete(svcName);
+  // Update visual state of chip
+  document.querySelectorAll('#sel-chips .chip').forEach(c => {
+    if(c.textContent.trim().replace(/\s+\d+$/,'').trim().startsWith(svcName.substring(0,20))){
+      c.classList.remove('on');
+    }
+  });
+  selFilterChips(); // re-render chips
+  renderSelCart();
+  selRender();
+}
+
+// ─── RFQ CART RENDER ────────────────────────
+function renderRqCart(){
+  const body = document.getElementById('rq-cart-body');
+  const foot = document.getElementById('rq-cart-foot');
+  const cnt = document.getElementById('rq-count');
+  const sel = [...rqSvcs];
+  
+  if(sel.length === 0){
+    body.innerHTML = `
+      <div class="cart-empty">
+        <div class="cart-empty-ico">📋</div>
+        <div class="cart-empty-t">Build your RFQ</div>
+        <div class="cart-empty-s">Add services and adjust quantities to see totals</div>
+      </div>`;
+    foot.style.display = 'none';
+    cnt.textContent = '0 ITEMS';
+    return;
+  }
+  
+  cnt.textContent = sel.length + (sel.length === 1 ? ' ITEM' : ' ITEMS');
+  
+  const proj = document.getElementById('rq-proj').value;
+  let pool = DB.filter(r => sel.some(s => hasService(r,s)) && r.price > 0);
+  if(proj !== 'All') pool = pool.filter(r => r.proj === proj);
+  
+  let totalUnits = 0, totalAvg = 0, totalBest = 0, totalTarget = 0;
+  
+  body.innerHTML = sel.map(s => {
+    const stats = getSvcStats(s, pool);
+    const catCol = CAT_COL[stats.cat] || MID;
+    const userQty = rqGetQty(s, stats.avgQty || 1);
+    
+    if(stats.count === 0){
+      return `<div class="cart-item">
+        <div class="cart-item-head">
+          <div class="cart-item-name">${esc(s)}</div>
+          <button class="cart-item-rm" onclick="rqRemoveCart('${esc(s).replace(/'/g,"\\'")}')" title="Remove">×</button>
+        </div>
+        <div style="padding:8px;background:var(--rdl);border-radius:var(--r);text-align:center;font-size:.70rem;color:var(--rdd);font-weight:600;margin-bottom:6px">⚠️ No historical data — fresh RFQ needed</div>
+        <div class="cart-qty-row">
+          <span class="cart-qty-lbl">📦 Estimated Qty</span>
+          <div class="cart-qty-ctrl">
+            <button class="cart-qty-btn" onclick="rqAdjustQty('${esc(s).replace(/'/g,"\\'")}', -1)">−</button>
+            <input type="number" class="cart-qty-input" value="${userQty}" min="1" 
+              onchange="rqSetQty('${esc(s).replace(/'/g,"\\'")}', this.value)">
+            <button class="cart-qty-btn" onclick="rqAdjustQty('${esc(s).replace(/'/g,"\\'")}', 1)">+</button>
+          </div>
+        </div>
+      </div>`;
+    }
+    
+    const lineAvg = userQty * stats.avg;
+    const lineBest = userQty * stats.min;
+    const lineTarget = userQty * stats.target;
+    
+    totalUnits += userQty;
+    totalAvg += lineAvg;
+    totalBest += lineBest;
+    totalTarget += lineTarget;
+    
+    return `<div class="cart-item">
+      <div class="cart-item-head">
+        <div class="cart-item-name">${esc(s)}</div>
+        <button class="cart-item-rm" onclick="rqRemoveCart('${esc(s).replace(/'/g,"\\'")}')" title="Remove">×</button>
+      </div>
+      <div class="cart-item-meta">
+        <span class="pill cat"><span class="dot" style="background:${catCol}"></span>${esc(stats.cat)}</span>
+        ${stats.sku !== '—' ? `<span class="pill sku">${esc(stats.sku)}</span>` : ''}
+        <span class="pill">${stats.count} quote${stats.count>1?'s':''}</span>
+      </div>
+      <div class="cart-item-prices">
+        <div class="cart-price-cell min">
+          <div class="lbl">Unit Min</div>
+          <div class="val">${fmtUnit(stats.min)}</div>
+        </div>
+        <div class="cart-price-cell avg">
+          <div class="lbl">Unit Avg</div>
+          <div class="val">${fmtUnit(stats.avg)}</div>
+        </div>
+        <div class="cart-price-cell max">
+          <div class="lbl">Unit Max</div>
+          <div class="val">${fmtUnit(stats.max)}</div>
+        </div>
+      </div>
+      <div class="cart-qty-row">
+        <span class="cart-qty-lbl">📦 Your Qty</span>
+        <div class="cart-qty-ctrl">
+          <button class="cart-qty-btn" onclick="rqAdjustQty('${esc(s).replace(/'/g,"\\'")}', -1)">−</button>
+          <input type="number" class="cart-qty-input" value="${userQty}" min="1" 
+            onchange="rqSetQty('${esc(s).replace(/'/g,"\\'")}', this.value)">
+          <button class="cart-qty-btn" onclick="rqAdjustQty('${esc(s).replace(/'/g,"\\'")}', 1)">+</button>
+        </div>
+      </div>
+      <div class="cart-line-total">
+        <span class="cart-line-total-l">🎯 Line Target (${userQty} × ${fmtUnit(stats.target)})</span>
+        <span class="cart-line-total-v">${fmt(lineTarget)}</span>
+      </div>
+    </div>`;
+  }).join('');
+  
+  foot.style.display = 'block';
+  document.getElementById('rq-cart-units').textContent = totalUnits.toLocaleString();
+  document.getElementById('rq-cart-avg').textContent = fmt(totalAvg);
+  document.getElementById('rq-cart-best').textContent = fmt(totalBest);
+  document.getElementById('rq-cart-target').textContent = fmt(totalTarget);
+}
+
+function rqAdjustQty(svcName, delta){
+  const stats = getSvcStats(svcName, DB);
+  const current = rqGetQty(svcName, stats.avgQty || 1);
+  const newVal = Math.max(1, current + delta);
+  rqCustomQtys[svcName] = newVal;
+  rqRender();
+}
+
+function rqRemoveCart(svcName){
+  rqSvcs.delete(svcName);
+  delete rqCustomQtys[svcName];
+  document.querySelectorAll('#rq-svcs .chip').forEach(c => {
+    if(c.textContent.trim().replace(/\s+\d+$/,'').trim().startsWith(svcName.substring(0,20))){
+      c.classList.remove('on');
+    }
+  });
+  rqFilterSvc();
+  rqRender();
+}
+
+// ============================================
+
+
+  
 function spLoad(inp){
   const f=inp.files[0];
   if(!f)return;
