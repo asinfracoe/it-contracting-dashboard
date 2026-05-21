@@ -1468,6 +1468,40 @@ function fmtUnit(n){
   return '$'+Math.round(n).toLocaleString();
 }
 
+// ============= UNIT PRICE HELPERS =============
+// Compute weighted-avg unit price for a quote (across its services)
+function quoteAvgUnitPrice(q){
+  if(!q.services || !q.services.length) return 0;
+  const totalQty = q.services.reduce((s,svc)=>s+(svc.qty||0),0);
+  const totalVal = q.services.reduce((s,svc)=>s+((svc.qty||0)*(svc.unitPrice||0)),0);
+  return totalQty>0 ? totalVal/totalQty : 0;
+}
+function quoteAvgWebPrice(q){
+  if(!q.services || !q.services.length) return 0;
+  const totalQty = q.services.reduce((s,svc)=>s+(svc.qty||0),0);
+  const totalVal = q.services.reduce((s,svc)=>s+((svc.qty||0)*(svc.webPrice||svc.unitPrice||0)),0);
+  return totalQty>0 ? totalVal/totalQty : 0;
+}
+// Flatten all SKU-level rows for unit-price comparison
+function flattenSkus(quotes){
+  const rows=[];
+  quotes.forEach(q=>{
+    (q.services||[]).forEach(s=>{
+      rows.push({
+        proj:q.proj, region:q.region, country:q.country,
+        cat:q.cat, subcat:q.subcat, vendor:q.vendor, file:q.file,
+        year:q.year, quarter:q.quarter,
+        name:s.name, sku:s.sku, qty:s.qty,
+        unitPrice:s.unitPrice, webPrice:s.webPrice||s.unitPrice,
+        savings: ((s.webPrice||s.unitPrice)-s.unitPrice),
+        savingsPct: s.webPrice ? ((s.webPrice-s.unitPrice)/s.webPrice*100) : 0
+      });
+    });
+  });
+  return rows;
+}
+
+  
 function selPopulateSubcat(){
   const cat = document.getElementById('sel-cat').value;
   const el = document.getElementById('sel-subcat');
