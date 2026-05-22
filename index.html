@@ -6,7 +6,6 @@
 <title>IT Contracting Intelligence | PwC</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1"></script>
 <style>
 .info-ico{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--line2);color:var(--mid);font-size:.70rem;font-weight:700;cursor:help;font-style:normal;font-family:var(--sans);transition:all .15s;border:1px solid var(--line);position:relative;flex-shrink:0;}
@@ -822,30 +821,7 @@ html,body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-siz
   </div>
 
   <div class="card" style="padding:16px 18px;margin-bottom:16px">
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:14px">
-      <div class="input-g" style="margin-bottom:0">
-        <label class="input-lbl">RFQ Region <span style="color:var(--mid);text-transform:none;letter-spacing:0;font-weight:500" data-tip="Limit benchmark to quotes from this region only.">ⓘ</span></label>
-        <select class="select-f" id="rq-region" onchange="rqOnRegionChange()">
-          <option value="All">All Regions</option>
-        </select>
-        <div style="font-size:.68rem;color:var(--mid);margin-top:4px;line-height:1.4">Scopes benchmark to this region</div>
-      </div>
-      <div class="input-g" style="margin-bottom:0">
-        <label class="input-lbl">RFQ Country <span style="color:var(--mid);text-transform:none;letter-spacing:0;font-weight:500" data-tip="Limit benchmark to quotes from this country only.">ⓘ</span></label>
-        <select class="select-f" id="rq-country" onchange="rqRender()">
-          <option value="All">All Countries</option>
-        </select>
-        <div style="font-size:.68rem;color:var(--mid);margin-top:4px;line-height:1.4">Cascades from selected region</div>
-      </div>
-      <div class="input-g" style="margin-bottom:0">
-        <label class="input-lbl">Project <span style="color:var(--mid);text-transform:none;letter-spacing:0;font-weight:500" data-tip="Filters to this project's history.">ⓘ</span></label>
-        <select class="select-f" id="rq-proj" onchange="rqRender()">
-          <option value="All">All Projects (master data)</option>
-        </select>
-        <div style="font-size:.68rem;color:var(--mid);margin-top:4px;line-height:1.4">Scopes quotes to this project's history</div>
-      </div>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px">
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px">
       <div class="input-g" style="margin-bottom:0">
         <label class="input-lbl">Project <span style="color:var(--mid);text-transform:none;letter-spacing:0;font-weight:500" data-tip="Which project/client this RFQ is for. Filters historical quotes to that project. Use 'All' for master data.">ⓘ</span></label>
         <select class="select-f" id="rq-proj" onchange="rqRender()">
@@ -1492,40 +1468,6 @@ function fmtUnit(n){
   return '$'+Math.round(n).toLocaleString();
 }
 
-// ============= UNIT PRICE HELPERS =============
-// Compute weighted-avg unit price for a quote (across its services)
-function quoteAvgUnitPrice(q){
-  if(!q.services || !q.services.length) return 0;
-  const totalQty = q.services.reduce((s,svc)=>s+(svc.qty||0),0);
-  const totalVal = q.services.reduce((s,svc)=>s+((svc.qty||0)*(svc.unitPrice||0)),0);
-  return totalQty>0 ? totalVal/totalQty : 0;
-}
-function quoteAvgWebPrice(q){
-  if(!q.services || !q.services.length) return 0;
-  const totalQty = q.services.reduce((s,svc)=>s+(svc.qty||0),0);
-  const totalVal = q.services.reduce((s,svc)=>s+((svc.qty||0)*(svc.webPrice||svc.unitPrice||0)),0);
-  return totalQty>0 ? totalVal/totalQty : 0;
-}
-// Flatten all SKU-level rows for unit-price comparison
-function flattenSkus(quotes){
-  const rows=[];
-  quotes.forEach(q=>{
-    (q.services||[]).forEach(s=>{
-      rows.push({
-        proj:q.proj, region:q.region, country:q.country,
-        cat:q.cat, subcat:q.subcat, vendor:q.vendor, file:q.file,
-        year:q.year, quarter:q.quarter,
-        name:s.name, sku:s.sku, qty:s.qty,
-        unitPrice:s.unitPrice, webPrice:s.webPrice||s.unitPrice,
-        savings: ((s.webPrice||s.unitPrice)-s.unitPrice),
-        savingsPct: s.webPrice ? ((s.webPrice-s.unitPrice)/s.webPrice*100) : 0
-      });
-    });
-  });
-  return rows;
-}
-
-  
 function selPopulateSubcat(){
   const cat = document.getElementById('sel-cat').value;
   const el = document.getElementById('sel-subcat');
@@ -2248,28 +2190,6 @@ function populateDropdowns(){
       el.appendChild(o);
     });
   });
-  // --- RFQ region/country dropdowns ---
-  const regions=['All',...new Set(DB.map(r=>r.region).filter(Boolean))].sort();
-  const rqRegEl=document.getElementById('rq-region');
-  if(rqRegEl){
-    rqRegEl.innerHTML=regions.map(r=>`<option value="${esc(r)}">${r==='All'?'All Regions':esc(r)}</option>`).join('');
-  }
-  rqPopulateCountryDropdown();
-}
-
-function rqPopulateCountryDropdown(){
-  const regSel=document.getElementById('rq-region');
-  const cntSel=document.getElementById('rq-country');
-  if(!regSel||!cntSel)return;
-  const reg=regSel.value;
-  const pool=reg==='All'?DB:DB.filter(r=>r.region===reg);
-  const list=['All',...new Set(pool.map(r=>r.country).filter(Boolean))].sort();
-  cntSel.innerHTML=list.map(c=>`<option value="${esc(c)}">${c==='All'?'All Countries':esc(c)}</option>`).join('');
-}
-
-function rqOnRegionChange(){
-  rqPopulateCountryDropdown();
-  rqRender();
 }
 
 function renderOverview(){
@@ -2793,18 +2713,11 @@ function selRender(){
   }
 
   const allPrices=matches.map(r=>r.price).filter(p=>p>0);
-  // ✅ Unit-price KPIs across the selected services
-  const allUnits=[];
-  matches.forEach(r=>(r.services||[]).forEach(s=>{
-    if(sel.includes(s.name)&&s.unitPrice>0)allUnits.push(s.unitPrice);
-  }));
-  const bestUnit=allUnits.length?Math.min(...allUnits):0;
-  const avgUnit=allUnits.length?allUnits.reduce((a,b)=>a+b,0)/allUnits.length:0;
   const kpis=[
     {lbl:'Matching Quotes',val:matches.length,sub:allMatch.length+' cover all'},
     {lbl:'Vendors',val:[...new Set(matches.map(r=>r.vendor))].length,sub:'with history'},
-    {lbl:'Best Unit Price',val:bestUnit?fmtUnit(bestUnit):'—',sub:'historic floor'},
-    {lbl:'Avg Unit Price',val:avgUnit?fmtUnit(avgUnit):'—',sub:'market rate'}
+    {lbl:'Best Price',val:allPrices.length?fmt(Math.min(...allPrices)):'—',sub:'historic floor'},
+    {lbl:'Avg Price',val:allPrices.length?fmt(allPrices.reduce((a,b)=>a+b,0)/allPrices.length):'—',sub:'market rate'}
   ];
   document.getElementById('sel-kpis').innerHTML=kpis.map(k=>`<div class="kpi"><div class="kpi-lbl">${k.lbl}</div><div class="kpi-val">${k.val}</div><div class="kpi-sub">${k.sub}</div></div>`).join('');
   renderSelSvcBreakdown(sel,pool);
@@ -3771,109 +3684,122 @@ function scoreQuote(){
 function renderExSvcComparison(sel,yourTotalPrice,proj){
   const el=document.getElementById('ex-svc-comp');
   if(!el)return;
-
+  
+  const yourPerSvcEstimate=yourTotalPrice/sel.length;
+  
   const html=sel.map(s=>{
     let pool=DB.filter(r=>hasService(r,s)&&r.price>0);
     if(proj!=='All')pool=pool.filter(r=>r.proj===proj);
-
+    
     if(pool.length===0){
       return `<div style="padding:14px;background:var(--bg);border-radius:var(--r);margin-bottom:10px;border-left:3px solid var(--mid)">
         <div style="font-weight:700;color:var(--ink);font-size:.84rem;margin-bottom:4px">${esc(s)}</div>
         <div class="b nt">⚠️ No historical data for this service</div>
       </div>`;
     }
-
-    // Pull UNIT prices for this service across all matching quotes
-    const unitRows=[];
-    pool.forEach(r=>{
-      (r.services||[]).forEach(svc=>{
-        if(svc.name===s&&svc.unitPrice>0){
-          unitRows.push({record:r,unit:svc.unitPrice,web:svc.webPrice||svc.unitPrice,qty:svc.qty||0,sku:svc.sku||'—'});
-        }
-      });
-    });
-    if(unitRows.length===0){
-      return `<div style="padding:14px;background:var(--bg);border-radius:var(--r);margin-bottom:10px;border-left:3px solid var(--am)">
-        <div style="font-weight:700;color:var(--ink);font-size:.84rem;margin-bottom:4px">${esc(s)}</div>
-        <div class="b am">⚠️ Bundled in totals — no unit-price line items found</div>
-      </div>`;
-    }
-
-    const ups=unitRows.map(x=>x.unit).sort((a,b)=>a-b);
-    const mn=ups[0], mx=ups[ups.length-1];
-    const av=ups.reduce((a,b)=>a+b,0)/ups.length;
-    const median=ups[Math.floor(ups.length/2)];
-    const webAv=unitRows.reduce((a,x)=>a+x.web,0)/unitRows.length;
-    const discAv=webAv>0?((webAv-av)/webAv*100):0;
-
+    
+    const exclusiveQuotes=pool.filter(r=>(r.services||[]).length===1);
+    const useQuotes=exclusiveQuotes.length>0?exclusiveQuotes:pool;
+    const ps=useQuotes.map(r=>r.price);
+    const mn=Math.min(...ps);
+    const mx=Math.max(...ps);
+    const av=ps.reduce((a,b)=>a+b,0)/ps.length;
+    const median=[...ps].sort((a,b)=>a-b)[Math.floor(ps.length/2)];
+    
+    const yourVsAvg=((yourPerSvcEstimate-av)/av*100);
+    
     let verdict,vColor,vIco;
-    if(discAv>=20){verdict='Excellent — strong discount vs list';vColor='var(--gn)';vIco='✅';}
-    else if(discAv>=10){verdict='Good — healthy discount';vColor='var(--gn)';vIco='✅';}
-    else if(discAv>=0){verdict='Fair — modest discount';vColor='var(--am)';vIco='⚠️';}
-    else {verdict='Above list — renegotiate';vColor='var(--rd)';vIco='❌';}
-
-    const countries=[...new Set(unitRows.map(x=>x.record.country))];
-    const vendors=[...new Set(unitRows.map(x=>x.record.vendor))];
-    const bestRow=unitRows.find(x=>x.unit===mn);
+    if(yourVsAvg<-15){verdict='Excellent — Well below market';vColor='var(--gn)';vIco='✅';}
+    else if(yourVsAvg<-5){verdict='Good — Below market';vColor='var(--gn)';vIco='✅';}
+    else if(yourVsAvg<5){verdict='Fair — Within market range';vColor='var(--am)';vIco='⚠️';}
+    else if(yourVsAvg<15){verdict='High — Above market';vColor='var(--am)';vIco='⚠️';}
+    else {verdict='Overpriced — Significantly above market';vColor='var(--rd)';vIco='❌';}
+    
+    const countries=[...new Set(useQuotes.map(r=>r.country))];
+    const vendors=[...new Set(useQuotes.map(r=>r.vendor))];
+    const bestQuote=useQuotes.find(r=>r.price===mn);
+    
+    const range=mx-mn;
+    const yourPos=range>0?Math.max(0,Math.min(100,((yourPerSvcEstimate-mn)/range)*100)):50;
+    const avgPos=range>0?((av-mn)/range)*100:50;
+    
     const uid='svcComp-'+s.replace(/[^a-z0-9]/gi,'').substring(0,20);
-
+    
     return `<div style="background:var(--white);border:1px solid var(--line);border-left:4px solid ${vColor};border-radius:var(--r2);margin-bottom:12px;overflow:hidden">
       <div style="padding:12px 14px;cursor:pointer" onclick="toggleExSvc('${uid}')">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:8px">
           <div style="flex:1">
             <div style="font-weight:700;color:var(--ink);font-size:.84rem;margin-bottom:4px">${esc(s)}</div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;font-size:.66rem;font-weight:600">
-              <span class="b bl">${unitRows.length} unit-price quote${unitRows.length>1?'s':''}</span>
+              <span class="b bl">${useQuotes.length} quote${useQuotes.length>1?'s':''}</span>
               <span class="b nt">${vendors.length} vendor${vendors.length>1?'s':''}</span>
               <span class="b nt">${countries.length} countr${countries.length>1?'ies':'y'}</span>
+              ${exclusiveQuotes.length===0?'<span class="b am">📦 Bundled prices only</span>':''}
             </div>
           </div>
           <div style="text-align:right">
             <div style="font-size:.62rem;font-weight:700;color:${vColor};letter-spacing:.4px;margin-bottom:2px">${vIco} ${verdict.toUpperCase()}</div>
-            <div style="font-size:.72rem;color:var(--mid);font-weight:600">Avg unit: <strong style="color:var(--or)">${fmtUnit(av)}</strong></div>
-            <div style="font-size:.64rem;color:var(--gn);font-weight:700;margin-top:2px">${discAv.toFixed(1)}% vs web ${fmtUnit(webAv)}</div>
+            <div style="font-size:.72rem;color:var(--mid);font-weight:600">Est. your price: <strong style="color:var(--or)">${fmt(yourPerSvcEstimate)}</strong></div>
+            <div style="font-size:.64rem;color:${yourVsAvg<0?'var(--gn)':'var(--rd)'};font-weight:700;margin-top:2px">${yourVsAvg>=0?'+':''}${yourVsAvg.toFixed(1)}% vs avg</div>
           </div>
         </div>
+        
+        <div style="position:relative;height:36px;background:linear-gradient(90deg,rgba(16,185,129,.2) 0%,rgba(245,158,11,.2) 50%,rgba(239,68,68,.2) 100%);border-radius:var(--r);overflow:hidden;margin-top:6px">
+          <div style="position:absolute;left:${avgPos}%;top:0;height:100%;width:2px;background:var(--ink);opacity:.4"></div>
+          <div style="position:absolute;left:${avgPos}%;top:-2px;transform:translateX(-50%);font-size:.58rem;font-weight:700;color:var(--ink);background:white;padding:1px 4px;border-radius:2px;border:1px solid var(--line)">AVG</div>
+          <div style="position:absolute;left:${yourPos}%;top:0;height:100%;width:3px;background:var(--or);box-shadow:0 0 4px rgba(208,74,2,.5)"></div>
+          <div style="position:absolute;left:${yourPos}%;bottom:-1px;transform:translateX(-50%);font-size:.58rem;font-weight:800;color:white;background:var(--or);padding:1px 5px;border-radius:2px">YOU</div>
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:space-between;padding:0 8px;font-size:.62rem;font-weight:700;color:var(--ink)">
+            <span>Min ${fmt(mn)}</span><span>Max ${fmt(mx)}</span>
+          </div>
+        </div>
+        
+        <div style="display:flex;justify-content:flex-end;margin-top:6px"><span id="${uid}-arrow" style="color:var(--mid);font-size:.78rem">▼ Show all quotes</span></div>
       </div>
+      
       <div id="${uid}" style="display:none;background:var(--bg);padding:12px 14px;border-top:1px solid var(--line2)">
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px">
-          <div class="mstat" style="background:var(--white);padding:8px"><div class="mstat-lbl">Min Unit</div><div class="mstat-val gn" style="font-size:.95rem">${fmtUnit(mn)}</div></div>
-          <div class="mstat" style="background:var(--white);padding:8px"><div class="mstat-lbl">Median Unit</div><div class="mstat-val" style="font-size:.95rem">${fmtUnit(median)}</div></div>
-          <div class="mstat" style="background:var(--white);padding:8px"><div class="mstat-lbl">Avg Unit</div><div class="mstat-val or" style="font-size:.95rem">${fmtUnit(av)}</div></div>
-          <div class="mstat" style="background:var(--white);padding:8px"><div class="mstat-lbl">Max Unit</div><div class="mstat-val rd" style="font-size:.95rem">${fmtUnit(mx)}</div></div>
+          <div class="mstat" style="background:var(--white);padding:8px"><div class="mstat-lbl">Min</div><div class="mstat-val gn" style="font-size:.95rem">${fmt(mn)}</div></div>
+          <div class="mstat" style="background:var(--white);padding:8px"><div class="mstat-lbl">Median</div><div class="mstat-val" style="font-size:.95rem">${fmt(median)}</div></div>
+          <div class="mstat" style="background:var(--white);padding:8px"><div class="mstat-lbl">Avg</div><div class="mstat-val or" style="font-size:.95rem">${fmt(av)}</div></div>
+          <div class="mstat" style="background:var(--white);padding:8px"><div class="mstat-lbl">Max</div><div class="mstat-val rd" style="font-size:.95rem">${fmt(mx)}</div></div>
         </div>
-        <div style="font-size:.66rem;font-weight:700;color:var(--mid);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">All Historical Unit-Price Quotes</div>
+        <div style="font-size:.66rem;font-weight:700;color:var(--mid);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">All Historical Quotes</div>
         <table class="cat-table" style="background:var(--white);border-radius:var(--r);overflow:hidden">
-          <thead><tr>
-            <th>Vendor</th><th style="text-align:left !important">Project</th><th style="text-align:left !important">Country</th>
-            <th>Year</th><th>Qty</th><th>Unit Price</th><th>Web Price</th><th>Discount %</th>
-          </tr></thead>
+          <thead>
+            <tr>
+              <th>Vendor</th>
+              <th style="text-align:left !important">Project</th>
+              <th style="text-align:left !important">Country</th>
+              <th>Year</th>
+              <th>Price</th>
+              <th>vs Your Est.</th>
+            </tr>
+          </thead>
           <tbody>
-            ${unitRows.sort((a,b)=>a.unit-b.unit).map(x=>{
-              const disc=x.web>0?((x.web-x.unit)/x.web*100):0;
-              return `<tr>
-                <td>${vbadge(x.record.vendor)}</td>
-                <td style="text-align:left">${esc(x.record.proj)}</td>
-                <td style="text-align:left">${esc(x.record.country||'—')}</td>
-                <td>${x.record.year}${x.record.quarter?' '+x.record.quarter:''}</td>
-                <td class="num">${fmtQty(x.qty)}</td>
-                <td class="num" style="color:${x.unit===mn?'var(--gn)':x.unit===mx?'var(--rd)':'var(--ink)'};font-weight:700">${fmtUnit(x.unit)}${x.unit===mn?' 🏆':''}</td>
-                <td class="num" style="color:var(--mid)">${fmtUnit(x.web)}</td>
-                <td><span class="b ${disc>=10?'gn':disc>=0?'am':'rd'}">${disc>=0?'+':''}${disc.toFixed(1)}%</span></td>
+            ${useQuotes.sort((a,b)=>a.price-b.price).map(r=>{
+              const diff=((yourPerSvcEstimate-r.price)/r.price*100);
+              return `<tr style="cursor:pointer" onclick="selShowQuote('${esc(r.vendor).replace(/'/g,"\\'")}','${esc(s).replace(/'/g,"\\'")}')">
+                <td>${vbadge(r.vendor)}</td>
+                <td style="text-align:left">${esc(r.proj)}</td>
+                <td style="text-align:left">${esc(r.country||'—')}</td>
+                <td>${r.year}${r.quarter?' '+r.quarter:''}</td>
+                <td class="num" style="color:${r.price===mn?'var(--gn)':r.price===mx?'var(--rd)':'var(--ink)'};font-weight:700">${fmt(r.price)}${r.price===mn?' 🏆':''}</td>
+                <td><span class="b ${diff<0?'gn':'rd'}">${diff>=0?'+':''}${diff.toFixed(1)}%</span></td>
               </tr>`;
             }).join('')}
           </tbody>
         </table>
-        ${bestRow?`<div style="margin-top:10px;padding:8px 12px;background:var(--gnl);border-radius:var(--r);border-left:3px solid var(--gn)">
-          <div style="font-size:.68rem;font-weight:700;color:var(--gnd)">💡 BEST UNIT PRICE ON RECORD</div>
-          <div style="font-size:.74rem;color:var(--gnd);margin-top:2px">${esc(bestRow.record.vendor)} @ ${fmtUnit(bestRow.unit)}/unit in ${bestRow.record.year} (${esc(bestRow.record.country||bestRow.record.region)})</div>
+        ${bestQuote?`<div style="margin-top:10px;padding:8px 12px;background:var(--gnl);border-radius:var(--r);border-left:3px solid var(--gn)">
+          <div style="font-size:.68rem;font-weight:700;color:var(--gnd)">💡 BEST DEAL ON RECORD</div>
+          <div style="font-size:.74rem;color:var(--gnd);margin-top:2px">${esc(bestQuote.vendor)} quoted ${fmt(bestQuote.price)} in ${bestQuote.year} (${esc(bestQuote.country||bestQuote.region)})</div>
         </div>`:''}
       </div>
     </div>`;
   }).join('');
-
+  
   el.innerHTML=html;
-  set('ex-svc-comp-meta',sel.length+' service'+(sel.length>1?'s':'')+' analysed (unit-price basis)');
+  set('ex-svc-comp-meta',sel.length+' service'+(sel.length>1?'s':'')+' analysed');
 }
 
 function toggleExSvc(uid){
@@ -4092,14 +4018,10 @@ function rqRender(){
   document.getElementById('rq-results').style.display='block';
 
   const proj=document.getElementById('rq-proj').value;
-  const rqRegion=(document.getElementById('rq-region')||{}).value||'All';
-  const rqCountry=(document.getElementById('rq-country')||{}).value||'All';
   const users=parseInt(document.getElementById('rq-users').value)||2000;
   const term=parseInt(document.getElementById('rq-term').value)||3;
   let pool=DB.filter(r=>sel.some(s=>hasService(r,s))&&r.price>0);
   if(proj!=='All')pool=pool.filter(r=>r.proj===proj);
-  if(rqRegion!=='All')pool=pool.filter(r=>r.region===rqRegion);
-  if(rqCountry!=='All')pool=pool.filter(r=>r.country===rqCountry);
 
   const matchedCount=pool.length;
   const vendors=[...new Set(pool.map(r=>r.vendor))];
@@ -4109,86 +4031,11 @@ function rqRender(){
   const targetPrice=avgPrice*0.9;
   const totalBudget=targetPrice*term;
 
-  // ✅ NEW VERDICT — unit-price-based, vendor-actionable
-  const allUnitRows=[];
-  pool.forEach(r=>(r.services||[]).forEach(s=>{
-    if(sel.includes(s.name)&&s.unitPrice>0)
-      allUnitRows.push({vendor:r.vendor,svc:s.name,unit:s.unitPrice,qty:s.qty||0,web:s.webPrice||s.unitPrice});
-  }));
-  const venUnitMap={};
-  allUnitRows.forEach(x=>{
-    if(!venUnitMap[x.vendor])venUnitMap[x.vendor]={units:[],covered:new Set()};
-    venUnitMap[x.vendor].units.push(x.unit);
-    venUnitMap[x.vendor].covered.add(x.svc);
-  });
-  const venRanked=Object.entries(venUnitMap).map(([v,d])=>({
-    vendor:v,
-    avgUnit:d.units.reduce((a,b)=>a+b,0)/d.units.length,
-    minUnit:Math.min(...d.units),
-    maxUnit:Math.max(...d.units),
-    coverage:d.covered.size,
-    quotes:d.units.length
-  })).sort((a,b)=>b.coverage-a.coverage||a.avgUnit-b.avgUnit);
-
-  const sortedUnits=allUnitRows.map(x=>x.unit).sort((a,b)=>a-b);
-  const upBest=sortedUnits.length?sortedUnits[0]:0;
-  const upMedian=sortedUnits.length?sortedUnits[Math.floor(sortedUnits.length/2)]:0;
-  const upAvg=sortedUnits.length?sortedUnits.reduce((a,b)=>a+b,0)/sortedUnits.length:0;
-  const top3=venRanked.slice(0,3);
-
-  let verdict='gn',vIco='✅';
-  if(matchedCount<4){verdict='rd';vIco='❌';}
-  else if(matchedCount<10){verdict='am';vIco='⚠️';}
-
-  const filterTag=(rqRegion==='All'&&rqCountry==='All')?'global benchmark':
-    (rqCountry!=='All'?`${esc(rqCountry)} only`:`${esc(rqRegion)} region only`);
-
-  document.getElementById('rq-verdict').innerHTML=`
-    <div class="verdict ${verdict}" style="flex-direction:column;align-items:stretch;padding:16px 18px">
-      <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:12px">
-        <div class="verdict-ico">${vIco}</div>
-        <div style="flex:1">
-          <div class="verdict-t">Benchmark Verdict — ${filterTag}</div>
-          <div class="verdict-b">${matchedCount} prior quote${matchedCount!==1?'s':''} across ${vendors.length} vendor${vendors.length!==1?'s':''}. Recommended unit-price targets and vendors below.</div>
-        </div>
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px">
-        <div style="background:rgba(16,185,129,.10);border-left:3px solid var(--gn);padding:10px;border-radius:6px">
-          <div style="font-size:.60rem;font-weight:700;color:var(--mid);text-transform:uppercase">🎯 Best Unit (Target)</div>
-          <div style="font-family:var(--serif);font-size:1.15rem;font-weight:700;color:var(--gn);margin-top:4px">${fmtUnit(upBest)}</div>
-          <div style="font-size:.62rem;color:var(--mid)">lowest historical</div>
-        </div>
-        <div style="background:rgba(245,158,11,.10);border-left:3px solid var(--am);padding:10px;border-radius:6px">
-          <div style="font-size:.60rem;font-weight:700;color:var(--mid);text-transform:uppercase">📍 Median Unit (Likely)</div>
-          <div style="font-family:var(--serif);font-size:1.15rem;font-weight:700;color:var(--or);margin-top:4px">${fmtUnit(upMedian)}</div>
-          <div style="font-size:.62rem;color:var(--mid)">most negotiated</div>
-        </div>
-        <div style="background:rgba(239,68,68,.10);border-left:3px solid var(--rd);padding:10px;border-radius:6px">
-          <div style="font-size:.60rem;font-weight:700;color:var(--mid);text-transform:uppercase">⚠ Avg Unit (Ceiling)</div>
-          <div style="font-family:var(--serif);font-size:1.15rem;font-weight:700;color:var(--rd);margin-top:4px">${fmtUnit(upAvg)}</div>
-          <div style="font-size:.62rem;color:var(--mid)">don't pay more</div>
-        </div>
-        <div style="background:rgba(99,102,241,.10);border-left:3px solid #6366F1;padding:10px;border-radius:6px">
-          <div style="font-size:.60rem;font-weight:700;color:var(--mid);text-transform:uppercase">💰 Expected Total (${users.toLocaleString()} users)</div>
-          <div style="font-family:var(--serif);font-size:1.15rem;font-weight:700;color:var(--ink);margin-top:4px">${fmt(upMedian*users)}</div>
-          <div style="font-size:.62rem;color:var(--mid)">at median × users</div>
-        </div>
-      </div>
-      <div style="background:var(--bg);padding:10px 12px;border-radius:6px">
-        <div style="font-size:.66rem;font-weight:700;color:var(--mid);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">🏆 Top Vendors to Approach</div>
-        ${top3.length===0?'<div style="font-size:.78rem;color:var(--mid)">No vendor history in this scope — issue broad RFQ.</div>':
-        top3.map((v,i)=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:${i<top3.length-1?'1px solid var(--line2)':'none'}">
-          <div style="display:flex;align-items:center;gap:8px"><span style="font-family:var(--serif);font-weight:700;color:${i===0?'var(--or)':'var(--mid)'}">#${i+1}</span>${vbadge(v.vendor)}<span style="font-size:.70rem;color:var(--mid)">covers ${v.coverage}/${sel.length} svc · ${v.quotes} quote${v.quotes>1?'s':''}</span></div>
-          <div style="font-size:.74rem;font-weight:700;color:var(--ink)">avg ${fmtUnit(v.avgUnit)} <span style="color:var(--mid);font-weight:500">(${fmtUnit(v.minUnit)}–${fmtUnit(v.maxUnit)})</span></div>
-        </div>`).join('')}
-        ${top3.length>0?`<div style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--line2);font-size:.74rem;color:var(--ink2)">
-          <strong>📋 Action:</strong> Approach <b>${esc(top3[0].vendor)}</b> first targeting <b style="color:var(--gn)">${fmtUnit(upBest)}/unit</b>. Reject any quote above <b style="color:var(--rd)">${fmtUnit(upAvg)}/unit</b>. Likely total: <b>${fmt(upMedian*users)}</b>.
-        </div>`:''}
-      </div>
-    </div>`;
-
-  // expose for export
-  window.__rqLast={sel,users,term,proj,rqRegion,rqCountry,pool,allUnitRows,venRanked,upBest,upMedian,upAvg,top3};
+  let verdict='gn',vtitle='',vbody='';
+  if(matchedCount>=10){verdict='gn';vtitle='Strong Historical Data';vbody=`${matchedCount} prior quotes across ${vendors.length} vendors. Use target price of ${fmt(targetPrice)} with confidence.`;}
+  else if(matchedCount>=4){verdict='am';vtitle='Moderate Data';vbody=`${matchedCount} prior quotes — enough to benchmark, but request 3+ fresh bids to validate.`;}
+  else{verdict='rd';vtitle='Limited History';vbody=`Only ${matchedCount} prior quote${matchedCount!==1?'s':''}. Issue broad RFQ to 4-5 vendors to establish market price.`;}
+  document.getElementById('rq-verdict').innerHTML=`<div class="verdict ${verdict}"><div class="verdict-ico">${verdict==='gn'?'✅':verdict==='am'?'⚠️':'❌'}</div><div><div class="verdict-t">${vtitle}</div><div class="verdict-b">${vbody}</div></div></div>`;
 
   const kpis=[
     {lbl:'Services',val:sel.length,sub:'in RFQ'},
@@ -4199,15 +4046,7 @@ function rqRender(){
   document.getElementById('rq-kpis').innerHTML=kpis.map(k=>`<div class="kpi"><div class="kpi-lbl">${k.lbl}</div><div class="kpi-val">${k.val}</div><div class="kpi-sub">${k.sub}</div></div>`).join('');
 
   set('rq-prior-meta',matchedCount+' prior quotes');
-  // Sort prior quotes by avg unit price (ascending) — best deal first
-  const sortedPool=[...pool].sort((a,b)=>{
-    const ua=(a.services||[]).filter(s=>sel.includes(s.name)).map(s=>s.unitPrice||0).filter(p=>p>0);
-    const ub=(b.services||[]).filter(s=>sel.includes(s.name)).map(s=>s.unitPrice||0).filter(p=>p>0);
-    const av=ua.length?ua.reduce((x,y)=>x+y,0)/ua.length:Infinity;
-    const bv=ub.length?ub.reduce((x,y)=>x+y,0)/ub.length:Infinity;
-    return av-bv;
-  });
-  document.querySelector('#rq-prior-table tbody').innerHTML=sortedPool.slice(0,20).map(r=>{
+  document.querySelector('#rq-prior-table tbody').innerHTML=pool.slice(0,20).sort((a,b)=>a.price-b.price).map(r=>{
     const matched=sel.filter(s=>hasService(r,s));
     // ✅ Calculate avg unit price across matched services
     const matchedSvcObjs = matched.map(s => getSvcObj(r, s)).filter(o => o);
@@ -4306,15 +4145,7 @@ function rqRender(){
       venCov[r.vendor].ps.push(r.price);
     }
   });
-  // Compute weighted avg UNIT price per vendor for ranking
-  const venList=Object.entries(venCov).map(([v,d])=>{
-    const units=[];
-    pool.filter(r=>r.vendor===v).forEach(r=>(r.services||[]).forEach(s=>{
-      if(sel.includes(s.name)&&s.unitPrice>0)units.push(s.unitPrice);
-    }));
-    const avgUnit=units.length?units.reduce((a,b)=>a+b,0)/units.length:Infinity;
-    return{v,cov:d.covered.size,pct:(d.covered.size/sel.length)*100,avg:d.ps.reduce((a,b)=>a+b,0)/d.ps.length,avgUnit};
-  }).sort((a,b)=>b.cov-a.cov||a.avgUnit-b.avgUnit);
+  const venList=Object.entries(venCov).map(([v,d])=>({v,cov:d.covered.size,pct:(d.covered.size/sel.length)*100,avg:d.ps.reduce((a,b)=>a+b,0)/d.ps.length})).sort((a,b)=>b.cov-a.cov||a.avg-b.avg);
 
   destroyChart('rq-benchmark-chart');
   const ctxb=document.getElementById('rq-benchmark-chart');
@@ -4442,58 +4273,12 @@ function rqRender(){
 }
 
 function rqExport(){
-  const r=window.__rqLast;
-  if(!r||!r.sel||r.sel.length===0){toast('Run RFQ benchmark first','err');return;}
-  if(typeof XLSX==='undefined'){toast('XLSX library not loaded','err');return;}
-  const wb=XLSX.utils.book_new();
-
-  // Sheet 1 — Verdict
-  const sum=[
-    ['RFQ Benchmark Report'],
-    ['Generated',new Date().toLocaleString()],
-    ['Project',r.proj],['Region',r.rqRegion],['Country',r.rqCountry],
-    ['Users',r.users],['Term (yrs)',r.term],
-    ['Services in RFQ',r.sel.join(' | ')],
-    [],
-    ['Metric','Unit Price','Total ('+r.users+' users)'],
-    ['Best (lowest historical unit)',r.upBest,r.upBest*r.users],
-    ['Median (likely unit)',r.upMedian,r.upMedian*r.users],
-    ['Avg (ceiling unit)',r.upAvg,r.upAvg*r.users],
-    [],
-    ['Recommendation'],
-    [r.top3[0]?`Approach ${r.top3[0].vendor} first @ ${r.upBest.toFixed(2)}/unit`:'No vendor history — issue broad RFQ'],
-    [`Reject any quote above ${r.upAvg.toFixed(2)}/unit`]
-  ];
-  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(sum),'Verdict');
-
-  // Sheet 2 — Vendor Ranking
-  const vr=[['Rank','Vendor','Coverage','# Quotes','Avg Unit','Min Unit','Max Unit']];
-  r.venRanked.forEach((v,i)=>vr.push([i+1,v.vendor,`${v.coverage}/${r.sel.length}`,v.quotes,v.avgUnit,v.minUnit,v.maxUnit]));
-  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(vr),'Vendor Ranking');
-
-  // Sheet 3 — All matching unit-price rows
-  const rows=[['Vendor','Service','Unit Price','Web Price','Discount %','Qty']];
-  r.allUnitRows.forEach(x=>rows.push([x.vendor,x.svc,x.unit,x.web,x.web>0?((x.web-x.unit)/x.web*100).toFixed(2):0,x.qty]));
-  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'Unit Price Comparison');
-
-  // Sheet 4 — Past quote details (each historical quote)
-  const past=[['Vendor','Project','Region','Country','Year','Quarter','Total Quote $','Services Matched','Source File']];
-  r.pool.forEach(q=>{
-    const matched=(q.services||[]).filter(s=>r.sel.includes(s.name)).map(s=>s.name);
-    past.push([q.vendor,q.proj,q.region,q.country,q.year,q.quarter||'',q.price,matched.join(' | '),q.file]);
-  });
-  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(past),'Past Quotes');
-
-  // Sheet 5 — Per-SKU detail across vendors (full SKU breakdown)
-  const sku=[['Vendor','Project','Country','Year','Service','SKU','Qty','Unit Price','Web Price','Line Total']];
-  r.pool.forEach(q=>(q.services||[]).forEach(s=>{
-    if(r.sel.includes(s.name))
-      sku.push([q.vendor,q.proj,q.country,q.year,s.name,s.sku||'',s.qty||0,s.unitPrice||0,s.webPrice||s.unitPrice||0,(s.qty||0)*(s.unitPrice||0)]);
-  }));
-  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(sku),'SKU Detail');
-
-  XLSX.writeFile(wb,`RFQ_Benchmark_${Date.now()}.xlsx`);
-  toast('RFQ Excel exported','ok');
+  const sel=[...rqSvcs];
+  const users=document.getElementById('rq-users').value;
+  const term=document.getElementById('rq-term').value;
+  let csv='RFQ Export\n\nProject,'+document.getElementById('rq-proj').value+'\nUsers,'+users+'\nTerm,'+term+' years\n\nServices\n';
+  sel.forEach(s=>{csv+='"'+s+'"\n';});
+  dlCSV(csv,'rfq_export.csv');
 }
 
 function initChatChips(){
