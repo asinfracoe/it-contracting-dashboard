@@ -2687,14 +2687,22 @@ function selRender(){
 
   const verdictEl=document.getElementById('sel-verdict');
   if(allMatch.length>0){
-    const prices=allMatch.map(r=>r.price).filter(p=>p>0);
-    const best=prices.length?Math.min(...prices):0;
-    const bestR=allMatch.find(r=>r.price===best);
+    // ✅ Best vendor by avg UNIT price across selected services
+    const venUnit={};
+    allMatch.forEach(r=>{
+      const ups=(r.services||[]).filter(s=>sel.includes(s.name)&&s.unitPrice>0).map(s=>s.unitPrice);
+      if(ups.length){
+        if(!venUnit[r.vendor])venUnit[r.vendor]=[];
+        venUnit[r.vendor].push(ups.reduce((a,b)=>a+b,0)/ups.length);
+      }
+    });
+    const venUnitAvg=Object.entries(venUnit).map(([v,arr])=>({v,avg:arr.reduce((a,b)=>a+b,0)/arr.length})).sort((a,b)=>a.avg-b.avg);
+    const bestVen=venUnitAvg[0];
     verdictEl.innerHTML=`<div class="verdict gn">
       <div class="verdict-ico">✅</div>
       <div>
-        <div class="verdict-t">Perfect combination exists — Source from ${bestR?esc(bestR.vendor):''}</div>
-        <div class="verdict-b">${allMatch.length} vendor${allMatch.length>1?'s have':' has'} quoted all ${sel.length} services together. Best price: <strong>${fmt(best)}</strong> from ${bestR?esc(bestR.vendor):''}.</div>
+        <div class="verdict-t">Perfect combination exists — Source from ${bestVen?esc(bestVen.v):''}</div>
+        <div class="verdict-b">${allMatch.length} vendor${allMatch.length>1?'s have':' has'} quoted all ${sel.length} services together. Best avg unit price: <strong>${bestVen?fmtUnit(bestVen.avg):'—'}</strong> from ${bestVen?esc(bestVen.v):''}.</div>
       </div>
     </div>`;
   } else if(partialMatch.length>0){
@@ -2712,12 +2720,18 @@ function selRender(){
     </div>`;
   }
 
-  const allPrices=matches.map(r=>r.price).filter(p=>p>0);
+// ✅ Unit-price KPIs across selected services
+  const allUnits=[];
+  matches.forEach(r=>(r.services||[]).forEach(s=>{
+    if(sel.includes(s.name)&&s.unitPrice>0)allUnits.push(s.unitPrice);
+  }));
+  const bestUnit=allUnits.length?Math.min(...allUnits):0;
+  const avgUnit=allUnits.length?allUnits.reduce((a,b)=>a+b,0)/allUnits.length:0;
   const kpis=[
     {lbl:'Matching Quotes',val:matches.length,sub:allMatch.length+' cover all'},
     {lbl:'Vendors',val:[...new Set(matches.map(r=>r.vendor))].length,sub:'with history'},
-    {lbl:'Best Price',val:allPrices.length?fmt(Math.min(...allPrices)):'—',sub:'historic floor'},
-    {lbl:'Avg Price',val:allPrices.length?fmt(allPrices.reduce((a,b)=>a+b,0)/allPrices.length):'—',sub:'market rate'}
+    {lbl:'Best Unit Price',val:bestUnit?fmtUnit(bestUnit):'—',sub:'historic floor / unit'},
+    {lbl:'Avg Unit Price',val:avgUnit?fmtUnit(avgUnit):'—',sub:'market rate / unit'}
   ];
   document.getElementById('sel-kpis').innerHTML=kpis.map(k=>`<div class="kpi"><div class="kpi-lbl">${k.lbl}</div><div class="kpi-val">${k.val}</div><div class="kpi-sub">${k.sub}</div></div>`).join('');
   renderSelSvcBreakdown(sel,pool);
@@ -2740,9 +2754,14 @@ function selRender(){
     comboEl.innerHTML=sortedCombos.map(([key,data])=>{
       const isFull=data.svcs.length===sel.length;
       const allPrices=Object.values(data.vendors).flat().map(r=>r.price).filter(p=>p>0);
-      const mn=allPrices.length?Math.min(...allPrices):0;
-      const mx=allPrices.length?Math.max(...allPrices):0;
-      const av=allPrices.length?allPrices.reduce((a,b)=>a+b,0)/allPrices.length:0;
+      // ✅ Unit-price stats for this combination
+      const allCombosUnits=[];
+      Object.values(data.vendors).flat().forEach(r=>(r.services||[]).forEach(s=>{
+        if(data.svcs.includes(s.name)&&s.unitPrice>0)allCombosUnits.push(s.unitPrice);
+      }));
+      const mn=allCombosUnits.length?Math.min(...allCombosUnits):0;
+      const mx=allCombosUnits.length?Math.max(...allCombosUnits):0;
+      const av=allCombosUnits.length?allCombosUnits.reduce((a,b)=>a+b,0)/allCombosUnits.length:0;
       const totalQuotes=Object.values(data.vendors).flat().length;
       const venCount=Object.keys(data.vendors).length;
       return `<div style="background:var(--white);border:1px solid var(--line);border-left:4px solid ${isFull?'var(--gn)':'var(--am)'};border-radius:var(--r2);margin-bottom:12px;overflow:hidden">
@@ -2758,34 +2777,33 @@ function selRender(){
             </div>
           </div>
           <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px">
-            <div class="mstat" style="background:var(--white);padding:8px 10px"><div class="mstat-lbl">Min</div><div class="mstat-val gn" style="font-size:1rem">${fmt(mn)}</div></div>
-            <div class="mstat" style="background:var(--white);padding:8px 10px"><div class="mstat-lbl">Avg</div><div class="mstat-val or" style="font-size:1rem">${fmt(av)}</div></div>
-            <div class="mstat" style="background:var(--white);padding:8px 10px"><div class="mstat-lbl">Max</div><div class="mstat-val rd" style="font-size:1rem">${fmt(mx)}</div></div>
+            <div class="mstat" style="background:var(--white);padding:8px 10px"><div class="mstat-lbl">Unit Min</div><div class="mstat-val gn" style="font-size:1rem">${fmtUnit(mn)}</div></div>
+            <div class="mstat" style="background:var(--white);padding:8px 10px"><div class="mstat-lbl">Unit Avg</div><div class="mstat-val or" style="font-size:1rem">${fmtUnit(av)}</div></div>
+            <div class="mstat" style="background:var(--white);padding:8px 10px"><div class="mstat-lbl">Unit Max</div><div class="mstat-val rd" style="font-size:1rem">${fmtUnit(mx)}</div></div>
           </div>
         </div>
         <div style="padding:10px 16px">
           <div style="font-size:.66rem;font-weight:700;color:var(--mid);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">Vendors who quoted this combination</div>
-          ${Object.entries(data.vendors).sort((a,b)=>{
-            const aMin=Math.min(...a[1].map(r=>r.price).filter(p=>p>0));
-            const bMin=Math.min(...b[1].map(r=>r.price).filter(p=>p>0));
-            return aMin-bMin;
-          }).map(([v,quotes])=>{
-            const ps=quotes.map(r=>r.price).filter(p=>p>0);
-            const vMin=ps.length?Math.min(...ps):0;
-            const vMax=ps.length?Math.max(...ps):0;
-            const vAvg=ps.length?ps.reduce((a,b)=>a+b,0)/ps.length:0;
+          ${Object.entries(data.vendors).map(([v,quotes])=>{
+            // ✅ Unit-price stats for this vendor in this combination
+            const ups=[];
+            quotes.forEach(r=>(r.services||[]).forEach(s=>{
+              if(data.svcs.includes(s.name)&&s.unitPrice>0)ups.push(s.unitPrice);
+            }));
+            const vMin=ups.length?Math.min(...ups):0;
+            const vMax=ups.length?Math.max(...ups):0;
+            const vAvg=ups.length?ups.reduce((a,b)=>a+b,0)/ups.length:0;
+            return{v,quotes,vMin,vMax,vAvg};
+          }).sort((a,b)=>a.vMin-b.vMin).map(({v,quotes,vMin,vMax,vAvg})=>{
             return `<div style="padding:8px 10px;background:var(--bg);border-radius:var(--r);margin-bottom:4px;display:flex;justify-content:space-between;align-items:center">
               <div style="display:flex;align-items:center;gap:8px">${vbadge(v)}<span style="font-size:.68rem;color:var(--mid);font-weight:600">${quotes.length} quote${quotes.length>1?'s':''}</span></div>
               <div style="display:flex;gap:14px;font-size:.72rem;font-weight:700">
-                <span style="color:var(--gn)">Min: ${fmt(vMin)}</span>
-                <span style="color:var(--or)">Avg: ${fmt(vAvg)}</span>
-                <span style="color:var(--rd)">Max: ${fmt(vMax)}</span>
+                <span style="color:var(--gn)">Unit Min: ${fmtUnit(vMin)}</span>
+                <span style="color:var(--or)">Unit Avg: ${fmtUnit(vAvg)}</span>
+                <span style="color:var(--rd)">Unit Max: ${fmtUnit(vMax)}</span>
               </div>
             </div>`;
           }).join('')}
-        </div>
-      </div>`;
-    }).join('');
   }
 
   const allVens=[...new Set(matches.map(r=>r.vendor))];
@@ -3458,20 +3476,31 @@ function scoreQuote(){
   const deltaPct=avg?((p-avg)/avg*100):0;
   const perc=prices.length?(prices.filter(x=>x<p).length/prices.length*100):50;
 
+// ✅ Compute YOUR avg unit price + market avg unit price for comparison
+  const yourUnits=(extractedSvcs||[]).map(s=>s.unitPrice).filter(u=>u>0);
+  const yourAvgUnit=yourUnits.length?yourUnits.reduce((a,b)=>a+b,0)/yourUnits.length:0;
+  const marketUnits=[];
+  pool.forEach(r=>(r.services||[]).forEach(s=>{
+    if(sel.includes(s.name)&&s.unitPrice>0)marketUnits.push(s.unitPrice);
+  }));
+  const marketAvgUnit=marketUnits.length?marketUnits.reduce((a,b)=>a+b,0)/marketUnits.length:0;
+  const marketMinUnit=marketUnits.length?Math.min(...marketUnits):0;
+  const unitDeltaPct=marketAvgUnit>0?((yourAvgUnit-marketAvgUnit)/marketAvgUnit*100):0;
+
   let verdict='gn',title='Excellent Quote — Accept',body='';
-  if(prices.length===0){verdict='am';title='No historical data';body='No prior quotes for these services. Cannot benchmark.';}
-  else if(deltaPct<-15){verdict='gn';title='Excellent Quote — Accept';body=`Price is ${Math.abs(deltaPct).toFixed(1)}% below market average. Significant savings vs typical rates.`;}
-  else if(deltaPct<-5){verdict='gn';title='Good Quote — Accept with minor push';body=`Price is ${Math.abs(deltaPct).toFixed(1)}% below average. Try to negotiate 3-5% more off.`;}
-  else if(deltaPct<5){verdict='am';title='Fair Quote — Negotiate';body=`Price is within ±5% of market average. Push for ${fmt(p*0.92)} to capture savings.`;}
-  else if(deltaPct<15){verdict='am';title='Above Market — Push Back';body=`Price is ${deltaPct.toFixed(1)}% above average. Counter at ${fmt(avg)}.`;}
-  else{verdict='rd';title='Overpriced — Reject or Renegotiate';body=`Price is ${deltaPct.toFixed(1)}% above market. Request revised quote at ${fmt(avg*0.95)} or switch vendors.`;}
+  if(marketUnits.length===0){verdict='am';title='No historical data';body='No prior unit-price data for these services. Cannot benchmark.';}
+  else if(unitDeltaPct<-15){verdict='gn';title='Excellent Unit Price — Accept';body=`Your avg unit price ${fmtUnit(yourAvgUnit)} is ${Math.abs(unitDeltaPct).toFixed(1)}% below market avg ${fmtUnit(marketAvgUnit)}. Strong deal.`;}
+  else if(unitDeltaPct<-5){verdict='gn';title='Good Unit Price — Accept with minor push';body=`Unit price ${fmtUnit(yourAvgUnit)} is ${Math.abs(unitDeltaPct).toFixed(1)}% below market avg ${fmtUnit(marketAvgUnit)}. Try 3–5% more off.`;}
+  else if(unitDeltaPct<5){verdict='am';title='Fair Unit Price — Negotiate';body=`Unit price within ±5% of market avg ${fmtUnit(marketAvgUnit)}. Push toward floor of ${fmtUnit(marketMinUnit)}.`;}
+  else if(unitDeltaPct<15){verdict='am';title='Above Market — Push Back';body=`Unit price ${fmtUnit(yourAvgUnit)} is ${unitDeltaPct.toFixed(1)}% above market avg ${fmtUnit(marketAvgUnit)}. Counter at ${fmtUnit(marketAvgUnit)}.`;}
+  else{verdict='rd';title='Overpriced Unit — Reject or Renegotiate';body=`Unit price ${unitDeltaPct.toFixed(1)}% above market. Demand ${fmtUnit(marketAvgUnit*0.95)}/unit or switch vendors.`;}
   document.getElementById('ex-verdict').innerHTML=`<div class="verdict ${verdict}"><div class="verdict-ico">${verdict==='gn'?'✅':verdict==='am'?'⚠️':'❌'}</div><div><div class="verdict-t">${title}</div><div class="verdict-b">${body}</div></div></div>`;
 
   const kpis=[
-    {lbl:'Your Quote',val:fmt(p),sub:esc(v)},
-    {lbl:'Market Avg',val:fmt(avg),sub:prices.length+' prior quotes'},
-    {lbl:'Delta',val:(deltaPct>=0?'+':'')+deltaPct.toFixed(1)+'%',sub:deltaPct<0?'below avg':'above avg',cls:deltaPct<0?'up':'down'},
-    {lbl:'Percentile',val:perc.toFixed(0)+'%',sub:perc<50?'below median':'above median'}
+    {lbl:'Your Avg Unit Price',val:yourAvgUnit?fmtUnit(yourAvgUnit):'—',sub:esc(v)},
+    {lbl:'Market Avg Unit',val:marketAvgUnit?fmtUnit(marketAvgUnit):'—',sub:marketUnits.length+' unit-price points'},
+    {lbl:'Unit Delta',val:(unitDeltaPct>=0?'+':'')+unitDeltaPct.toFixed(1)+'%',sub:unitDeltaPct<0?'below market':'above market',cls:unitDeltaPct<0?'up':'down'},
+    {lbl:'Best Unit Floor',val:marketMinUnit?fmtUnit(marketMinUnit):'—',sub:'historic best'}
   ];
   document.getElementById('ex-kpis').innerHTML=kpis.map(k=>`<div class="kpi"><div class="kpi-lbl">${k.lbl}</div><div class="kpi-val">${k.val}</div><div class="kpi-sub ${k.cls||''}">${k.sub}</div></div>`).join('');
   renderExSvcComparison(sel,p,proj);
@@ -3566,7 +3595,15 @@ function scoreQuote(){
 
   const priorEl=document.querySelector('#ex-prior-table tbody');
   set('ex-prior-meta',pool.length+' prior');
-  priorEl.innerHTML=pool.slice(0,20).sort((a,b)=>a.price-b.price).map(r=>{
+  // ✅ Sort by avg unit price across matched services (best deal first)
+  const priorSorted=[...pool].sort((a,b)=>{
+    const ua=(a.services||[]).filter(s=>sel.includes(s.name)).map(s=>s.unitPrice||0).filter(p=>p>0);
+    const ub=(b.services||[]).filter(s=>sel.includes(s.name)).map(s=>s.unitPrice||0).filter(p=>p>0);
+    const av=ua.length?ua.reduce((x,y)=>x+y,0)/ua.length:Infinity;
+    const bv=ub.length?ub.reduce((x,y)=>x+y,0)/ub.length:Infinity;
+    return av-bv;
+  });
+  priorEl.innerHTML=priorSorted.slice(0,20).map(r=>{
     const matchedNames=sel.filter(s=>hasService(r,s));
     const matched=matchedNames.length;
     // ✅ Calculate avg unit price for matched services
@@ -3592,8 +3629,8 @@ function scoreQuote(){
   if(ctxp&&prices.length>0){
     CHARTS['ex-pos-chart']=new Chart(ctxp,{
       type:'bar',
-      data:{labels:['Min','Median','Your Quote','Average','Max'],datasets:[{data:[min,median,p,avg,max],backgroundColor:[GN,BL,OR,AM,RD],borderRadius:4,maxBarThickness:60}]},
-      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:(c)=>fmt(c.parsed.y)}}},scales:{x:{ticks:{font:{size:11,weight:600},color:INK},grid:{display:false}},y:{ticks:{callback:(v)=>fmt(v),color:MID},grid:{color:'#F3F4F6'}}}}
+      data:{labels:['Unit Min','Unit Median','Your Unit','Unit Avg','Unit Max'],datasets:[{data:[marketMinUnit,marketUnits.length?[...marketUnits].sort((a,b)=>a-b)[Math.floor(marketUnits.length/2)]:0,yourAvgUnit,marketAvgUnit,marketUnits.length?Math.max(...marketUnits):0],backgroundColor:[GN,BL,OR,AM,RD],borderRadius:4,maxBarThickness:60}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:(c)=>fmtUnit(c.parsed.y)}}},scales:{x:{ticks:{font:{size:11,weight:600},color:INK},grid:{display:false}},y:{ticks:{callback:(v)=>fmtUnit(v),color:MID},grid:{color:'#F3F4F6'}}}}
     });
   }
 
@@ -3698,15 +3735,26 @@ function renderExSvcComparison(sel,yourTotalPrice,proj){
       </div>`;
     }
     
-    const exclusiveQuotes=pool.filter(r=>(r.services||[]).length===1);
-    const useQuotes=exclusiveQuotes.length>0?exclusiveQuotes:pool;
-    const ps=useQuotes.map(r=>r.price);
-    const mn=Math.min(...ps);
-    const mx=Math.max(...ps);
-    const av=ps.reduce((a,b)=>a+b,0)/ps.length;
-    const median=[...ps].sort((a,b)=>a-b)[Math.floor(ps.length/2)];
-    
-    const yourVsAvg=((yourPerSvcEstimate-av)/av*100);
+// ✅ Use UNIT prices from line items (not bundled quote totals)
+    const useQuotes=pool;
+    const unitRows=[];
+    useQuotes.forEach(r=>(r.services||[]).forEach(svc=>{
+      if(svc.name===s&&svc.unitPrice>0)unitRows.push({record:r,unit:svc.unitPrice,qty:svc.qty||0});
+    }));
+    if(unitRows.length===0){
+      return `<div style="padding:14px;background:var(--bg);border-radius:var(--r);margin-bottom:10px;border-left:3px solid var(--am)">
+        <div style="font-weight:700;color:var(--ink);font-size:.84rem;margin-bottom:4px">${esc(s)}</div>
+        <div class="b am">⚠️ No unit-price line items — only bundled totals available</div>
+      </div>`;
+    }
+    const ups=unitRows.map(x=>x.unit).sort((a,b)=>a-b);
+    const mn=ups[0],mx=ups[ups.length-1];
+    const av=ups.reduce((a,b)=>a+b,0)/ups.length;
+    const median=ups[Math.floor(ups.length/2)];
+    // Your unit price for this service
+    const yourSvc=(window.__exSvcs||[]).find(x=>x.name===s);
+    const yourUnit=yourSvc&&yourSvc.unitPrice?yourSvc.unitPrice:0;
+    const yourVsAvg=av>0&&yourUnit>0?((yourUnit-av)/av*100):0;
     
     let verdict,vColor,vIco;
     if(yourVsAvg<-15){verdict='Excellent — Well below market';vColor='var(--gn)';vIco='✅';}
@@ -3759,10 +3807,10 @@ function renderExSvcComparison(sel,yourTotalPrice,proj){
       
       <div id="${uid}" style="display:none;background:var(--bg);padding:12px 14px;border-top:1px solid var(--line2)">
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px">
-          <div class="mstat" style="background:var(--white);padding:8px"><div class="mstat-lbl">Min</div><div class="mstat-val gn" style="font-size:.95rem">${fmt(mn)}</div></div>
-          <div class="mstat" style="background:var(--white);padding:8px"><div class="mstat-lbl">Median</div><div class="mstat-val" style="font-size:.95rem">${fmt(median)}</div></div>
-          <div class="mstat" style="background:var(--white);padding:8px"><div class="mstat-lbl">Avg</div><div class="mstat-val or" style="font-size:.95rem">${fmt(av)}</div></div>
-          <div class="mstat" style="background:var(--white);padding:8px"><div class="mstat-lbl">Max</div><div class="mstat-val rd" style="font-size:.95rem">${fmt(mx)}</div></div>
+          <div class="mstat" style="background:var(--white);padding:8px"><div class="mstat-lbl">Unit Min</div><div class="mstat-val gn" style="font-size:.95rem">${fmtUnit(mn)}</div></div>
+          <div class="mstat" style="background:var(--white);padding:8px"><div class="mstat-lbl">Unit Median</div><div class="mstat-val" style="font-size:.95rem">${fmtUnit(median)}</div></div>
+          <div class="mstat" style="background:var(--white);padding:8px"><div class="mstat-lbl">Unit Avg</div><div class="mstat-val or" style="font-size:.95rem">${fmtUnit(av)}</div></div>
+          <div class="mstat" style="background:var(--white);padding:8px"><div class="mstat-lbl">Unit Max</div><div class="mstat-val rd" style="font-size:.95rem">${fmtUnit(mx)}</div></div>
         </div>
         <div style="font-size:.66rem;font-weight:700;color:var(--mid);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">All Historical Quotes</div>
         <table class="cat-table" style="background:var(--white);border-radius:var(--r);overflow:hidden">
@@ -3772,28 +3820,31 @@ function renderExSvcComparison(sel,yourTotalPrice,proj){
               <th style="text-align:left !important">Project</th>
               <th style="text-align:left !important">Country</th>
               <th>Year</th>
-              <th>Price</th>
-              <th>vs Your Est.</th>
+              <th>Qty</th>
+              <th>Unit Price</th>
+              <th>vs Your Unit</th>
             </tr>
           </thead>
           <tbody>
-            ${useQuotes.sort((a,b)=>a.price-b.price).map(r=>{
-              const diff=((yourPerSvcEstimate-r.price)/r.price*100);
+            ${unitRows.sort((a,b)=>a.unit-b.unit).map(x=>{
+              const r=x.record;
+              const diff=yourUnit>0?((yourUnit-x.unit)/x.unit*100):0;
               return `<tr style="cursor:pointer" onclick="selShowQuote('${esc(r.vendor).replace(/'/g,"\\'")}','${esc(s).replace(/'/g,"\\'")}')">
                 <td>${vbadge(r.vendor)}</td>
                 <td style="text-align:left">${esc(r.proj)}</td>
                 <td style="text-align:left">${esc(r.country||'—')}</td>
                 <td>${r.year}${r.quarter?' '+r.quarter:''}</td>
-                <td class="num" style="color:${r.price===mn?'var(--gn)':r.price===mx?'var(--rd)':'var(--ink)'};font-weight:700">${fmt(r.price)}${r.price===mn?' 🏆':''}</td>
-                <td><span class="b ${diff<0?'gn':'rd'}">${diff>=0?'+':''}${diff.toFixed(1)}%</span></td>
+                <td class="num">${fmtQty(x.qty)}</td>
+                <td class="num" style="color:${x.unit===mn?'var(--gn)':x.unit===mx?'var(--rd)':'var(--ink)'};font-weight:700">${fmtUnit(x.unit)}${x.unit===mn?' 🏆':''}</td>
+                <td>${yourUnit>0?`<span class="b ${diff<0?'gn':'rd'}">${diff>=0?'+':''}${diff.toFixed(1)}%</span>`:'<span class="b nt">—</span>'}</td>
               </tr>`;
             }).join('')}
           </tbody>
         </table>
-        ${bestQuote?`<div style="margin-top:10px;padding:8px 12px;background:var(--gnl);border-radius:var(--r);border-left:3px solid var(--gn)">
-          <div style="font-size:.68rem;font-weight:700;color:var(--gnd)">💡 BEST DEAL ON RECORD</div>
-          <div style="font-size:.74rem;color:var(--gnd);margin-top:2px">${esc(bestQuote.vendor)} quoted ${fmt(bestQuote.price)} in ${bestQuote.year} (${esc(bestQuote.country||bestQuote.region)})</div>
-        </div>`:''}
+        ${(()=>{const bestRow=unitRows.find(x=>x.unit===mn);return bestRow?`<div style="margin-top:10px;padding:8px 12px;background:var(--gnl);border-radius:var(--r);border-left:3px solid var(--gn)">
+          <div style="font-size:.68rem;font-weight:700;color:var(--gnd)">💡 BEST UNIT PRICE ON RECORD</div>
+          <div style="font-size:.74rem;color:var(--gnd);margin-top:2px">${esc(bestRow.record.vendor)} @ ${fmtUnit(bestRow.unit)}/unit in ${bestRow.record.year} (${esc(bestRow.record.country||bestRow.record.region)})</div>
+        </div>`:''})()}
       </div>
     </div>`;
   }).join('');
