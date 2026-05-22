@@ -5,7 +5,7 @@
     "country": "Japan",
     "cat": "Network & Telecom",
     "subcat": "Cisco DNA Licensing",
-    "vendor": "NTT Docomo",
+    "vendor": "Equinix",
     "file": "12.5.2025 - Revised Quote - Equinix TY Cisco License - EN.pdf",
     "folder": null,
     "services": [
@@ -15,7 +15,8 @@
         "qty": 2,
         "unitPrice": 0.0,
         "category": "Network & Telecom",
-        "subcategory": "Cisco DNA Licensing"
+        "subcategory": "Cisco DNA Licensing",
+        "vendor_hint": "Cisco"
       },
       {
         "name": "Cisco DNA Advantage Cloud Lic 3Y - upto 1G",
@@ -23,18 +24,20 @@
         "qty": 2,
         "unitPrice": 1075800.0,
         "category": "Network & Telecom",
-        "subcategory": "Cisco DNA Licensing"
+        "subcategory": "Cisco DNA Licensing",
+        "vendor_hint": "Cisco"
       },
       {
         "name": "Maintenance (24/7 on-site)",
         "sku": "Cisco DNA-C-T2-A-3Y",
         "qty": 2,
         "unitPrice": 145900.0,
-        "category": "Network & Telecom",
-        "subcategory": "Cisco DNA Licensing"
+        "category": "Professional Services",
+        "subcategory": "Support & Maintenance",
+        "vendor_hint": "Cisco"
       }
     ],
-    "price": 2443600.0,
+    "price": 2445200.0,
     "year": 2025,
     "quarter": "Q4",
     "quoteDate": "2025-12-04"
@@ -50,20 +53,22 @@
     "folder": null,
     "services": [
       {
-        "name": "Cisco DNA Subscription for Catalyst 8000V",
+        "name": "L-DNA- Cisco DNA Subscription for Catalyst 8000V",
         "sku": "L-DNA-C8000V",
         "qty": 2,
         "unitPrice": 0,
         "category": "Network & Telecom",
-        "subcategory": "Cisco DNA Licensing"
+        "subcategory": "Cisco DNA Licensing",
+        "vendor_hint": "Cisco"
       },
       {
-        "name": "C8000V Platform Selection for DNA S",
+        "name": "C8000V-PF C8000V Platform Selection for DNA S",
         "sku": "C8000V-PF",
         "qty": 2,
         "unitPrice": 0,
         "category": "Network & Telecom",
-        "subcategory": "General"
+        "subcategory": "Routing & Switching",
+        "vendor_hint": "Cisco"
       }
     ],
     "price": 0.0,
@@ -76,7 +81,7 @@
     "region": "Americas",
     "country": "United States",
     "cat": "M365 & Power Platform",
-    "subcat": "General",
+    "subcat": "M365 E3/E5 Licenses",
     "vendor": "Thrive Operations, LLC",
     "file": "2024-12-11_Resonant Clinical Solutions_M365 Licensing.pdf",
     "folder": null,
@@ -86,24 +91,27 @@
         "sku": "NCE058AB",
         "qty": 654,
         "unitPrice": 33.8,
-        "category": "Network & Telecom",
-        "subcategory": "General"
+        "category": "M365 & Power Platform",
+        "subcategory": "M365 E3/E5 Licenses",
+        "vendor_hint": "Microsoft"
       },
       {
         "name": "Microsoft Teams Essentials",
         "sku": "NCE108B",
         "qty": 654,
-        "unitPrice": 4.0,
+        "unitPrice": 4,
         "category": "M365 & Power Platform",
-        "subcategory": "Teams Phone"
+        "subcategory": "Teams Phone",
+        "vendor_hint": "Microsoft"
       },
       {
         "name": "Microsoft 365 F3",
         "sku": "NCE084B",
         "qty": 161,
         "unitPrice": null,
-        "category": "Network & Telecom",
-        "subcategory": "General"
+        "category": "M365 & Power Platform",
+        "subcategory": "M365 F-series (Frontline)",
+        "vendor_hint": "Microsoft"
       }
     ],
     "price": 24721.2,
@@ -113,213 +121,157 @@
   },
   {
     "proj": "Panasonic",
-    "region": "Global",
-    "country": "Multi-Region",
+    "region": "APAC",
+    "country": "India",
     "cat": "Network & Telecom",
-    "subcat": "General",
-    "vendor": "SHI",
+    "subcat": "Routing & Switching",
+    "vendor": "NTT India Pvt. Ltd.",
     "file": "20251107 _ Panasonic Automotive _ India Sites PDF.pdf",
     "folder": null,
     "services": [
       {
-        "name": "Cisco DNA subscription for C8300 series --- 2 - -",
-        "sku": "DNA-C8300-SW",
-        "qty": 1,
-        "unitPrice": 1.1,
+        "name": "Cisco Catalyst C8300-1N1S-6T Router",
+        "sku": "C8300-1N1S-6T",
+        "qty": 2,
+        "unitPrice": 660542.03,
         "category": "Network & Telecom",
-        "subcategory": "Cisco DNA Licensing"
+        "subcategory": "Routing & Switching",
+        "vendor_hint": "Cisco"
       },
       {
-        "name": ".1 ---",
-        "sku": "DNA-C-T1-A-3Y",
-        "qty": 1,
-        "unitPrice": 1.1,
-        "category": "Network & Telecom",
-        "subcategory": "Cisco DNA Licensing"
-      },
-      {
-        "name": ".2 ---",
-        "sku": "SVS-CSTL1-T1-A3Y",
-        "qty": 1,
-        "unitPrice": 1.1,
+        "name": "CX LEVEL 1 8X5XNBD Cisco Catalyst",
+        "sku": "CON-L1NBD-C830IN6T",
+        "qty": 2,
+        "unitPrice": 379996.02,
         "category": "Professional Services",
-        "subcategory": "Support & Maintenance"
+        "subcategory": "Support & Maintenance",
+        "vendor_hint": "Cisco"
       },
       {
-        "name": ".3 ---",
-        "sku": "DSTACK-T1-A",
-        "qty": 1,
-        "unitPrice": 1.1,
+        "name": "MEM-C8300-8GB Cisco Catalyst 8300 Edge 8GB memory",
+        "sku": "MEM-C8300-8GB",
+        "qty": 2,
+        "unitPrice": 0,
         "category": "Network & Telecom",
-        "subcategory": "Cabling & Optics"
+        "subcategory": "Routing & Switching",
+        "vendor_hint": "Cisco"
       },
       {
-        "name": ".4 ---",
-        "sku": "NWSTACK-T1-A",
-        "qty": 1,
-        "unitPrice": 1.1,
+        "name": "M2USB-16G Cisco Catalyst 8000 Edge M.2 USB 16GB",
+        "sku": "M2USB-16G",
+        "qty": 2,
+        "unitPrice": 0,
         "category": "Network & Telecom",
-        "subcategory": "Cabling & Optics"
+        "subcategory": "Routing & Switching",
+        "vendor_hint": "Cisco"
       },
       {
-        "name": ".5 TE- ---",
-        "sku": "EMBED-WANI",
-        "qty": 1,
-        "unitPrice": 1.1,
+        "name": "RFID - 1RU for Cisco 8200/8300/8400/8500L Series",
+        "sku": "C-RFID-1R",
+        "qty": 2,
+        "unitPrice": 0,
         "category": "Network & Telecom",
-        "subcategory": "General"
+        "subcategory": "Cabling & Optics",
+        "vendor_hint": "Cisco"
       },
       {
-        "name": ".6 Cisco Umbrella for DNA Advantage --- 2 - -",
-        "sku": "SDWAN-UMB-ADV",
-        "qty": 1,
-        "unitPrice": 1.1,
+        "name": "Rack mount kit - 19\" 1RU for Cisco 8300 Series",
+        "sku": "C8300-RM-19-1R",
+        "qty": 2,
+        "unitPrice": 0,
         "category": "Network & Telecom",
-        "subcategory": "Cisco DNA Licensing"
+        "subcategory": "Cabling & Optics",
+        "vendor_hint": "Cisco"
       },
       {
-        "name": ".7 ---",
-        "sku": "SDWAN-CLOUD-PF",
-        "qty": 1,
-        "unitPrice": 1.1,
+        "name": "NIM Blank for Cisco 8300 Series",
+        "sku": "C8300-NIM-BLANK",
+        "qty": 2,
+        "unitPrice": 0,
         "category": "Network & Telecom",
-        "subcategory": "General"
+        "subcategory": "Routing & Switching",
+        "vendor_hint": "Cisco"
       },
       {
-        "name": "Cisco DNA subscription for C8300 series | --- | 2 | - | -",
+        "name": "SM Blank for Cisco 8300 Series",
+        "sku": "C8300-SM-BLANK",
+        "qty": 2,
+        "unitPrice": 0,
+        "category": "Network & Telecom",
+        "subcategory": "Routing & Switching",
+        "vendor_hint": "Cisco"
+      },
+      {
+        "name": "PIM Blank for Cisco 8300 Series",
+        "sku": "C8300-PIM-BLANK",
+        "qty": 2,
+        "unitPrice": 0,
+        "category": "Network & Telecom",
+        "subcategory": "Routing & Switching",
+        "vendor_hint": "Cisco"
+      },
+      {
+        "name": "Network Plug-n-Play Connect for zero-touch device deployment",
+        "sku": "NETWORK-PNP-LIC",
+        "qty": 2,
+        "unitPrice": 0,
+        "category": "Network & Telecom",
+        "subcategory": "Network Services",
+        "vendor_hint": "Unknown"
+      },
+      {
+        "name": "TE agent for IOSXE on Enterprise Routing",
+        "sku": "TE-R-SW",
+        "qty": 2,
+        "unitPrice": 0,
+        "category": "Network & Telecom",
+        "subcategory": "Routing & Switching",
+        "vendor_hint": "Cisco"
+      },
+      {
+        "name": "Cisco DNA subscription for C8300 series",
         "sku": "DNA-C8300-SW",
-        "qty": 1,
-        "unitPrice": 1.1,
+        "qty": 2,
+        "unitPrice": 0,
         "category": "Network & Telecom",
-        "subcategory": "Cisco DNA Licensing"
+        "subcategory": "Cisco DNA Licensing",
+        "vendor_hint": "Cisco"
       },
       {
-        "name": ".1 | | Cisco DNA Advantage Cloud Lic 3Y - upto",
+        "name": "Cisco DNA Advantage Cloud Lic 3Y - upto 250M (Aggr, 500M)",
         "sku": "DNA-C-T1-A-3Y",
-        "qty": 1,
-        "unitPrice": 1.1,
+        "qty": 2,
+        "unitPrice": 270977.08,
         "category": "Network & Telecom",
-        "subcategory": "Cisco DNA Licensing"
+        "subcategory": "Cisco DNA Licensing",
+        "vendor_hint": "Cisco"
       },
       {
-        "name": ".2 | | Cisco Support Enhanced - DNA Advantage",
+        "name": "Cisco Support Enhanced - DNA Advantage Cloud Lic, T1, 3Y",
         "sku": "SVS-CSTL1-T1-A3Y",
-        "qty": 1,
-        "unitPrice": 1.1,
-        "category": "Network & Telecom",
-        "subcategory": "Cisco DNA Licensing"
+        "qty": 2,
+        "unitPrice": 55885.26,
+        "category": "Professional Services",
+        "subcategory": "Support & Maintenance",
+        "vendor_hint": "Cisco"
       },
       {
-        "name": ".3 | | Cisco DNA Advantage Stack - upto 250M",
+        "name": "Cisco DNA Advantage Stack - upto 250M (Aggr, 500M)",
         "sku": "DSTACK-T1-A",
-        "qty": 1,
-        "unitPrice": 1.1,
+        "qty": 2,
+        "unitPrice": 0,
         "category": "Network & Telecom",
-        "subcategory": "Cisco DNA Licensing"
+        "subcategory": "Cisco DNA Licensing",
+        "vendor_hint": "Cisco"
       },
       {
-        "name": ".4 | | Cisco Network Advantage Stack - upto",
+        "name": "Cisco Network Advantage Stack - upto 250M (Aggr, 500M)",
         "sku": "NWSTACK-T1-A",
-        "qty": 1,
-        "unitPrice": 1.1,
+        "qty": 2,
+        "unitPrice": 0,
         "category": "Network & Telecom",
-        "subcategory": "Cabling & Optics"
-      },
-      {
-        "name": ".5 | TE- | Cisco ThousandEyes WAN Insights",
-        "sku": "EMBED-WANI",
-        "qty": 1,
-        "unitPrice": 1.1,
-        "category": "Network & Telecom",
-        "subcategory": "General"
-      },
-      {
-        "name": ".6 | | Cisco Umbrella for DNA Advantage | --- | 2 | - | -",
-        "sku": "SDWAN-UMB-ADV",
-        "qty": 1,
-        "unitPrice": 1.1,
-        "category": "Network & Telecom",
-        "subcategory": "Cisco DNA Licensing"
-      },
-      {
-        "name": ".7 | | Cisco SDWAN and SD-Routing Cloud",
-        "sku": "SDWAN-CLOUD-PF",
-        "qty": 1,
-        "unitPrice": 1.1,
-        "category": "Network & Telecom",
-        "subcategory": "General"
-      },
-      {
-        "name": ".8 ---",
-        "sku": "SSP-CDSDR",
-        "qty": 1,
-        "unitPrice": 1.1,
-        "category": "Network & Telecom",
-        "subcategory": "General"
-      },
-      {
-        "name": ".9 Controller Provisioning for CDCS Service --- 2 - -",
-        "sku": "SSP-CDCS-B",
-        "qty": 1,
-        "unitPrice": 1.1,
-        "category": "M365 & Power Platform",
-        "subcategory": "Visio / Project"
-      },
-      {
-        "name": ".10 ---",
-        "sku": "C83-1N1S-6T-PF",
-        "qty": 1,
-        "unitPrice": 1.1,
-        "category": "Network & Telecom",
-        "subcategory": "General"
-      },
-      {
-        "name": ".11 IOS XE Autonomous for Unified image --- 2 - -",
-        "sku": "IOSXE-AUTO-MODE-PF",
-        "qty": 1,
-        "unitPrice": 1.1,
-        "category": "Network & Telecom",
-        "subcategory": "General"
-      },
-      {
-        "name": "---",
-        "sku": "C8000-HSEC",
-        "qty": 1,
-        "unitPrice": 1.11,
-        "category": "Network & Telecom",
-        "subcategory": "General"
-      },
-      {
-        "name": "---",
-        "sku": "SC8KBEUK9-1715",
-        "qty": 1,
-        "unitPrice": 1.12,
-        "category": "Network & Telecom",
-        "subcategory": "General"
-      },
-      {
-        "name": "IOS XE Autonomous for Unified image --- 2 - -",
-        "sku": "IOSXE-AUTO-MODE",
-        "qty": 1,
-        "unitPrice": 1.13,
-        "category": "Network & Telecom",
-        "subcategory": "General"
-      },
-      {
-        "name": "---",
-        "sku": "PWR-CC1-250WAC",
-        "qty": 1,
-        "unitPrice": 1.14,
-        "category": "Network & Telecom",
-        "subcategory": "General"
-      },
-      {
-        "name": "AC Power Cord (India) --- 4 - -",
-        "sku": "CAB-IND",
-        "qty": 1,
-        "unitPrice": 1.15,
-        "category": "Network & Telecom",
-        "subcategory": "General"
+        "subcategory": "Routing & Switching",
+        "vendor_hint": "Cisco"
       },
       {
         "name": "Meraki MR Advanced License and Support, 2",
@@ -327,7 +279,8 @@
         "qty": 2,
         "unitPrice": 37987.74,
         "category": "Network & Telecom",
-        "subcategory": "Wireless / WiFi"
+        "subcategory": "Wireless / WiFi",
+        "vendor_hint": "Meraki"
       },
       {
         "name": "MA- Meraki AC Power Cord for MX and MS 2",
@@ -335,927 +288,445 @@
         "qty": 2,
         "unitPrice": 1270.78,
         "category": "Network & Telecom",
-        "subcategory": "Cabling & Optics"
+        "subcategory": "Cabling & Optics",
+        "vendor_hint": "Meraki"
       },
       {
-        "name": "7.0 = 1M Type 1 Stacking Cable --- 2",
+        "name": "7.0 = 1M Type 1 Stacking Cable",
         "sku": "STACK-T1-1M",
         "qty": 7,
         "unitPrice": 15221.22,
         "category": "Network & Telecom",
-        "subcategory": "Cabling & Optics"
+        "subcategory": "Cabling & Optics",
+        "vendor_hint": "Cisco"
       },
       {
-        "name": "MA- Meraki AC Power Cord for MX and MS 2",
-        "sku": "PWR-CORD-IN",
-        "qty": 2,
-        "unitPrice": 1270.78,
-        "category": "Network & Telecom",
-        "subcategory": "Cabling & Optics"
-      },
-      {
-        "name": "11.0 = 1M Type 1 Stacking Cable --- 2",
+        "name": "11.0 = 1M Type 1 Stacking Cable",
         "sku": "STACK-T1A-1M",
         "qty": 11,
         "unitPrice": 17049.97,
         "category": "Network & Telecom",
-        "subcategory": "Cabling & Optics"
+        "subcategory": "Cabling & Optics",
+        "vendor_hint": "Cisco"
       }
     ],
-    "price": 0.0,
+    "price": 3241911.31,
     "year": 2025,
-    "quarter": null,
-    "quoteDate": null
+    "quarter": "Q4",
+    "quoteDate": "2025-11-07"
   },
   {
     "proj": "Panasonic",
-    "region": "Global",
-    "country": "Multi-Region",
+    "region": "APAC",
+    "country": "India",
     "cat": "Network & Telecom",
-    "subcat": "Cabling & Optics",
-    "vendor": "SHI",
+    "subcat": "Routing & Switching",
+    "vendor": "NTT India Private Limited",
     "file": "92922585.pdf",
     "folder": null,
     "services": [
       {
-        "name": "4 MA- 2 EA",
-        "sku": "PWR-CORD-IN",
-        "qty": 4,
-        "unitPrice": 1270.78,
+        "name": "Cisco Catalyst C8300-1N1S-6T Router",
+        "sku": "C8300-1N1S-6T",
+        "qty": 2,
+        "unitPrice": 660542.03,
         "category": "Network & Telecom",
-        "subcategory": "Cabling & Optics"
+        "subcategory": "Routing & Switching",
+        "vendor_hint": "Cisco"
       },
       {
-        "name": "5 = 2 EA",
-        "sku": "STACK-T1-1M",
-        "qty": 5,
-        "unitPrice": 15221.22,
+        "name": "Meraki MR46E Wi-Fi 6 Indoor AP w Externa",
+        "sku": "MR46E-HW",
+        "qty": 2,
+        "unitPrice": 126085.24,
         "category": "Network & Telecom",
-        "subcategory": "Cabling & Optics"
-      },
-      {
-        "name": "4 MA- 2 EA",
-        "sku": "PWR-CORD-IN",
-        "qty": 4,
-        "unitPrice": 1270.78,
-        "category": "Network & Telecom",
-        "subcategory": "Cabling & Optics"
-      },
-      {
-        "name": "5 = 2 EA",
-        "sku": "STACK-T1-1M",
-        "qty": 5,
-        "unitPrice": 15221.22,
-        "category": "Network & Telecom",
-        "subcategory": "Cabling & Optics"
-      },
-      {
-        "name": "7 = 2 EA",
-        "sku": "STACK-T1A-1M",
-        "qty": 7,
-        "unitPrice": 17049.97,
-        "category": "Network & Telecom",
-        "subcategory": "Cabling & Optics"
-      },
-      {
-        "name": "7 = 2 EA",
-        "sku": "STACK-T1A-1M",
-        "qty": 7,
-        "unitPrice": 17049.97,
-        "category": "Network & Telecom",
-        "subcategory": "Cabling & Optics"
+        "subcategory": "Wireless / WiFi",
+        "vendor_hint": "Meraki"
       }
     ],
-    "price": 3799672.18,
+    "price": 1573254.54,
     "year": 2026,
     "quarter": "Q1",
-    "quoteDate": null
+    "quoteDate": "2026-01-20"
   },
   {
     "proj": "Panasonic",
-    "region": "Global",
-    "country": "Multi-Region",
+    "region": "APAC",
+    "country": "India",
     "cat": "Cybersecurity",
-    "subcat": "Cabling & Optics",
-    "vendor": "SHI",
+    "subcat": "Routing & Switching",
+    "vendor": "NTT India Private Limited",
     "file": "92922627.pdf",
     "folder": null,
     "services": [
       {
-        "name": "2 = 1 EA",
-        "sku": "STACK-T1-1M",
-        "qty": 2,
-        "unitPrice": 15221.22,
+        "name": "C9300L 24-port PoE, 4x10G Uplink, 715wac PS, w/MERAKI",
+        "sku": "C9300L-24P-4X-M",
+        "qty": 1,
+        "unitPrice": 886418.26,
         "category": "Network & Telecom",
-        "subcategory": "Cabling & Optics"
+        "subcategory": "Routing & Switching",
+        "vendor_hint": "Cisco"
       },
       {
-        "name": "2 = 1 EA",
+        "name": "1M Type 1 Stacking Cable",
         "sku": "STACK-T1-1M",
-        "qty": 2,
+        "qty": 1,
         "unitPrice": 15221.22,
         "category": "Network & Telecom",
-        "subcategory": "Cabling & Optics"
-      },
-      {
-        "name": "3 = 1 EA",
-        "sku": "STACK-T1-1M",
-        "qty": 3,
-        "unitPrice": 15221.22,
-        "category": "Network & Telecom",
-        "subcategory": "Cabling & Optics"
-      },
-      {
-        "name": "3 = 1 EA",
-        "sku": "STACK-T1-1M",
-        "qty": 3,
-        "unitPrice": 15221.22,
-        "category": "Network & Telecom",
-        "subcategory": "Cabling & Optics"
+        "subcategory": "Cabling & Optics",
+        "vendor_hint": "Cisco"
       }
     ],
-    "price": 916860.7,
+    "price": 901639.48,
     "year": 2026,
     "quarter": "Q1",
-    "quoteDate": null
+    "quoteDate": "2026-01-20"
   },
   {
     "proj": "Panasonic",
-    "region": "Global",
-    "country": "Multi-Region",
+    "region": "APAC",
+    "country": "India",
     "cat": "Network & Telecom",
     "subcat": "Support & Maintenance",
-    "vendor": "SHI",
+    "vendor": "NTT India Private Limited",
     "file": "92924822.pdf",
     "folder": null,
     "services": [
       {
-        "name": "1 1 EA.29",
+        "name": "Vendor-Branded Resell",
         "sku": "CON-ROB-C93L24",
         "qty": 1,
-        "unitPrice": 3.03,
+        "unitPrice": 79002.62,
         "category": "Professional Services",
-        "subcategory": "Support & Maintenance"
+        "subcategory": "Support & Maintenance",
+        "vendor_hint": "Cisco"
       },
       {
-        "name": "2 1 EA.28",
+        "name": "Meraki Advanced License for C9300-M 24-p",
         "sku": "LIC-C9300-24A-3Y",
-        "qty": 2,
-        "unitPrice": 1.01,
-        "category": "Network & Telecom",
-        "subcategory": "Cisco DNA Licensing"
-      },
-      {
-        "name": "1 1 EA.29",
-        "sku": "CON-ROB-C93L24",
         "qty": 1,
-        "unitPrice": 3.03,
-        "category": "Professional Services",
-        "subcategory": "Support & Maintenance"
-      },
-      {
-        "name": "2 1 EA.28",
-        "sku": "LIC-C9300-24A-3Y",
-        "qty": 2,
-        "unitPrice": 1.01,
+        "unitPrice": 193990.68,
         "category": "Network & Telecom",
-        "subcategory": "Cisco DNA Licensing"
-      },
-      {
-        "name": "3 1 EA.29",
-        "sku": "CON-ROB-C93L24",
-        "qty": 3,
-        "unitPrice": 3.03,
-        "category": "Professional Services",
-        "subcategory": "Support & Maintenance"
-      },
-      {
-        "name": "4 1 EA.28",
-        "sku": "LIC-C9300-24A-3Y",
-        "qty": 4,
-        "unitPrice": 1.01,
-        "category": "Network & Telecom",
-        "subcategory": "Cisco DNA Licensing"
-      },
-      {
-        "name": "3 1 EA.29",
-        "sku": "CON-ROB-C93L24",
-        "qty": 3,
-        "unitPrice": 3.03,
-        "category": "Professional Services",
-        "subcategory": "Support & Maintenance"
-      },
-      {
-        "name": "4 1 EA.28",
-        "sku": "LIC-C9300-24A-3Y",
-        "qty": 4,
-        "unitPrice": 1.01,
-        "category": "Network & Telecom",
-        "subcategory": "Cisco DNA Licensing"
+        "subcategory": "Cisco DNA Licensing",
+        "vendor_hint": "Meraki"
       }
     ],
-    "price": 545986.6,
+    "price": 272993.3,
     "year": 2026,
     "quarter": "Q1",
-    "quoteDate": null
+    "quoteDate": "2026-01-22"
   },
   {
     "proj": "Panasonic",
-    "region": "Global",
-    "country": "Multi-Region",
+    "region": "APAC",
+    "country": "India",
     "cat": "Network & Telecom",
     "subcat": "Cisco DNA Licensing",
-    "vendor": "SHI",
+    "vendor": "NTT India Private Limited",
     "file": "92924827.pdf",
     "folder": null,
     "services": [
       {
-        "name": "1 2 EA.29",
+        "name": "Cisco DNA Advantage Cloud Lic 3Y - upto",
         "sku": "DNA-C-T1-A-3Y",
-        "qty": 1,
-        "unitPrice": 3.01,
+        "qty": 2,
+        "unitPrice": 270977.08,
         "category": "Network & Telecom",
-        "subcategory": "Cisco DNA Licensing"
+        "subcategory": "Cisco DNA Licensing",
+        "vendor_hint": "Cisco"
       },
       {
-        "name": "2 2 EA.29",
+        "name": "Success Track L1 - DNA Advantage Cloud L",
         "sku": "SVS-CSTL1-T1-A3Y",
         "qty": 2,
-        "unitPrice": 3.01,
+        "unitPrice": 55885.26,
         "category": "Professional Services",
-        "subcategory": "Support & Maintenance"
-      },
-      {
-        "name": "1 2 EA.29",
-        "sku": "DNA-C-T1-A-3Y",
-        "qty": 1,
-        "unitPrice": 3.01,
-        "category": "Network & Telecom",
-        "subcategory": "Cisco DNA Licensing"
-      },
-      {
-        "name": "2 2 EA.29",
-        "sku": "SVS-CSTL1-T1-A3Y",
-        "qty": 2,
-        "unitPrice": 3.01,
-        "category": "Professional Services",
-        "subcategory": "Support & Maintenance"
-      },
-      {
-        "name": "3 2 EA.29",
-        "sku": "CON-L1NBD-C830IN6T",
-        "qty": 3,
-        "unitPrice": 3.03,
-        "category": "Professional Services",
-        "subcategory": "Support & Maintenance"
-      },
-      {
-        "name": "4 2 EA.29",
-        "sku": "CON-ROB-MR46EHW",
-        "qty": 4,
-        "unitPrice": 3.03,
-        "category": "Network & Telecom",
-        "subcategory": "Wireless / WiFi"
-      },
-      {
-        "name": "5 2 EA.28",
-        "sku": "LIC-MR-ADV-3Y",
-        "qty": 5,
-        "unitPrice": 1.01,
-        "category": "Network & Telecom",
-        "subcategory": "Cisco DNA Licensing"
-      },
-      {
-        "name": "6 2 EA.29",
-        "sku": "CON-ROB-C93L24",
-        "qty": 6,
-        "unitPrice": 3.03,
-        "category": "Professional Services",
-        "subcategory": "Support & Maintenance"
-      },
-      {
-        "name": "3 2 EA.29",
-        "sku": "CON-L1NBD-C830IN6T",
-        "qty": 3,
-        "unitPrice": 3.03,
-        "category": "Professional Services",
-        "subcategory": "Support & Maintenance"
-      },
-      {
-        "name": "4 2 EA.29",
-        "sku": "CON-ROB-MR46EHW",
-        "qty": 4,
-        "unitPrice": 3.03,
-        "category": "Network & Telecom",
-        "subcategory": "Wireless / WiFi"
-      },
-      {
-        "name": "5 2 EA.28",
-        "sku": "LIC-MR-ADV-3Y",
-        "qty": 5,
-        "unitPrice": 1.01,
-        "category": "Network & Telecom",
-        "subcategory": "Cisco DNA Licensing"
-      },
-      {
-        "name": "6 2 EA.29",
-        "sku": "CON-ROB-C93L24",
-        "qty": 6,
-        "unitPrice": 3.03,
-        "category": "Professional Services",
-        "subcategory": "Support & Maintenance"
-      },
-      {
-        "name": "7 2 EA.28",
-        "sku": "LIC-C9300-24A-3Y",
-        "qty": 7,
-        "unitPrice": 1.01,
-        "category": "Network & Telecom",
-        "subcategory": "Cisco DNA Licensing"
-      },
-      {
-        "name": "8 2 EA.29",
-        "sku": "CON-ROB-C93LP4XM",
-        "qty": 8,
-        "unitPrice": 3.03,
-        "category": "Professional Services",
-        "subcategory": "Support & Maintenance"
-      },
-      {
-        "name": "9 2 EA.28",
-        "sku": "LIC-C9300-48E-3Y",
-        "qty": 9,
-        "unitPrice": 1.01,
-        "category": "Network & Telecom",
-        "subcategory": "Cisco DNA Licensing"
-      },
-      {
-        "name": "7 2 EA.28",
-        "sku": "LIC-C9300-24A-3Y",
-        "qty": 7,
-        "unitPrice": 1.01,
-        "category": "Network & Telecom",
-        "subcategory": "Cisco DNA Licensing"
-      },
-      {
-        "name": "8 2 EA.29",
-        "sku": "CON-ROB-C93LP4XM",
-        "qty": 8,
-        "unitPrice": 3.03,
-        "category": "Professional Services",
-        "subcategory": "Support & Maintenance"
-      },
-      {
-        "name": "9 2 EA.28",
-        "sku": "LIC-C9300-48E-3Y",
-        "qty": 9,
-        "unitPrice": 1.01,
-        "category": "Network & Telecom",
-        "subcategory": "Cisco DNA Licensing"
+        "subcategory": "Support & Maintenance",
+        "vendor_hint": "Cisco"
       }
     ],
-    "price": 2563089.4,
+    "price": 653724.68,
     "year": 2026,
     "quarter": "Q1",
-    "quoteDate": null
+    "quoteDate": "2026-01-22"
   },
   {
     "proj": "Panasonic",
-    "region": "Global",
-    "country": "Multi-Region",
+    "region": "EMEA",
+    "country": "Czech Republic",
     "cat": "Network & Telecom",
     "subcat": "Routing & Switching",
-    "vendor": "SHI",
+    "vendor": "NTT",
     "file": "9300031101 Panasonic Automotive Systems Co., Ltd..pdf",
     "folder": null,
     "services": [
       {
-        "name": "10 2 EA0,030,06 21,00%",
+        "name": "Cisco Catalyst C8300-1N1S-6T Router",
         "sku": "C8300-1N1S-6T",
-        "qty": 10,
+        "qty": 2,
         "unitPrice": 3.02,
         "category": "Network & Telecom",
-        "subcategory": "Routing & Switching"
+        "subcategory": "Routing & Switching",
+        "vendor_hint": "Cisco"
       },
       {
-        "name": "10 2 EA0,030,06 21,00%",
-        "sku": "C8300-1N1S-6T",
-        "qty": 10,
-        "unitPrice": 3.02,
+        "name": "Catalyst 8200/8200L/8300 Series Edge-U",
+        "sku": "SC8KBEUK9-1715",
+        "qty": 2,
+        "unitPrice": 0.0,
         "category": "Network & Telecom",
-        "subcategory": "Routing & Switching"
+        "subcategory": "Routing & Switching",
+        "vendor_hint": "Cisco"
       },
       {
-        "name": "180 2 EA.287,30 0,00%",
-        "sku": "DNA-C-T2-A-3Y",
-        "qty": 180,
-        "unitPrice": 14.12,
+        "name": "IOS XE Autonomous for Unified image",
+        "sku": "IOSXE-AUTO-MODE",
+        "qty": 2,
+        "unitPrice": 0.0,
         "category": "Network & Telecom",
-        "subcategory": "Cisco DNA Licensing"
+        "subcategory": "Routing & Switching",
+        "vendor_hint": "Cisco"
       },
       {
-        "name": "180 2 EA.287,30 0,00%",
-        "sku": "DNA-C-T2-A-3Y",
-        "qty": 180,
-        "unitPrice": 14.12,
+        "name": "Cisco Catalyst 8300 Edge 8GB memory",
+        "sku": "MEM-C8300-8GB",
+        "qty": 2,
+        "unitPrice": 0.0,
         "category": "Network & Telecom",
-        "subcategory": "Cisco DNA Licensing"
-      },
-      {
-        "name": "190 PartOnly-BusHrsxNBD 1 EA.290,68 0,00%",
-        "sku": "SCSS-SDIB-",
-        "qty": 190,
-        "unitPrice": 10.01,
-        "category": "Network & Telecom",
-        "subcategory": "General"
-      },
-      {
-        "name": "190 PartOnly-BusHrsxNBD 1 EA.290,68 0,00%",
-        "sku": "SCSS-SDIB-",
-        "qty": 190,
-        "unitPrice": 10.01,
-        "category": "Network & Telecom",
-        "subcategory": "General"
+        "subcategory": "Routing & Switching",
+        "vendor_hint": "Cisco"
       }
     ],
-    "price": 0.0,
+    "price": 6.04,
     "year": 2025,
-    "quarter": null,
-    "quoteDate": null
+    "quarter": "Q4",
+    "quoteDate": "2025-12-19"
   },
   {
     "proj": "Panasonic",
-    "region": "Global",
-    "country": "Multi-Region",
+    "region": "EMEA",
+    "country": "Germany",
     "cat": "Network & Telecom",
     "subcat": "Routing & Switching",
-    "vendor": "SHI",
+    "vendor": "NTT Germany AG & Co. KG",
     "file": "9300455600.PDF",
     "folder": null,
     "services": [
       {
-        "name": "10 2 EA9,368,72 19,00%",
+        "name": "Cisco Catalyst C8300-1N1S-6T Router",
         "sku": "C8300-1N1S-6T",
-        "qty": 10,
-        "unitPrice": 6.73,
+        "qty": 2,
+        "unitPrice": 6.74,
         "category": "Network & Telecom",
-        "subcategory": "Routing & Switching"
+        "subcategory": "Routing & Switching",
+        "vendor_hint": "Cisco"
       },
       {
-        "name": "10 2 EA9,368,72 19,00%",
-        "sku": "C8300-1N1S-6T",
-        "qty": 10,
-        "unitPrice": 6.73,
+        "name": "Cisco Catalyst 8300 Edge 8GB memory",
+        "sku": "MEM-C8300-8GB",
+        "qty": 2,
+        "unitPrice": 0.0,
         "category": "Network & Telecom",
-        "subcategory": "Routing & Switching"
+        "subcategory": "Routing & Switching",
+        "vendor_hint": "Cisco"
       },
       {
-        "name": "180 = 2 EA 818,006,00 19,00%",
-        "sku": "GLC-BX-D",
-        "qty": 180,
-        "unitPrice": 1.63,
+        "name": "Cisco Catalyst 8000 Edge M.2 USB 16GB",
+        "sku": "M2USB-16G",
+        "qty": 2,
+        "unitPrice": 0.0,
         "category": "Network & Telecom",
-        "subcategory": "Cabling & Optics"
-      },
-      {
-        "name": "180 = 2 EA 818,006,00 19,00%",
-        "sku": "GLC-BX-D",
-        "qty": 180,
-        "unitPrice": 1.63,
-        "category": "Network & Telecom",
-        "subcategory": "Cabling & Optics"
+        "subcategory": "Routing & Switching",
+        "vendor_hint": "Cisco"
       }
     ],
-    "price": 0.0,
+    "price": 13.48,
     "year": 2025,
-    "quarter": null,
-    "quoteDate": null
+    "quarter": "Q4",
+    "quoteDate": "2025-12-23"
   },
   {
     "proj": "Panasonic",
-    "region": "Global",
-    "country": "Multi-Region",
+    "region": "EMEA",
+    "country": "Germany",
     "cat": "Network & Telecom",
     "subcat": "Wireless / WiFi",
-    "vendor": "SHI",
+    "vendor": "NTT Germany AG & Co. KG",
     "file": "9300455698.PDF",
     "folder": null,
     "services": [
       {
-        "name": "10 3 EA 692,316,93 19,00%",
+        "name": "Cisco Wireless 9172I(W7,3 radio,3 band 2",
         "sku": "CW9172I-RTG",
-        "qty": 10,
-        "unitPrice": 2.07,
+        "qty": 3,
+        "unitPrice": 2.07693,
         "category": "Network & Telecom",
-        "subcategory": "Wireless / WiFi"
-      },
-      {
-        "name": "10 3 EA 692,316,93 19,00%",
-        "sku": "CW9172I-RTG",
-        "qty": 10,
-        "unitPrice": 2.07,
-        "category": "Network & Telecom",
-        "subcategory": "Wireless / WiFi"
+        "subcategory": "Wireless / WiFi",
+        "vendor_hint": "Cisco"
       }
     ],
-    "price": 0.0,
+    "price": 2.47155,
     "year": 2025,
-    "quarter": "Q3",
-    "quoteDate": null
+    "quarter": "Q4",
+    "quoteDate": "2025-12-24"
   },
   {
     "proj": "Panasonic",
-    "region": "Global",
-    "country": "Multi-Region",
+    "region": "EMEA",
+    "country": "Germany",
     "cat": "Network & Telecom",
-    "subcat": "General",
-    "vendor": "SHI",
+    "subcat": "Routing & Switching",
+    "vendor": "NTT Germany AG & Co. KG",
     "file": "9300456211.PDF",
     "folder": null,
     "services": [
       {
-        "name": "10 2 EA9,368,72 19,00%",
+        "name": "Cisco Catalyst C8300-1N1S-6T Router",
         "sku": "C8300-1N1S-6T",
-        "qty": 10,
-        "unitPrice": 6.73,
+        "qty": 2,
+        "unitPrice": 6.73936,
         "category": "Network & Telecom",
-        "subcategory": "Routing & Switching"
+        "subcategory": "Routing & Switching",
+        "vendor_hint": "Cisco"
       },
       {
-        "name": "10 2 EA9,368,72 19,00%",
-        "sku": "C8300-1N1S-6T",
-        "qty": 10,
-        "unitPrice": 6.73,
+        "name": "Cisco Catalyst 8300 Edge 8GB memory",
+        "sku": "MEM-C8300-8GB",
+        "qty": 2,
+        "unitPrice": 0.0,
         "category": "Network & Telecom",
-        "subcategory": "Routing & Switching"
+        "subcategory": "Routing & Switching",
+        "vendor_hint": "Cisco"
       },
       {
-        "name": "180 = 2 EA 818,006,00 19,00%",
-        "sku": "GLC-BX-D",
-        "qty": 180,
-        "unitPrice": 1.63,
+        "name": "Cisco Catalyst 8000 Edge M.2 USB 16GB",
+        "sku": "M2USB-16G",
+        "qty": 2,
+        "unitPrice": 0.0,
         "category": "Network & Telecom",
-        "subcategory": "Cabling & Optics"
-      },
-      {
-        "name": "190 1 EA2,282,28 19,00%",
-        "sku": "C9800-L-F-K9",
-        "qty": 190,
-        "unitPrice": 6.29,
-        "category": "Network & Telecom",
-        "subcategory": "General"
-      },
-      {
-        "name": "180 = 2 EA 818,006,00 19,00%",
-        "sku": "GLC-BX-D",
-        "qty": 180,
-        "unitPrice": 1.63,
-        "category": "Network & Telecom",
-        "subcategory": "Cabling & Optics"
-      },
-      {
-        "name": "190 1 EA2,282,28 19,00%",
-        "sku": "C9800-L-F-K9",
-        "qty": 190,
-        "unitPrice": 6.29,
-        "category": "Network & Telecom",
-        "subcategory": "General"
-      },
-      {
-        "name": "320 4 EA3,634,52 19,00%",
-        "sku": "C9400-PWR-2100AC",
-        "qty": 320,
-        "unitPrice": 1.28,
-        "category": "Network & Telecom",
-        "subcategory": "General"
-      },
-      {
-        "name": "320 4 EA3,634,52 19,00%",
-        "sku": "C9400-PWR-2100AC",
-        "qty": 320,
-        "unitPrice": 1.28,
-        "category": "Network & Telecom",
-        "subcategory": "General"
-      },
-      {
-        "name": "380 2 EA1,733,46 19,00%",
-        "sku": "C9400X-SUP-2",
-        "qty": 380,
-        "unitPrice": 12.23,
-        "category": "Network & Telecom",
-        "subcategory": "General"
-      },
-      {
-        "name": "390 2 EA6,352,70 19,00%",
-        "sku": "C9400-SSD-480GB",
-        "qty": 390,
-        "unitPrice": 2.24,
-        "category": "Network & Telecom",
-        "subcategory": "General"
-      },
-      {
-        "name": "400 2 EA3,517,02 19,00%",
-        "sku": "C9400-LC-24XS",
-        "qty": 400,
-        "unitPrice": 15.4,
-        "category": "Network & Telecom",
-        "subcategory": "General"
-      },
-      {
-        "name": "410 2 EA1,372,74 19,00%",
-        "sku": "C9400-LC-48UX",
-        "qty": 410,
-        "unitPrice": 7.55,
-        "category": "Network & Telecom",
-        "subcategory": "General"
-      },
-      {
-        "name": "380 2 EA1,733,46 19,00%",
-        "sku": "C9400X-SUP-2",
-        "qty": 380,
-        "unitPrice": 12.23,
-        "category": "Network & Telecom",
-        "subcategory": "General"
-      },
-      {
-        "name": "390 2 EA6,352,70 19,00%",
-        "sku": "C9400-SSD-480GB",
-        "qty": 390,
-        "unitPrice": 2.24,
-        "category": "Network & Telecom",
-        "subcategory": "General"
-      },
-      {
-        "name": "400 2 EA3,517,02 19,00%",
-        "sku": "C9400-LC-24XS",
-        "qty": 400,
-        "unitPrice": 15.4,
-        "category": "Network & Telecom",
-        "subcategory": "General"
-      },
-      {
-        "name": "410 2 EA1,372,74 19,00%",
-        "sku": "C9400-LC-48UX",
-        "qty": 410,
-        "unitPrice": 7.55,
-        "category": "Network & Telecom",
-        "subcategory": "General"
+        "subcategory": "Routing & Switching",
+        "vendor_hint": "Cisco"
       }
     ],
     "price": 0.0,
     "year": 2026,
-    "quarter": null,
-    "quoteDate": null
+    "quarter": "Q1",
+    "quoteDate": "2026-01-08"
   },
   {
     "proj": "Panasonic",
-    "region": "Global",
-    "country": "Multi-Region",
+    "region": "EMEA",
+    "country": "Czech Republic",
     "cat": "Network & Telecom",
     "subcat": "Routing & Switching",
-    "vendor": "NTT Data",
+    "vendor": "NTT Czech Republic s.r.o.",
     "file": "CZ - 4595421-4_250880_Panasonic_Cisco_Catalyst_C8300_02102025.pdf",
     "folder": null,
     "services": [
       {
-        "name": "Cisco Catalyst Router 22,92 Kc5,84 Kc",
+        "name": "Cisco Catalyst C8300-1N1S-6T Router",
         "sku": "C8300-1N1S-6T",
         "qty": 2,
         "unitPrice": 72.32,
         "category": "Network & Telecom",
-        "subcategory": "Routing & Switching"
+        "subcategory": "Routing & Switching",
+        "vendor_hint": "Cisco"
       },
       {
-        "name": "Cisco DNA Advantage Cloud Lic 3Y - upto 1G 23,42 Kc6,84 Kc",
+        "name": "Cisco DNA Advantage Cloud Lic 3Y - upto 1G",
         "sku": "DNA-C-T2-A-3Y",
         "qty": 2,
         "unitPrice": 84.38,
         "category": "Network & Telecom",
-        "subcategory": "Cisco DNA Licensing"
+        "subcategory": "Cisco DNA Licensing",
+        "vendor_hint": "Cisco"
       },
       {
-        "name": "Cisco Catalyst Router 22,92 Kc5,84 Kc",
-        "sku": "C8300-1N1S-6T",
-        "qty": 2,
-        "unitPrice": 72.32,
-        "category": "Network & Telecom",
-        "subcategory": "Routing & Switching"
-      },
-      {
-        "name": "Cisco DNA Advantage Cloud Lic 3Y - upto 1G 23,42 Kc6,84 Kc",
-        "sku": "DNA-C-T2-A-3Y",
-        "qty": 2,
-        "unitPrice": 84.38,
-        "category": "Network & Telecom",
-        "subcategory": "Cisco DNA Licensing"
-      },
-      {
-        "name": "Hardware Part #: SDI Base Parts only BusHrsxNBD: 24x7 Remote 68,73 Kc2,38 Kc",
+        "name": "Hardware Part #: SDI Base Parts only BusHrsxNBD: 24x7 Remote",
         "sku": "C8300-1N1S-6T",
         "qty": 6,
         "unitPrice": 15.6,
         "category": "Network & Telecom",
-        "subcategory": "Routing & Switching"
-      },
-      {
-        "name": "Hardware Part #: SDI Base Parts only BusHrsxNBD: 24x7 Remote 68,73 Kc2,38 Kc",
-        "sku": "C8300-1N1S-6T",
-        "qty": 6,
-        "unitPrice": 15.6,
-        "category": "Network & Telecom",
-        "subcategory": "Routing & Switching"
+        "subcategory": "Routing & Switching",
+        "vendor_hint": "Cisco"
       }
     ],
-    "price": 0.0,
+    "price": 289.28,
     "year": 2025,
-    "quarter": "Q4",
+    "quarter": "Q1",
     "quoteDate": "2025-01-11"
   },
   {
     "proj": "Panasonic",
-    "region": "Global",
-    "country": "Multi-Region",
+    "region": "EMEA",
+    "country": "Czech Republic",
     "cat": "Network & Telecom",
     "subcat": "Routing & Switching",
-    "vendor": "NTT Data",
+    "vendor": "NTT Czech Republic s.r.o.",
     "file": "Cisco4628852_PASCZ - PO#AD101-2511-006.pdf",
     "folder": null,
     "services": [
       {
-        "name": "Cisco Catalyst Router 20,03 0,06 €",
-        "sku": "C8300-1N1S-6T",
-        "qty": 2,
-        "unitPrice": 3.02,
-        "category": "Network & Telecom",
-        "subcategory": "Routing & Switching"
-      },
-      {
-        "name": "Cisco DNA Advantage Cloud Lic 3Y - upto 1G 23,64 7,28 €",
-        "sku": "DNA-C-T2-A-3Y",
-        "qty": 2,
-        "unitPrice": 3.52,
-        "category": "Network & Telecom",
-        "subcategory": "Cisco DNA Licensing"
-      },
-      {
-        "name": "Cisco Catalyst Router 20,03 0,06 €",
-        "sku": "C8300-1N1S-6T",
-        "qty": 2,
-        "unitPrice": 3.02,
-        "category": "Network & Telecom",
-        "subcategory": "Routing & Switching"
-      },
-      {
-        "name": "Cisco DNA Advantage Cloud Lic 3Y - upto 1G 23,64 7,28 €",
-        "sku": "DNA-C-T2-A-3Y",
-        "qty": 2,
-        "unitPrice": 3.52,
-        "category": "Network & Telecom",
-        "subcategory": "Cisco DNA Licensing"
-      },
-      {
-        "name": "Hardware Part #: SDI Base Parts only BusHrsxNBD: 24x7 Remote 6 651,78 0,68 €",
-        "sku": "C8300-1N1S-6T",
-        "qty": 6,
-        "unitPrice": 3.91,
-        "category": "Network & Telecom",
-        "subcategory": "Routing & Switching"
-      },
-      {
-        "name": "Hardware Part #: SDI Base Parts only BusHrsxNBD: 24x7 Remote 6 651,78 0,68 €",
-        "sku": "C8300-1N1S-6T",
-        "qty": 6,
-        "unitPrice": 3.91,
-        "category": "Network & Telecom",
-        "subcategory": "Routing & Switching"
-      },
-      {
-        "name": "Cisco Catalyst Router 2",
+        "name": "Cisco Catalyst C8300-1N1S-6T Router",
         "sku": "C8300-1N1S-6T",
         "qty": 2,
         "unitPrice": 3020.03,
         "category": "Network & Telecom",
-        "subcategory": "Routing & Switching"
+        "subcategory": "Routing & Switching",
+        "vendor_hint": "Cisco"
       },
       {
-        "name": "2",
+        "name": "Cisco DNA Advantage Cloud Lic 3Y - upto 1G",
         "sku": "DNA-C-T2-A-3Y",
         "qty": 2,
         "unitPrice": 3523.64,
         "category": "Network & Telecom",
-        "subcategory": "Cisco DNA Licensing"
-      },
-      {
-        "name": "PartOnly-BusHrsxNBD 6",
-        "sku": "SCSS-SDIB-",
-        "qty": 6,
-        "unitPrice": 651.78,
-        "category": "Network & Telecom",
-        "subcategory": "General"
-      },
-      {
-        "name": "LOGISTICS (NPR): 225/unit 2",
-        "sku": "DDNC-OUTBOUND",
-        "qty": 225,
-        "unitPrice": 9.46,
-        "category": "Professional Services",
-        "subcategory": "Logistics"
+        "subcategory": "Cisco DNA Licensing",
+        "vendor_hint": "Cisco"
       }
     ],
-    "price": 65178.0,
-    "year": 2026,
+    "price": 13587.38,
+    "year": 2025,
     "quarter": "Q4",
     "quoteDate": "2025-10-12"
   },
   {
     "proj": "Panasonic",
-    "region": "Global",
-    "country": "Multi-Region",
+    "region": "EMEA",
+    "country": "Czech Republic",
     "cat": "Network & Telecom",
     "subcat": "Routing & Switching",
-    "vendor": "NTT Data",
+    "vendor": "NTT Czech Republic s.r.o.",
     "file": "Cisco_PASCZ - signed.pdf",
     "folder": null,
     "services": [
       {
-        "name": "Cisco Catalyst Router 20,03 0,06 €",
-        "sku": "C8300-1N1S-6T",
-        "qty": 2,
-        "unitPrice": 3.02,
-        "category": "Network & Telecom",
-        "subcategory": "Routing & Switching"
-      },
-      {
-        "name": "Cisco DNA Advantage Cloud Lic 3Y - upto 1G 23,64 7,28 €",
-        "sku": "DNA-C-T2-A-3Y",
-        "qty": 2,
-        "unitPrice": 3.52,
-        "category": "Network & Telecom",
-        "subcategory": "Cisco DNA Licensing"
-      },
-      {
-        "name": "Cisco Catalyst Router 20,03 0,06 €",
-        "sku": "C8300-1N1S-6T",
-        "qty": 2,
-        "unitPrice": 3.02,
-        "category": "Network & Telecom",
-        "subcategory": "Routing & Switching"
-      },
-      {
-        "name": "Cisco DNA Advantage Cloud Lic 3Y - upto 1G 23,64 7,28 €",
-        "sku": "DNA-C-T2-A-3Y",
-        "qty": 2,
-        "unitPrice": 3.52,
-        "category": "Network & Telecom",
-        "subcategory": "Cisco DNA Licensing"
-      },
-      {
-        "name": "Hardware Part #: SDI Base Parts only BusHrsxNBD: 24x7 Remote 6 651,78 0,68 €",
-        "sku": "C8300-1N1S-6T",
-        "qty": 6,
-        "unitPrice": 3.91,
-        "category": "Network & Telecom",
-        "subcategory": "Routing & Switching"
-      },
-      {
-        "name": "Hardware Part #: SDI Base Parts only BusHrsxNBD: 24x7 Remote 6 651,78 0,68 €",
-        "sku": "C8300-1N1S-6T",
-        "qty": 6,
-        "unitPrice": 3.91,
-        "category": "Network & Telecom",
-        "subcategory": "Routing & Switching"
-      },
-      {
-        "name": "Cisco Catalyst Router 2",
+        "name": "Cisco Catalyst C8300-1N1S-6T Router",
         "sku": "C8300-1N1S-6T",
         "qty": 2,
         "unitPrice": 3020.03,
         "category": "Network & Telecom",
-        "subcategory": "Routing & Switching"
+        "subcategory": "Routing & Switching",
+        "vendor_hint": "Cisco"
       },
       {
-        "name": "2",
+        "name": "Cisco DNA Advantage Cloud Lic 3Y - upto 1G",
         "sku": "DNA-C-T2-A-3Y",
         "qty": 2,
         "unitPrice": 3523.64,
         "category": "Network & Telecom",
-        "subcategory": "Cisco DNA Licensing"
+        "subcategory": "Cisco DNA Licensing",
+        "vendor_hint": "Cisco"
       },
       {
-        "name": "PartOnly-BusHrsxNBD 6",
-        "sku": "SCSS-SDIB-",
-        "qty": 6,
-        "unitPrice": 651.78,
-        "category": "Network & Telecom",
-        "subcategory": "General"
-      },
-      {
-        "name": "LOGISTICS (NPR): 225/unit 2",
+        "name": "LOGISTICS (NPR): 225/unit",
         "sku": "DDNC-OUTBOUND",
         "qty": 225,
         "unitPrice": 9.46,
         "category": "Professional Services",
-        "subcategory": "Logistics"
+        "subcategory": "Logistics",
+        "vendor_hint": "Unknown"
       }
     ],
     "price": 65178.0,
@@ -1265,469 +736,272 @@
   },
   {
     "proj": "Panasonic",
-    "region": "Global",
-    "country": "Multi-Region",
+    "region": "EMEA",
+    "country": "Germany",
     "cat": "Network & Telecom",
     "subcat": "Routing & Switching",
-    "vendor": "NTT Data",
+    "vendor": "NTT Germany AG & Co. KG",
     "file": "Cisco_PASEU - signed.pdf",
     "folder": null,
     "services": [
       {
-        "name": "Cisco Catalyst Router 29,36 8,72 $",
+        "name": "Cisco Catalyst C8300-1N1S-6T Router",
         "sku": "C8300-1N1S-6T",
         "qty": 2,
-        "unitPrice": 6.73,
+        "unitPrice": 6.73936,
         "category": "Network & Telecom",
-        "subcategory": "Routing & Switching"
+        "subcategory": "Routing & Switching",
+        "vendor_hint": "Cisco"
       },
       {
-        "name": "Cisco Catalyst Router 29,36 8,72 $",
-        "sku": "C8300-1N1S-6T",
+        "name": "MEM-C8300-8GB",
+        "sku": "MEM-C8300-8GB",
         "qty": 2,
-        "unitPrice": 6.73,
+        "unitPrice": 0,
         "category": "Network & Telecom",
-        "subcategory": "Routing & Switching"
+        "subcategory": "Routing & Switching",
+        "vendor_hint": "Cisco"
       },
       {
-        "name": "Cisco DNA Advantage Cloud Lic 3Y - upto 1G 2 177,33 7,76 $",
-        "sku": "DNA-C-T2-A-3Y",
+        "name": "M2USB-16G",
+        "sku": "M2USB-16G",
         "qty": 2,
-        "unitPrice": 12.76,
+        "unitPrice": 0,
         "category": "Network & Telecom",
-        "subcategory": "Cisco DNA Licensing"
+        "subcategory": "Routing & Switching",
+        "vendor_hint": "Cisco"
       },
       {
-        "name": "Cisco DNA Advantage Cloud Lic 3Y - upto 1G 2 177,33 7,76 $",
-        "sku": "DNA-C-T2-A-3Y",
+        "name": "C-RFID-1R",
+        "sku": "C-RFID-1R",
         "qty": 2,
-        "unitPrice": 12.76,
+        "unitPrice": 0,
         "category": "Network & Telecom",
-        "subcategory": "Cisco DNA Licensing"
+        "subcategory": "Routing & Switching",
+        "vendor_hint": "Cisco"
       },
       {
-        "name": "Hardware Part #: Cisco Catalyst C8300 66,77 0,62 $",
-        "sku": "C8300-1N1S-6TSNTC-8X5XNBD",
-        "qty": 6,
-        "unitPrice": 1.0,
+        "name": "C8300-RM-19-1R",
+        "sku": "C8300-RM-19-1R",
+        "qty": 2,
+        "unitPrice": 0,
         "category": "Network & Telecom",
-        "subcategory": "Routing & Switching"
+        "subcategory": "Routing & Switching",
+        "vendor_hint": "Cisco"
       },
       {
-        "name": "Cisco Wireless License - Advantage 3 10,56 0,48 $",
-        "sku": "LIC-CW-A",
-        "qty": 3,
-        "unitPrice": 1.14,
+        "name": "C8300-NIM-BLANK",
+        "sku": "C8300-NIM-BLANK",
+        "qty": 2,
+        "unitPrice": 0,
         "category": "Network & Telecom",
-        "subcategory": "Wireless / WiFi"
+        "subcategory": "Routing & Switching",
+        "vendor_hint": "Cisco"
       },
       {
-        "name": "3 = 1000BASE-BX SFP, 1490NM 2 818,00 6,00 $",
-        "sku": "GLC-BX-D",
-        "qty": 3,
-        "unitPrice": 1.63,
+        "name": "C8300-SM-BLANK",
+        "sku": "C8300-SM-BLANK",
+        "qty": 2,
+        "unitPrice": 0,
         "category": "Network & Telecom",
-        "subcategory": "Cabling & Optics"
+        "subcategory": "Routing & Switching",
+        "vendor_hint": "Cisco"
       },
       {
-        "name": "Cisco Catalyst 9800-L Wireless Controller_Fiber 12,28 2,28 $",
-        "sku": "C9800-L-F-K9",
-        "qty": 9800,
-        "unitPrice": 6.29,
+        "name": "C8300-PIM-BLANK",
+        "sku": "C8300-PIM-BLANK",
+        "qty": 2,
+        "unitPrice": 0,
         "category": "Network & Telecom",
-        "subcategory": "Wireless / WiFi"
+        "subcategory": "Routing & Switching",
+        "vendor_hint": "Cisco"
       },
       {
-        "name": "Hardware Part #: Cisco Catalyst C8300 66,77 0,62 $",
-        "sku": "C8300-1N1S-6TSNTC-8X5XNBD",
-        "qty": 6,
-        "unitPrice": 1.0,
+        "name": "NETWORK-PNP-LIC",
+        "sku": "NETWORK-PNP-LIC",
+        "qty": 2,
+        "unitPrice": 0,
         "category": "Network & Telecom",
-        "subcategory": "Routing & Switching"
+        "subcategory": "Network Services",
+        "vendor_hint": "Unknown"
       },
       {
-        "name": "Cisco Wireless License - Advantage 3 10,56 0,48 $",
-        "sku": "LIC-CW-A",
-        "qty": 3,
-        "unitPrice": 1.14,
+        "name": "TE-R-SW",
+        "sku": "TE-R-SW",
+        "qty": 2,
+        "unitPrice": 0,
         "category": "Network & Telecom",
-        "subcategory": "Wireless / WiFi"
+        "subcategory": "Routing & Switching",
+        "vendor_hint": "Unknown"
       },
       {
-        "name": "3 = 1000BASE-BX SFP, 1490NM 2 818,00 6,00 $",
-        "sku": "GLC-BX-D",
-        "qty": 3,
-        "unitPrice": 1.63,
+        "name": "DNA-C8300-SW",
+        "sku": "DNA-C8300-SW",
+        "qty": 2,
+        "unitPrice": 0,
         "category": "Network & Telecom",
-        "subcategory": "Cabling & Optics"
-      },
-      {
-        "name": "Cisco Catalyst 9800-L Wireless Controller_Fiber 12,28 2,28 $",
-        "sku": "C9800-L-F-K9",
-        "qty": 9800,
-        "unitPrice": 6.29,
-        "category": "Network & Telecom",
-        "subcategory": "Wireless / WiFi"
-      },
-      {
-        "name": "Cisco Wireless License - Advantage | 3 | 10,56 $ |0,48 $",
-        "sku": "LIC-CW-A",
-        "qty": 3,
-        "unitPrice": 1.14,
-        "category": "Network & Telecom",
-        "subcategory": "Wireless / WiFi"
-      },
-      {
-        "name": "Hardware Part #: CX LEVEL 1 8X5XNBD Cisco Catalyst 9800-L Wireless 32,32 6,96 $",
-        "sku": "C9800-L-F-K9",
-        "qty": 1,
-        "unitPrice": 1.47,
-        "category": "Network & Telecom",
-        "subcategory": "Wireless / WiFi"
-      },
-      {
-        "name": "Cisco Catalyst 9400 DNA Advantage 3 Year 21,45 2,90 $",
-        "sku": "C9400-DNA-A-3Y",
-        "qty": 9400,
-        "unitPrice": 7.68,
-        "category": "Network & Telecom",
-        "subcategory": "Cisco DNA Licensing"
-      },
-      {
-        "name": "Cisco Catalyst 9400 Series 2100W AC Power 43,63 4,52 $",
-        "sku": "C9400-PWR-2100AC",
-        "qty": 9400,
-        "unitPrice": 1.28,
-        "category": "Network & Telecom",
-        "subcategory": "Routing & Switching"
-      },
-      {
-        "name": "Cisco Catalyst 9400 Series Supervisor 2 21,73 3,46 $",
-        "sku": "C9400X-SUP-2",
-        "qty": 9400,
-        "unitPrice": 12.23,
-        "category": "Network & Telecom",
-        "subcategory": "Routing & Switching"
-      },
-      {
-        "name": "Hardware Part #: CX LEVEL 1 8X5XNBD Cisco Catalyst 9800-L Wireless 32,32 6,96 $",
-        "sku": "C9800-L-F-K9",
-        "qty": 1,
-        "unitPrice": 1.47,
-        "category": "Network & Telecom",
-        "subcategory": "Wireless / WiFi"
-      },
-      {
-        "name": "Cisco Catalyst 9400 DNA Advantage 3 Year 21,45 2,90 $",
-        "sku": "C9400-DNA-A-3Y",
-        "qty": 9400,
-        "unitPrice": 7.68,
-        "category": "Network & Telecom",
-        "subcategory": "Cisco DNA Licensing"
-      },
-      {
-        "name": "Cisco Catalyst 9400 Series 2100W AC Power 43,63 4,52 $",
-        "sku": "C9400-PWR-2100AC",
-        "qty": 9400,
-        "unitPrice": 1.28,
-        "category": "Network & Telecom",
-        "subcategory": "Routing & Switching"
-      },
-      {
-        "name": "Cisco Catalyst 9400 Series Supervisor 2 21,73 3,46 $",
-        "sku": "C9400X-SUP-2",
-        "qty": 9400,
-        "unitPrice": 12.23,
-        "category": "Network & Telecom",
-        "subcategory": "Routing & Switching"
-      },
-      {
-        "name": "Cisco Catalyst 9400 Series 480GB M2 SATA memory 26,35 2,70 $",
-        "sku": "C9400-SSD-480GB",
-        "qty": 9400,
-        "unitPrice": 2.24,
-        "category": "Network & Telecom",
-        "subcategory": "Routing & Switching"
-      },
-      {
-        "name": "Cisco Catalyst 9400 Series 24-Port 10 Gigabit 23,51 7,02 $",
-        "sku": "C9400-LC-24XS",
-        "qty": 9400,
-        "unitPrice": 15.4,
-        "category": "Network & Telecom",
-        "subcategory": "Routing & Switching"
-      },
-      {
-        "name": "Cisco Catalyst 9400 Series 48Port UPOE w/ 21,37 2,74 $",
-        "sku": "C9400-LC-48UX",
-        "qty": 9400,
-        "unitPrice": 7.55,
-        "category": "Network & Telecom",
-        "subcategory": "Routing & Switching"
-      },
-      {
-        "name": "6 CX LEVEL 1 8X7NCDCisco Catalyst 9400 Series 29,16 8,32 $",
-        "sku": "CON-L1NCD-C9407R",
-        "qty": 6,
-        "unitPrice": 11.19,
-        "category": "Network & Telecom",
-        "subcategory": "Routing & Switching"
-      },
-      {
-        "name": "7 CX LEVEL 1 SW SUB Cisco Catalyst 9400 24,47 8,94 $",
-        "sku": "CON-L1SWT-C94A",
-        "qty": 7,
-        "unitPrice": 1.63,
-        "category": "Network & Telecom",
-        "subcategory": "Routing & Switching"
-      },
-      {
-        "name": "8 Cisco Wireless 9172I(W7,3 radio,3 band 2x2) 3 692,31 6,93 $",
-        "sku": "CW9172I-RTG",
-        "qty": 8,
-        "unitPrice": 2.07,
-        "category": "Network & Telecom",
-        "subcategory": "Wireless / WiFi"
-      },
-      {
-        "name": "Cisco Catalyst 9400 Series 480GB M2 SATA memory 26,35 2,70 $",
-        "sku": "C9400-SSD-480GB",
-        "qty": 9400,
-        "unitPrice": 2.24,
-        "category": "Network & Telecom",
-        "subcategory": "Routing & Switching"
-      },
-      {
-        "name": "Cisco Catalyst 9400 Series 24-Port 10 Gigabit 23,51 7,02 $",
-        "sku": "C9400-LC-24XS",
-        "qty": 9400,
-        "unitPrice": 15.4,
-        "category": "Network & Telecom",
-        "subcategory": "Routing & Switching"
-      },
-      {
-        "name": "Cisco Catalyst 9400 Series 48Port UPOE w/ 21,37 2,74 $",
-        "sku": "C9400-LC-48UX",
-        "qty": 9400,
-        "unitPrice": 7.55,
-        "category": "Network & Telecom",
-        "subcategory": "Routing & Switching"
+        "subcategory": "Cisco DNA Licensing",
+        "vendor_hint": "Cisco"
       }
     ],
     "price": 175726.53,
     "year": 2025,
-    "quarter": null,
+    "quarter": "Q4",
     "quoteDate": "2025-10-11"
   },
   {
     "proj": "Panasonic",
-    "region": "Global",
-    "country": "Multi-Region",
+    "region": "APAC",
+    "country": "India",
     "cat": "Network & Telecom",
-    "subcat": "General",
-    "vendor": "SHI",
+    "subcat": "Routing & Switching",
+    "vendor": "NTT India Pvt. Ltd.",
     "file": "ClientOrder_AD101-2511-005_20251114 (3).pdf",
     "folder": null,
     "services": [
       {
-        "name": "Cisco DNA subscription for C8300 series --- 2 - -",
-        "sku": "DNA-C8300-SW",
-        "qty": 1,
-        "unitPrice": 1.1,
+        "name": "Cisco Catalyst C8300-1N1S-6T Router",
+        "sku": "C8300-1N1S-6T",
+        "qty": 2,
+        "unitPrice": 660542.03,
         "category": "Network & Telecom",
-        "subcategory": "Cisco DNA Licensing"
+        "subcategory": "Routing & Switching",
+        "vendor_hint": "Cisco"
       },
       {
-        "name": ".1 ---",
-        "sku": "DNA-C-T1-A-3Y",
-        "qty": 1,
-        "unitPrice": 1.1,
-        "category": "Network & Telecom",
-        "subcategory": "Cisco DNA Licensing"
-      },
-      {
-        "name": ".2 ---",
-        "sku": "SVS-CSTL1-T1-A3Y",
-        "qty": 1,
-        "unitPrice": 1.1,
+        "name": "CX LEVEL 1 8X5XNBD Cisco Catalyst",
+        "sku": "CON-L1NBD-C830IN6T",
+        "qty": 2,
+        "unitPrice": 379996.02,
         "category": "Professional Services",
-        "subcategory": "Support & Maintenance"
+        "subcategory": "Support & Maintenance",
+        "vendor_hint": "Cisco"
       },
       {
-        "name": ".3 ---",
-        "sku": "DSTACK-T1-A",
-        "qty": 1,
-        "unitPrice": 1.1,
+        "name": "Cisco Catalyst 8300 Edge 8GB memory",
+        "sku": "MEM-C8300-8GB",
+        "qty": 2,
+        "unitPrice": 0,
         "category": "Network & Telecom",
-        "subcategory": "Cabling & Optics"
+        "subcategory": "Routing & Switching",
+        "vendor_hint": "Cisco"
       },
       {
-        "name": ".4 ---",
-        "sku": "NWSTACK-T1-A",
-        "qty": 1,
-        "unitPrice": 1.1,
+        "name": "Cisco Catalyst 8000 Edge M.2 USB 16GB",
+        "sku": "M2USB-16G",
+        "qty": 2,
+        "unitPrice": 0,
         "category": "Network & Telecom",
-        "subcategory": "Cabling & Optics"
+        "subcategory": "Routing & Switching",
+        "vendor_hint": "Cisco"
       },
       {
-        "name": ".5 TE- ---",
-        "sku": "EMBED-WANI",
-        "qty": 1,
-        "unitPrice": 1.1,
+        "name": "RFID - 1RU for Cisco 8200/8300/8400/8500L Series",
+        "sku": "C-RFID-1R",
+        "qty": 2,
+        "unitPrice": 0,
         "category": "Network & Telecom",
-        "subcategory": "General"
+        "subcategory": "Cabling & Optics",
+        "vendor_hint": "Cisco"
       },
       {
-        "name": ".6 Cisco Umbrella for DNA Advantage --- 2 - -",
-        "sku": "SDWAN-UMB-ADV",
-        "qty": 1,
-        "unitPrice": 1.1,
+        "name": "Rack mount kit - 19\" 1RU for Cisco 8300 Series",
+        "sku": "C8300-RM-19-1R",
+        "qty": 2,
+        "unitPrice": 0,
         "category": "Network & Telecom",
-        "subcategory": "Cisco DNA Licensing"
+        "subcategory": "Cabling & Optics",
+        "vendor_hint": "Cisco"
       },
       {
-        "name": ".7 ---",
-        "sku": "SDWAN-CLOUD-PF",
-        "qty": 1,
-        "unitPrice": 1.1,
+        "name": "NIM Blank for Cisco 8300 Series",
+        "sku": "C8300-NIM-BLANK",
+        "qty": 2,
+        "unitPrice": 0,
         "category": "Network & Telecom",
-        "subcategory": "General"
+        "subcategory": "Routing & Switching",
+        "vendor_hint": "Cisco"
       },
       {
-        "name": "Cisco DNA subscription for C8300 series | --- | 2 | - | -",
+        "name": "SM Blank for Cisco 8300 Series",
+        "sku": "C8300-SM-BLANK",
+        "qty": 2,
+        "unitPrice": 0,
+        "category": "Network & Telecom",
+        "subcategory": "Routing & Switching",
+        "vendor_hint": "Cisco"
+      },
+      {
+        "name": "PIM Blank for Cisco 8300 Series",
+        "sku": "C8300-PIM-BLANK",
+        "qty": 2,
+        "unitPrice": 0,
+        "category": "Network & Telecom",
+        "subcategory": "Routing & Switching",
+        "vendor_hint": "Cisco"
+      },
+      {
+        "name": "Network Plug-n-Play Connect for zero-touch device deployment",
+        "sku": "NETWORK-PNP-LIC",
+        "qty": 2,
+        "unitPrice": 0,
+        "category": "Network & Telecom",
+        "subcategory": "Network Services",
+        "vendor_hint": "Unknown"
+      },
+      {
+        "name": "TE agent for IOSXE on Enterprise Routing",
+        "sku": "TE-R-SW",
+        "qty": 2,
+        "unitPrice": 0,
+        "category": "Network & Telecom",
+        "subcategory": "Routing & Switching",
+        "vendor_hint": "Cisco"
+      },
+      {
+        "name": "Cisco DNA subscription for C8300 series",
         "sku": "DNA-C8300-SW",
-        "qty": 1,
-        "unitPrice": 1.1,
+        "qty": 2,
+        "unitPrice": 0,
         "category": "Network & Telecom",
-        "subcategory": "Cisco DNA Licensing"
+        "subcategory": "Cisco DNA Licensing",
+        "vendor_hint": "Cisco"
       },
       {
-        "name": ".1 | | Cisco DNA Advantage Cloud Lic 3Y - upto",
+        "name": "Cisco DNA Advantage Cloud Lic 3Y - upto 250M (Aggr, 500M)",
         "sku": "DNA-C-T1-A-3Y",
-        "qty": 1,
-        "unitPrice": 1.1,
+        "qty": 2,
+        "unitPrice": 270977.08,
         "category": "Network & Telecom",
-        "subcategory": "Cisco DNA Licensing"
+        "subcategory": "Cisco DNA Licensing",
+        "vendor_hint": "Cisco"
       },
       {
-        "name": ".2 | | Cisco Support Enhanced - DNA Advantage",
+        "name": "Cisco Support Enhanced - DNA Advantage Cloud Lic, T1, 3Y",
         "sku": "SVS-CSTL1-T1-A3Y",
-        "qty": 1,
-        "unitPrice": 1.1,
-        "category": "Network & Telecom",
-        "subcategory": "Cisco DNA Licensing"
+        "qty": 2,
+        "unitPrice": 55885.26,
+        "category": "Professional Services",
+        "subcategory": "Support & Maintenance",
+        "vendor_hint": "Cisco"
       },
       {
-        "name": ".3 | | Cisco DNA Advantage Stack - upto 250M",
+        "name": "Cisco DNA Advantage Stack - upto 250M (Aggr, 500M)",
         "sku": "DSTACK-T1-A",
-        "qty": 1,
-        "unitPrice": 1.1,
+        "qty": 2,
+        "unitPrice": 0,
         "category": "Network & Telecom",
-        "subcategory": "Cisco DNA Licensing"
+        "subcategory": "Cisco DNA Licensing",
+        "vendor_hint": "Cisco"
       },
       {
-        "name": ".4 | | Cisco Network Advantage Stack - upto",
+        "name": "Cisco Network Advantage Stack - upto 250M (Aggr, 500M)",
         "sku": "NWSTACK-T1-A",
-        "qty": 1,
-        "unitPrice": 1.1,
+        "qty": 2,
+        "unitPrice": 0,
         "category": "Network & Telecom",
-        "subcategory": "Cabling & Optics"
-      },
-      {
-        "name": ".5 | TE- | Cisco ThousandEyes WAN Insights",
-        "sku": "EMBED-WANI",
-        "qty": 1,
-        "unitPrice": 1.1,
-        "category": "Network & Telecom",
-        "subcategory": "General"
-      },
-      {
-        "name": ".6 | | Cisco Umbrella for DNA Advantage | --- | 2 | - | -",
-        "sku": "SDWAN-UMB-ADV",
-        "qty": 1,
-        "unitPrice": 1.1,
-        "category": "Network & Telecom",
-        "subcategory": "Cisco DNA Licensing"
-      },
-      {
-        "name": ".7 | | Cisco SDWAN and SD-Routing Cloud",
-        "sku": "SDWAN-CLOUD-PF",
-        "qty": 1,
-        "unitPrice": 1.1,
-        "category": "Network & Telecom",
-        "subcategory": "General"
-      },
-      {
-        "name": ".8 ---",
-        "sku": "SSP-CDSDR",
-        "qty": 1,
-        "unitPrice": 1.1,
-        "category": "Network & Telecom",
-        "subcategory": "General"
-      },
-      {
-        "name": ".9 Controller Provisioning for CDCS Service --- 2 - -",
-        "sku": "SSP-CDCS-B",
-        "qty": 1,
-        "unitPrice": 1.1,
-        "category": "M365 & Power Platform",
-        "subcategory": "Visio / Project"
-      },
-      {
-        "name": ".10 ---",
-        "sku": "C83-1N1S-6T-PF",
-        "qty": 1,
-        "unitPrice": 1.1,
-        "category": "Network & Telecom",
-        "subcategory": "General"
-      },
-      {
-        "name": ".11 IOS XE Autonomous for Unified image --- 2 - -",
-        "sku": "IOSXE-AUTO-MODE-PF",
-        "qty": 1,
-        "unitPrice": 1.1,
-        "category": "Network & Telecom",
-        "subcategory": "General"
-      },
-      {
-        "name": "---",
-        "sku": "C8000-HSEC",
-        "qty": 1,
-        "unitPrice": 1.11,
-        "category": "Network & Telecom",
-        "subcategory": "General"
-      },
-      {
-        "name": "---",
-        "sku": "SC8KBEUK9-1715",
-        "qty": 1,
-        "unitPrice": 1.12,
-        "category": "Network & Telecom",
-        "subcategory": "General"
-      },
-      {
-        "name": "IOS XE Autonomous for Unified image --- 2 - -",
-        "sku": "IOSXE-AUTO-MODE",
-        "qty": 1,
-        "unitPrice": 1.13,
-        "category": "Network & Telecom",
-        "subcategory": "General"
-      },
-      {
-        "name": "---",
-        "sku": "PWR-CC1-250WAC",
-        "qty": 1,
-        "unitPrice": 1.14,
-        "category": "Network & Telecom",
-        "subcategory": "General"
-      },
-      {
-        "name": "AC Power Cord (India) --- 4 - -",
-        "sku": "CAB-IND",
-        "qty": 1,
-        "unitPrice": 1.15,
-        "category": "Network & Telecom",
-        "subcategory": "General"
+        "subcategory": "Routing & Switching",
+        "vendor_hint": "Cisco"
       },
       {
         "name": "Meraki MR Advanced License and Support, 2",
@@ -1735,7 +1009,8 @@
         "qty": 2,
         "unitPrice": 37987.74,
         "category": "Network & Telecom",
-        "subcategory": "Wireless / WiFi"
+        "subcategory": "Wireless / WiFi",
+        "vendor_hint": "Meraki"
       },
       {
         "name": "MA- Meraki AC Power Cord for MX and MS 2",
@@ -1743,287 +1018,204 @@
         "qty": 2,
         "unitPrice": 1270.78,
         "category": "Network & Telecom",
-        "subcategory": "Cabling & Optics"
+        "subcategory": "Cabling & Optics",
+        "vendor_hint": "Meraki"
       },
       {
-        "name": "7.0 = 1M Type 1 Stacking Cable --- 2",
+        "name": "7.0 = 1M Type 1 Stacking Cable",
         "sku": "STACK-T1-1M",
         "qty": 7,
         "unitPrice": 15221.22,
         "category": "Network & Telecom",
-        "subcategory": "Cabling & Optics"
+        "subcategory": "Cabling & Optics",
+        "vendor_hint": "Cisco"
       },
       {
-        "name": "MA- Meraki AC Power Cord for MX and MS 2",
-        "sku": "PWR-CORD-IN",
-        "qty": 2,
-        "unitPrice": 1270.78,
-        "category": "Network & Telecom",
-        "subcategory": "Cabling & Optics"
-      },
-      {
-        "name": "11.0 = 1M Type 1 Stacking Cable --- 2",
+        "name": "11.0 = 1M Type 1 Stacking Cable",
         "sku": "STACK-T1A-1M",
         "qty": 11,
         "unitPrice": 17049.97,
         "category": "Network & Telecom",
-        "subcategory": "Cabling & Optics"
+        "subcategory": "Cabling & Optics",
+        "vendor_hint": "Cisco"
       }
     ],
     "price": 12467281.48,
     "year": 2025,
-    "quarter": null,
-    "quoteDate": null
+    "quarter": "Q3",
+    "quoteDate": "2025-11-07"
   },
   {
     "proj": "Tenneco",
-    "region": "Global",
-    "country": "Multi-Region",
+    "region": "Americas",
+    "country": "United States",
     "cat": "M365 & Power Platform",
-    "subcat": "General",
+    "subcat": "Unknown",
     "vendor": "Microsoft",
     "file": "Copeland New EAS_en-US_CPS_1342548_003_Final_CTM.pdf",
     "folder": null,
     "services": [
       {
-        "name": "Adjustable 6/16/2023 Monthly 12 9,300 United States",
+        "name": "M365 E5 Unified Sub Per User",
         "sku": "AAD-33168",
         "qty": 6,
         "unitPrice": 31.36,
         "category": "M365 & Power Platform",
-        "subcategory": "M365 E3/E5 Licenses"
+        "subcategory": "M365 E3/E5 Licenses",
+        "vendor_hint": "Microsoft"
       },
       {
-        "name": "Adjustable 6/16/2023 Monthly 12 50 United States",
-        "sku": "HWN-00002",
-        "qty": 2,
-        "unitPrice": 3.87,
-        "category": "Network & Telecom",
-        "subcategory": "General"
-      },
-      {
-        "name": "Adjustable 6/16/2023 Monthly 12 710 United States",
-        "sku": "N9U-00002",
-        "qty": 2,
-        "unitPrice": 10.44,
-        "category": "Network & Telecom",
-        "subcategory": "General"
-      },
-      {
-        "name": "Adjustable 6/16/2023 Monthly 12 500 United States",
-        "sku": "I76-00004",
-        "qty": 4,
-        "unitPrice": 59.4,
-        "category": "Network & Telecom",
-        "subcategory": "General"
-      },
-      {
-        "name": "Upfront 1 100,000 United States",
-        "sku": "AAD-82407",
-        "qty": 1,
-        "unitPrice": 100.0,
-        "category": "Network & Telecom",
-        "subcategory": "General"
-      },
-      {
-        "name": "Adjustable 6/16/2023 Monthly 12 2 United States",
-        "sku": "SNV-00001",
-        "qty": 1,
-        "unitPrice": 502.77,
-        "category": "Network & Telecom",
-        "subcategory": "General"
-      },
-      {
-        "name": "Adjustable 6/16/2023 Monthly 12 6 United States",
-        "sku": "STH-00001",
-        "qty": 1,
-        "unitPrice": 502.77,
-        "category": "Network & Telecom",
-        "subcategory": "General"
-      },
-      {
-        "name": "Adjustable 6/16/2023 Monthly 12 2 United States",
-        "sku": "Q4B-00001",
-        "qty": 1,
-        "unitPrice": 1611.46,
-        "category": "Cybersecurity",
-        "subcategory": "Threat Intelligence"
-      },
-      {
-        "name": "Adjustable 6/16/2023 Monthly 12 9,300 United States",
-        "sku": "NM1-00001",
-        "qty": 1,
-        "unitPrice": 1.4,
-        "category": "Cybersecurity",
-        "subcategory": "Threat Intelligence"
-      },
-      {
-        "name": "Adjustable 6/16/2023 Monthly 12 175 United States",
-        "sku": "TQA-00001",
-        "qty": 1,
-        "unitPrice": 6.19,
-        "category": "Network & Telecom",
-        "subcategory": "General"
-      },
-      {
-        "name": "Adjustable 6/16/2023 Monthly 12 4,452 United States",
-        "sku": "NI7-00001",
-        "qty": 1,
-        "unitPrice": 4.03,
-        "category": "Network & Telecom",
-        "subcategory": "General"
-      },
-      {
-        "name": "Adjustable 6/16/2023 Monthly 12 10 United States",
-        "sku": "SEJ-00002",
-        "qty": 2,
-        "unitPrice": 18.2,
-        "category": "Network & Telecom",
-        "subcategory": "General"
-      },
-      {
-        "name": "M365 E5 Unified Sub Per User | | Adjustable | 6/16/2023 | Monthly | 12 | | 9,300",
-        "sku": "AAD-33168",
-        "qty": 6,
-        "unitPrice": 31.36,
-        "category": "M365 & Power Platform",
-        "subcategory": "M365 E3/E5 Licenses"
-      },
-      {
-        "name": "Visio P1 Sub Per User | | Adjustable | 6/16/2023 | Monthly | 12 | | 50 | United ",
+        "name": "Visio P1 Sub Per User",
         "sku": "HWN-00002",
         "qty": 2,
         "unitPrice": 3.87,
         "category": "M365 & Power Platform",
-        "subcategory": "Visio / Project"
+        "subcategory": "Visio / Project",
+        "vendor_hint": "Microsoft"
       },
       {
-        "name": "Visio P2 Sub Per User | | Adjustable | 6/16/2023 | Monthly | 12 | | 710 | United",
+        "name": "Visio P2 Sub Per User",
         "sku": "N9U-00002",
         "qty": 2,
         "unitPrice": 10.44,
         "category": "M365 & Power Platform",
-        "subcategory": "Visio / Project"
+        "subcategory": "Visio / Project",
+        "vendor_hint": "Microsoft"
       },
       {
-        "name": "W365 Ent 4vCPU/16GB/128GB Sub Per User | | Adjustable | 6/16/2023 | Monthly | 12",
+        "name": "W365 Ent 4vCPU/16GB/128GB Sub Per User",
         "sku": "I76-00004",
         "qty": 4,
         "unitPrice": 59.4,
         "category": "M365 & Power Platform",
-        "subcategory": "Windows 365 Cloud PC"
+        "subcategory": "Windows 365 Cloud PC",
+        "vendor_hint": "Microsoft"
       },
       {
-        "name": "Az Consumption Commit Amt in Pool | | | | Upfront | 1 | | 100,000 | United State",
+        "name": "Az Consumption Commit Amt in Pool",
         "sku": "AAD-82407",
         "qty": 1,
         "unitPrice": 100.0,
         "category": "M365 & Power Platform",
-        "subcategory": "Azure Commitments"
+        "subcategory": "Azure Commitments",
+        "vendor_hint": "Microsoft"
       },
       {
-        "name": "D365 Guides Device Sub Per Device | | Adjustable | 6/16/2023 | Monthly | 12 | | ",
+        "name": "D365 Guides Device Sub Per Device",
         "sku": "SNV-00001",
         "qty": 1,
         "unitPrice": 502.77,
-        "category": "Network & Telecom",
-        "subcategory": "General"
+        "category": "M365 & Power Platform",
+        "subcategory": "Power Platform",
+        "vendor_hint": "Microsoft"
       },
       {
-        "name": "D365 Remote Assist Device Sub Per Device | | Adjustable | 6/16/2023 | Monthly | ",
+        "name": "D365 Remote Assist Device Sub Per Device",
         "sku": "STH-00001",
         "qty": 1,
         "unitPrice": 502.77,
-        "category": "Network & Telecom",
-        "subcategory": "General"
+        "category": "M365 & Power Platform",
+        "subcategory": "Power Platform",
+        "vendor_hint": "Microsoft"
       },
       {
-        "name": "Defender Threat Intelligence Sub Per User | | Adjustable | 6/16/2023 | Monthly |",
+        "name": "Defender Threat Intelligence Sub Per User",
         "sku": "Q4B-00001",
         "qty": 1,
         "unitPrice": 1611.46,
         "category": "Cybersecurity",
-        "subcategory": "Endpoint Protection"
+        "subcategory": "Threat Intelligence",
+        "vendor_hint": "Microsoft"
       },
       {
-        "name": "Defender Vulnerability AO Sub Per User | | Adjustable | 6/16/2023 | Monthly | 12",
+        "name": "Defender Vulnerability AO Sub Per User",
         "sku": "NM1-00001",
         "qty": 1,
         "unitPrice": 1.4,
         "category": "Cybersecurity",
-        "subcategory": "Endpoint Protection"
+        "subcategory": "Vulnerability Mgmt",
+        "vendor_hint": "Microsoft"
       },
       {
-        "name": "Exchange Online P2 Sub Per User | | Adjustable | 6/16/2023 | Monthly | 12 | | 17",
+        "name": "Exchange Online P2 Sub Per User",
         "sku": "TQA-00001",
         "qty": 1,
         "unitPrice": 6.19,
-        "category": "Network & Telecom",
-        "subcategory": "General"
+        "category": "M365 & Power Platform",
+        "subcategory": "Exchange Online",
+        "vendor_hint": "Microsoft"
       },
       {
-        "name": "Permissions Management Sub | | Adjustable | 6/16/2023 | Monthly | 12 | | 4,452 |",
+        "name": "Permissions Management Sub",
         "sku": "NI7-00001",
         "qty": 1,
         "unitPrice": 4.03,
-        "category": "Cybersecurity",
-        "subcategory": "Identity & Access"
+        "category": "M365 & Power Platform",
+        "subcategory": "Power Platform",
+        "vendor_hint": "Microsoft"
       },
       {
-        "name": "Power Apps Plan Sub Per User | | Adjustable | 6/16/2023 | Monthly | 12 | | 10 | ",
+        "name": "Power Apps Plan Sub Per User",
         "sku": "SEJ-00002",
         "qty": 2,
         "unitPrice": 18.2,
         "category": "M365 & Power Platform",
-        "subcategory": "Power Platform"
+        "subcategory": "Power Platform",
+        "vendor_hint": "Microsoft"
       },
       {
-        "name": "Adjustable 6/16/2023 Monthly 12 10 United States",
+        "name": "Unknown Service",
         "sku": "SPU-00002",
         "qty": 2,
         "unitPrice": 12.29,
         "category": "Network & Telecom",
-        "subcategory": "General"
+        "subcategory": "Unknown",
+        "vendor_hint": "Unknown"
       },
       {
-        "name": "Adjustable 6/16/2023 Monthly 12 2 United States",
+        "name": "Unknown Service",
         "sku": "GSL-00002",
         "qty": 2,
         "unitPrice": 3477.27,
         "category": "Network & Telecom",
-        "subcategory": "General"
+        "subcategory": "Unknown",
+        "vendor_hint": "Unknown"
       },
       {
-        "name": "Adjustable 6/16/2023 Monthly 12 2 United States",
+        "name": "Unknown Service",
         "sku": "GSN-00002",
         "qty": 2,
         "unitPrice": 6958.02,
         "category": "Network & Telecom",
-        "subcategory": "General"
+        "subcategory": "Unknown",
+        "vendor_hint": "Unknown"
       },
       {
-        "name": "Adjustable 6/16/2023 Monthly 12 25 United States",
+        "name": "Unknown Service",
         "sku": "TRS-00002",
         "qty": 2,
         "unitPrice": 7.73,
         "category": "Network & Telecom",
-        "subcategory": "General"
+        "subcategory": "Unknown",
+        "vendor_hint": "Unknown"
       },
       {
-        "name": "Per User Promo Adjustable 6/16/2023 Monthly 12 9,300 United States",
+        "name": "Per User Promo",
         "sku": "TK2-00060",
         "qty": 60,
         "unitPrice": 1.82,
-        "category": "Network & Telecom",
-        "subcategory": "General"
+        "category": "M365 & Power Platform",
+        "subcategory": "M365 E3/E5 Licenses",
+        "vendor_hint": "Microsoft"
       },
       {
-        "name": "Adjustable 6/16/2023 Monthly 12 500 United States",
+        "name": "Unknown Service",
         "sku": "TJ9-00001",
         "qty": 1,
         "unitPrice": 21.84,
         "category": "Network & Telecom",
-        "subcategory": "General"
+        "subcategory": "Unknown",
+        "vendor_hint": "Unknown"
       }
     ],
     "price": 0.0,
@@ -2033,161 +1225,176 @@
   },
   {
     "proj": "Panasonic",
-    "region": "Global",
-    "country": "Multi-Region",
+    "region": "APAC",
+    "country": "Thailand",
     "cat": "Network & Telecom",
-    "subcat": "Wireless / WiFi",
-    "vendor": "Quest",
+    "subcat": "Cabling & Optics",
+    "vendor": "Cisco",
     "file": "Final PASAP - NTT-Panasonic Auto-Cisco Network Equipment Rev.3.pdf",
     "folder": null,
     "services": [
       {
-        "name": "= 1000BASE-BX SFP, 1490NM 4 2 9",
-        "sku": "GLC-BX-D",
-        "qty": 4,
-        "unitPrice": 4000.0,
-        "category": "Network & Telecom",
-        "subcategory": "Cabling & Optics"
-      },
-      {
-        "name": "Catalyst 9200L 24-port data only, 4 x 1G, Network Essentials 1 6 6",
+        "name": "Catalyst 9200L 24-port data only, 4 x 1G, Network Essentials",
         "sku": "C9200L-24T-4G-E",
         "qty": 24,
         "unitPrice": 5000.0,
         "category": "Network & Telecom",
-        "subcategory": "Routing & Switching"
+        "subcategory": "Routing & Switching",
+        "vendor_hint": "Cisco"
       },
       {
-        "name": "= 1000BASE-BX SFP, 1490NM 4 2 9",
+        "name": "1000BASE-BX SFP, 1490NM",
         "sku": "GLC-BX-D",
         "qty": 4,
         "unitPrice": 4000.0,
         "category": "Network & Telecom",
-        "subcategory": "Cabling & Optics"
+        "subcategory": "Cabling & Optics",
+        "vendor_hint": "Cisco"
       },
       {
-        "name": "Catalyst 9200L 24-port data only, 4 x 1G, Network Essentials 1 6 6",
-        "sku": "C9200L-24T-4G-E",
-        "qty": 24,
-        "unitPrice": 5000.0,
-        "category": "Network & Telecom",
-        "subcategory": "Routing & Switching"
-      },
-      {
-        "name": "Cisco Catalyst 9800-L Wireless Controller_Fiber Uplink 2 2 5",
+        "name": "Cisco Catalyst 9800-L Wireless Controller_Fiber Uplink",
         "sku": "C9800-L-F-K9",
-        "qty": 9800,
+        "qty": 2,
         "unitPrice": 80000.0,
         "category": "Network & Telecom",
-        "subcategory": "Wireless / WiFi"
+        "subcategory": "Wireless / WiFi",
+        "vendor_hint": "Cisco"
       },
       {
-        "name": "= 10GBASE-CU SFP+ Cable 5 Meter 4 3 1",
+        "name": "10GBASE-CU SFP+ Cable 5 Meter",
         "sku": "SFP-H10GB-CU5M",
         "qty": 5,
         "unitPrice": 2000.0,
         "category": "Network & Telecom",
-        "subcategory": "Cabling & Optics"
+        "subcategory": "Cabling & Optics",
+        "vendor_hint": "Cisco"
       },
       {
-        "name": "Cisco Wireless License - Advantage 23 1 2",
+        "name": "Cisco Wireless License - Advantage",
         "sku": "LIC-CW-A",
-        "qty": 23,
+        "qty": 107,
         "unitPrice": 500.0,
         "category": "Network & Telecom",
-        "subcategory": "Wireless / WiFi"
+        "subcategory": "Wireless / WiFi",
+        "vendor_hint": "Cisco"
       },
       {
-        "name": "Cisco Wireless License - Advantage 84 1 8",
-        "sku": "LIC-CW-A",
-        "qty": 84,
-        "unitPrice": 500.0,
-        "category": "Network & Telecom",
-        "subcategory": "Wireless / WiFi"
-      },
-      {
-        "name": "Wireless Cisco DNA On-Prem Advantage, 3Y Term Lic 39 3",
+        "name": "Wireless Cisco DNA On-Prem Advantage, 3Y Term Lic",
         "sku": "AIR-DNA-A-3Y",
         "qty": 39,
         "unitPrice": 10000.0,
         "category": "Network & Telecom",
-        "subcategory": "Wireless / WiFi"
+        "subcategory": "Cisco DNA Licensing",
+        "vendor_hint": "Cisco"
       },
       {
-        "name": "= 10GBASE-SR SFP Module 4 7",
+        "name": "10GBASE-SR SFP Module",
         "sku": "SFP-10G-SR",
         "qty": 4,
         "unitPrice": 17500.0,
         "category": "Network & Telecom",
-        "subcategory": "Cabling & Optics"
-      },
-      {
-        "name": "Cisco Catalyst 9800-L Wireless Controller_Fiber Uplink 2 2 5",
-        "sku": "C9800-L-F-K9",
-        "qty": 9800,
-        "unitPrice": 80000.0,
-        "category": "Network & Telecom",
-        "subcategory": "Wireless / WiFi"
-      },
-      {
-        "name": "= 10GBASE-CU SFP+ Cable 5 Meter 4 3 1",
-        "sku": "SFP-H10GB-CU5M",
-        "qty": 5,
-        "unitPrice": 2000.0,
-        "category": "Network & Telecom",
-        "subcategory": "Cabling & Optics"
-      },
-      {
-        "name": "Cisco Wireless License - Advantage 23 1 2",
-        "sku": "LIC-CW-A",
-        "qty": 23,
-        "unitPrice": 500.0,
-        "category": "Network & Telecom",
-        "subcategory": "Wireless / WiFi"
-      },
-      {
-        "name": "Cisco Wireless License - Advantage 84 1 8",
-        "sku": "LIC-CW-A",
-        "qty": 84,
-        "unitPrice": 500.0,
-        "category": "Network & Telecom",
-        "subcategory": "Wireless / WiFi"
-      },
-      {
-        "name": "Wireless Cisco DNA On-Prem Advantage, 3Y Term Lic 39 3",
-        "sku": "AIR-DNA-A-3Y",
-        "qty": 39,
-        "unitPrice": 10000.0,
-        "category": "Network & Telecom",
-        "subcategory": "Wireless / WiFi"
-      },
-      {
-        "name": "= 10GBASE-SR SFP Module 4 7",
-        "sku": "SFP-10G-SR",
-        "qty": 4,
-        "unitPrice": 17500.0,
-        "category": "Network & Telecom",
-        "subcategory": "Cabling & Optics"
+        "subcategory": "Cabling & Optics",
+        "vendor_hint": "Cisco"
       }
     ],
     "price": 7582500.0,
     "year": 2025,
     "quarter": "Q4",
+    "quoteDate": "2025-11-07"
+  },
+  {
+    "proj": "Unknown",
+    "region": "Global",
+    "country": "Unknown",
+    "cat": "M365 & Power Platform",
+    "subcat": "Visio / Project",
+    "vendor": "Microsoft",
+    "file": "Microsoft EA - Prelim Yr-Yr Comp - FINAL.xlsx",
+    "folder": null,
+    "services": [
+      {
+        "name": "M365 E5 Unified Sub Per User",
+        "sku": "Unknown",
+        "qty": 9300,
+        "unitPrice": 31.36,
+        "category": "M365 & Power Platform",
+        "subcategory": "M365 E3/E5 Licenses",
+        "vendor_hint": "Microsoft"
+      },
+      {
+        "name": "Visio P1 Sub Per User",
+        "sku": "Unknown",
+        "qty": 50,
+        "unitPrice": 3.87,
+        "category": "M365 & Power Platform",
+        "subcategory": "Visio / Project",
+        "vendor_hint": "Microsoft"
+      },
+      {
+        "name": "Visio P2 Sub Per User",
+        "sku": "Unknown",
+        "qty": 710,
+        "unitPrice": 10.44,
+        "category": "M365 & Power Platform",
+        "subcategory": "Visio / Project",
+        "vendor_hint": "Microsoft"
+      },
+      {
+        "name": "W365 Ent 4vCPU/16GB/128GB Sub Per User",
+        "sku": "Unknown",
+        "qty": 500,
+        "unitPrice": 59.4,
+        "category": "M365 & Power Platform",
+        "subcategory": "Windows 365 Cloud PC",
+        "vendor_hint": "Microsoft"
+      },
+      {
+        "name": "Azure Monetary Commitment Provision",
+        "sku": "Unknown",
+        "qty": 1,
+        "unitPrice": 0.0,
+        "category": "M365 & Power Platform",
+        "subcategory": "Azure Commitments",
+        "vendor_hint": "Microsoft"
+      }
+    ],
+    "price": 3499776.0,
+    "year": 2025,
+    "quarter": null,
     "quoteDate": null
   },
   {
     "proj": "Panasonic",
-    "region": "Global",
-    "country": "Multi-Region",
+    "region": "APAC",
+    "country": "Japan",
     "cat": "Cybersecurity",
-    "subcat": "General",
+    "subcat": "Endpoint Protection",
     "vendor": "SHI",
     "file": "SHI Quote-26685639 (2).pdf",
     "folder": null,
-    "services": [],
+    "services": [
+      {
+        "name": "Wiz Advanced",
+        "sku": "Wiz Advanced",
+        "qty": 1,
+        "unitPrice": 130680.0,
+        "category": "Cybersecurity",
+        "subcategory": "Endpoint Protection",
+        "vendor_hint": "Unknown"
+      },
+      {
+        "name": "Enterprise Support",
+        "sku": "Enterprise Support",
+        "qty": 1,
+        "unitPrice": 28080.0,
+        "category": "Professional Services",
+        "subcategory": "Support & Maintenance",
+        "vendor_hint": "Unknown"
+      }
+    ],
     "price": 158760.0,
     "year": 2025,
-    "quarter": "Q2",
-    "quoteDate": null
+    "quarter": "Q3",
+    "quoteDate": "2025-09-26"
   }
 ]
