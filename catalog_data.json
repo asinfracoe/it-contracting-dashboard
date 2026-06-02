@@ -5,7 +5,7 @@
     "country": "Japan",
     "cat": "Network & Telecom",
     "subcat": "Cisco DNA Licensing",
-    "vendor": "NTT Docomo Business Inc. and Equinix",
+    "vendor": "NTT Docomo",
     "file": "12.5.2025 - Revised Quote - Equinix TY Cisco License - EN.pdf",
     "folder": null,
     "services": [
@@ -65,7 +65,7 @@
         "name": "Microsoft Teams Essentials",
         "sku": "NCE108B",
         "qty": 654,
-        "unitPrice": 4.0,
+        "unitPrice": 4,
         "category": "M365 & Power Platform",
         "subcategory": "Teams Phone",
         "vendor_hint": "Microsoft"
@@ -91,7 +91,7 @@
     "country": "India",
     "cat": "Network & Telecom",
     "subcat": "Routing & Switching",
-    "vendor": "NTT India Private Limited",
+    "vendor": "Cisco",
     "file": "92922585.pdf",
     "folder": null,
     "services": [
@@ -296,13 +296,13 @@
         "name": "Cisco Wireless 9172I(W7,3 radio,3 band 2",
         "sku": "CW9172I-RTG",
         "qty": 3,
-        "unitPrice": 2076.93,
+        "unitPrice": 2.07693,
         "category": "Network & Telecom",
         "subcategory": "Wireless / WiFi",
         "vendor_hint": "Cisco"
       }
     ],
-    "price": 2471.55,
+    "price": 2.47155,
     "year": 2025,
     "quarter": "Q4",
     "quoteDate": "2025-12-24"
@@ -447,8 +447,7 @@
         "qty": 4,
         "unitPrice": 0,
         "category": "Network & Telecom",
-        "subcategory": "Cabling & Optics",
-        "vendor_hint": "Cisco"
+        "subcategory": "Routing & Switching"
       },
       {
         "name": "CAB-ACE AC Power Cord (Europe), C13, CEE 7, 1.5M",
@@ -456,8 +455,7 @@
         "qty": 4,
         "unitPrice": 0,
         "category": "Network & Telecom",
-        "subcategory": "Cabling & Optics",
-        "vendor_hint": "Cisco"
+        "subcategory": "General"
       },
       {
         "name": "C8300-NIM-BLANK NIM Blank for Cisco 8300 Series",
@@ -465,8 +463,7 @@
         "qty": 2,
         "unitPrice": 0,
         "category": "Network & Telecom",
-        "subcategory": "Routing & Switching",
-        "vendor_hint": "Cisco"
+        "subcategory": "Routing & Switching"
       },
       {
         "name": "C8300-SM-BLANK SM Blank for Cisco 8300 Series",
@@ -474,8 +471,7 @@
         "qty": 2,
         "unitPrice": 0,
         "category": "Network & Telecom",
-        "subcategory": "Routing & Switching",
-        "vendor_hint": "Cisco"
+        "subcategory": "Routing & Switching"
       },
       {
         "name": "C8300-PIM-BLANK PIM Blank for Cisco 8300 Series",
@@ -483,8 +479,7 @@
         "qty": 2,
         "unitPrice": 0,
         "category": "Network & Telecom",
-        "subcategory": "Routing & Switching",
-        "vendor_hint": "Cisco"
+        "subcategory": "Routing & Switching"
       },
       {
         "name": "NETWORK-PNP-LIC Network Plug-n-Play Connect for zero-touch device deployment",
@@ -492,8 +487,7 @@
         "qty": 2,
         "unitPrice": 0,
         "category": "Network & Telecom",
-        "subcategory": "Network Services",
-        "vendor_hint": "Unknown"
+        "subcategory": "General"
       },
       {
         "name": "TE-R-SW TE agent for IOSXE on Enterprise Routing",
@@ -501,8 +495,7 @@
         "qty": 2,
         "unitPrice": 0,
         "category": "Network & Telecom",
-        "subcategory": "Routing & Switching",
-        "vendor_hint": "Cisco"
+        "subcategory": "General"
       }
     ],
     "price": 289.26,
@@ -598,8 +591,7 @@
         "qty": 4,
         "unitPrice": 0.0,
         "category": "Network & Telecom",
-        "subcategory": "Cabling & Optics",
-        "vendor_hint": "Cisco"
+        "subcategory": "Routing & Switching"
       },
       {
         "name": "CAB-ACE AC Power Cord (Europe), C13, CEE 7, 1.5M",
@@ -607,8 +599,7 @@
         "qty": 4,
         "unitPrice": 0.0,
         "category": "Network & Telecom",
-        "subcategory": "Cabling & Optics",
-        "vendor_hint": "Cisco"
+        "subcategory": "General"
       },
       {
         "name": "C8300-NIM-BLANK NIM Blank for Cisco 8300 Series",
@@ -616,8 +607,7 @@
         "qty": 2,
         "unitPrice": 0.0,
         "category": "Network & Telecom",
-        "subcategory": "Routing & Switching",
-        "vendor_hint": "Cisco"
+        "subcategory": "Routing & Switching"
       },
       {
         "name": "C8300-SM-BLANK SM Blank for Cisco 8300 Series",
@@ -625,8 +615,7 @@
         "qty": 2,
         "unitPrice": 0.0,
         "category": "Network & Telecom",
-        "subcategory": "Routing & Switching",
-        "vendor_hint": "Cisco"
+        "subcategory": "Routing & Switching"
       },
       {
         "name": "C8300-PIM-BLANK PIM Blank for Cisco 8300 Series",
@@ -634,8 +623,7 @@
         "qty": 2,
         "unitPrice": 0.0,
         "category": "Network & Telecom",
-        "subcategory": "Routing & Switching",
-        "vendor_hint": "Cisco"
+        "subcategory": "Routing & Switching"
       },
       {
         "name": "NETWORK-PNP-LIC Network Plug-n-Play Connect for zero-touch device deployment",
@@ -643,8 +631,7 @@
         "qty": 2,
         "unitPrice": 0.0,
         "category": "Network & Telecom",
-        "subcategory": "Network Services",
-        "vendor_hint": "Unknown"
+        "subcategory": "General"
       },
       {
         "name": "TE-R-SW TE agent for IOSXE on Enterprise Routing",
@@ -652,8 +639,7 @@
         "qty": 2,
         "unitPrice": 0.0,
         "category": "Network & Telecom",
-        "subcategory": "Routing & Switching",
-        "vendor_hint": "Cisco"
+        "subcategory": "General"
       },
       {
         "name": "DNA-C8300-SW Cisco DNA subscription for C8300 series",
@@ -661,8 +647,7 @@
         "qty": 2,
         "unitPrice": 0.0,
         "category": "Network & Telecom",
-        "subcategory": "Cisco DNA Licensing",
-        "vendor_hint": "Cisco"
+        "subcategory": "Cisco DNA Licensing"
       },
       {
         "name": "C8000-HSEC U.S. Export Restriction Compliance license for C8000 series",
@@ -670,8 +655,7 @@
         "qty": 2,
         "unitPrice": 0.0,
         "category": "Network & Telecom",
-        "subcategory": "Routing & Switching",
-        "vendor_hint": "Cisco"
+        "subcategory": "General"
       }
     ],
     "price": 65178.0,
@@ -706,15 +690,6 @@
         "category": "Network & Telecom",
         "subcategory": "Cisco DNA Licensing",
         "vendor_hint": "Cisco"
-      },
-      {
-        "name": "LOGISTICS (NPR): 225/unit",
-        "sku": "DDNC-OUTBOUND",
-        "qty": 225,
-        "unitPrice": 9.46,
-        "category": "Professional Services",
-        "subcategory": "Logistics",
-        "vendor_hint": "Unknown"
       }
     ],
     "price": 65178.0,
@@ -747,8 +722,7 @@
         "qty": 2,
         "unitPrice": 0,
         "category": "Network & Telecom",
-        "subcategory": "Routing & Switching",
-        "vendor_hint": "Cisco"
+        "subcategory": "Routing & Switching"
       },
       {
         "name": "M2USB-16G",
@@ -756,8 +730,7 @@
         "qty": 2,
         "unitPrice": 0,
         "category": "Network & Telecom",
-        "subcategory": "Cabling & Optics",
-        "vendor_hint": "Unknown"
+        "subcategory": "General"
       },
       {
         "name": "C-RFID-1R",
@@ -765,8 +738,7 @@
         "qty": 2,
         "unitPrice": 0,
         "category": "Network & Telecom",
-        "subcategory": "Cabling & Optics",
-        "vendor_hint": "Cisco"
+        "subcategory": "General"
       },
       {
         "name": "C8300-RM-19-1R",
@@ -774,8 +746,7 @@
         "qty": 2,
         "unitPrice": 0,
         "category": "Network & Telecom",
-        "subcategory": "Cabling & Optics",
-        "vendor_hint": "Cisco"
+        "subcategory": "Routing & Switching"
       },
       {
         "name": "C8300-NIM-BLANK",
@@ -783,8 +754,7 @@
         "qty": 2,
         "unitPrice": 0,
         "category": "Network & Telecom",
-        "subcategory": "Routing & Switching",
-        "vendor_hint": "Cisco"
+        "subcategory": "Routing & Switching"
       },
       {
         "name": "C8300-SM-BLANK",
@@ -792,8 +762,7 @@
         "qty": 2,
         "unitPrice": 0,
         "category": "Network & Telecom",
-        "subcategory": "Routing & Switching",
-        "vendor_hint": "Cisco"
+        "subcategory": "Routing & Switching"
       },
       {
         "name": "C8300-PIM-BLANK",
@@ -801,8 +770,7 @@
         "qty": 2,
         "unitPrice": 0,
         "category": "Network & Telecom",
-        "subcategory": "Routing & Switching",
-        "vendor_hint": "Cisco"
+        "subcategory": "Routing & Switching"
       },
       {
         "name": "NETWORK-PNP-LIC",
@@ -810,8 +778,7 @@
         "qty": 2,
         "unitPrice": 0,
         "category": "Network & Telecom",
-        "subcategory": "Network Services",
-        "vendor_hint": "Unknown"
+        "subcategory": "General"
       },
       {
         "name": "TE-R-SW",
@@ -819,8 +786,7 @@
         "qty": 2,
         "unitPrice": 0,
         "category": "Network & Telecom",
-        "subcategory": "Routing & Switching",
-        "vendor_hint": "Cisco"
+        "subcategory": "General"
       },
       {
         "name": "DNA-C8300-SW",
@@ -828,8 +794,7 @@
         "qty": 2,
         "unitPrice": 0,
         "category": "Network & Telecom",
-        "subcategory": "Cisco DNA Licensing",
-        "vendor_hint": "Cisco"
+        "subcategory": "Cisco DNA Licensing"
       }
     ],
     "price": 175726.53,
@@ -861,9 +826,8 @@
         "sku": "CON-L1NBD-C830IN6T",
         "qty": 2,
         "unitPrice": 379996.02,
-        "category": "Professional Services",
-        "subcategory": "Support & Maintenance",
-        "vendor_hint": "Cisco"
+        "category": "Network & Telecom",
+        "subcategory": "Routing & Switching"
       },
       {
         "name": "Cisco Catalyst 8300 Edge 8GB memory",
@@ -889,8 +853,7 @@
         "qty": 2,
         "unitPrice": 0,
         "category": "Network & Telecom",
-        "subcategory": "Cabling & Optics",
-        "vendor_hint": "Cisco"
+        "subcategory": "General"
       },
       {
         "name": "Rack mount kit - 19\" 1RU for Cisco 8300 Series",
@@ -898,8 +861,7 @@
         "qty": 2,
         "unitPrice": 0,
         "category": "Network & Telecom",
-        "subcategory": "Cabling & Optics",
-        "vendor_hint": "Cisco"
+        "subcategory": "Routing & Switching"
       },
       {
         "name": "NIM Blank for Cisco 8300 Series",
@@ -907,8 +869,7 @@
         "qty": 2,
         "unitPrice": 0,
         "category": "Network & Telecom",
-        "subcategory": "Routing & Switching",
-        "vendor_hint": "Cisco"
+        "subcategory": "Routing & Switching"
       },
       {
         "name": "SM Blank for Cisco 8300 Series",
@@ -916,8 +877,7 @@
         "qty": 2,
         "unitPrice": 0,
         "category": "Network & Telecom",
-        "subcategory": "Routing & Switching",
-        "vendor_hint": "Cisco"
+        "subcategory": "Routing & Switching"
       },
       {
         "name": "PIM Blank for Cisco 8300 Series",
@@ -925,8 +885,7 @@
         "qty": 2,
         "unitPrice": 0,
         "category": "Network & Telecom",
-        "subcategory": "Routing & Switching",
-        "vendor_hint": "Cisco"
+        "subcategory": "Routing & Switching"
       },
       {
         "name": "Network Plug-n-Play Connect for zero-touch device deployment",
@@ -934,8 +893,7 @@
         "qty": 2,
         "unitPrice": 0,
         "category": "Network & Telecom",
-        "subcategory": "Network Services",
-        "vendor_hint": "Unknown"
+        "subcategory": "General"
       },
       {
         "name": "TE agent for IOSXE on Enterprise Routing",
@@ -943,8 +901,7 @@
         "qty": 2,
         "unitPrice": 0,
         "category": "Network & Telecom",
-        "subcategory": "Routing & Switching",
-        "vendor_hint": "Cisco"
+        "subcategory": "General"
       },
       {
         "name": "Cisco DNA subscription for C8300 series",
@@ -952,8 +909,7 @@
         "qty": 2,
         "unitPrice": 0,
         "category": "Network & Telecom",
-        "subcategory": "Cisco DNA Licensing",
-        "vendor_hint": "Cisco"
+        "subcategory": "Cisco DNA Licensing"
       },
       {
         "name": "Cisco DNA Advantage Cloud Lic 3Y - upto 250M (Aggr, 500M)",
@@ -961,17 +917,15 @@
         "qty": 2,
         "unitPrice": 270977.08,
         "category": "Network & Telecom",
-        "subcategory": "Cisco DNA Licensing",
-        "vendor_hint": "Cisco"
+        "subcategory": "Cisco DNA Licensing"
       },
       {
         "name": "Cisco Support Enhanced - DNA Advantage Cloud Lic, T1, 3Y",
         "sku": "SVS-CSTL1-T1-A3Y",
         "qty": 2,
         "unitPrice": 55885.26,
-        "category": "Professional Services",
-        "subcategory": "Support & Maintenance",
-        "vendor_hint": "Cisco"
+        "category": "Network & Telecom",
+        "subcategory": "Cisco DNA Licensing"
       },
       {
         "name": "Cisco DNA Advantage Stack - upto 250M (Aggr, 500M)",
@@ -979,8 +933,7 @@
         "qty": 2,
         "unitPrice": 0,
         "category": "Network & Telecom",
-        "subcategory": "Cabling & Optics",
-        "vendor_hint": "Cisco"
+        "subcategory": "Cisco DNA Licensing"
       },
       {
         "name": "Cisco Network Advantage Stack - upto 250M (Aggr, 500M)",
@@ -988,8 +941,7 @@
         "qty": 2,
         "unitPrice": 0,
         "category": "Network & Telecom",
-        "subcategory": "Cabling & Optics",
-        "vendor_hint": "Cisco"
+        "subcategory": "Cabling & Optics"
       },
       {
         "name": "Meraki MR Advanced License and Support, 2",
@@ -997,8 +949,7 @@
         "qty": 2,
         "unitPrice": 37987.74,
         "category": "Network & Telecom",
-        "subcategory": "Wireless / WiFi",
-        "vendor_hint": "Meraki"
+        "subcategory": "Wireless / WiFi"
       },
       {
         "name": "MA- Meraki AC Power Cord for MX and MS 2",
@@ -1006,8 +957,7 @@
         "qty": 2,
         "unitPrice": 1270.78,
         "category": "Network & Telecom",
-        "subcategory": "Cabling & Optics",
-        "vendor_hint": "Meraki"
+        "subcategory": "Cabling & Optics"
       },
       {
         "name": "7.0 = 1M Type 1 Stacking Cable",
@@ -1015,8 +965,7 @@
         "qty": 7,
         "unitPrice": 15221.22,
         "category": "Network & Telecom",
-        "subcategory": "Cabling & Optics",
-        "vendor_hint": "Unknown"
+        "subcategory": "Cabling & Optics"
       },
       {
         "name": "11.0 = 1M Type 1 Stacking Cable",
@@ -1024,8 +973,7 @@
         "qty": 11,
         "unitPrice": 17049.97,
         "category": "Network & Telecom",
-        "subcategory": "Cabling & Optics",
-        "vendor_hint": "Unknown"
+        "subcategory": "Cabling & Optics"
       }
     ],
     "price": 12467281.48,
@@ -1038,7 +986,7 @@
     "region": "Americas",
     "country": "United States",
     "cat": "M365 & Power Platform",
-    "subcat": "Power Platform",
+    "subcat": "General",
     "vendor": "Microsoft",
     "file": "Copeland New EAS_en-US_CPS_1342548_003_Final_CTM.pdf",
     "folder": null,
@@ -1049,8 +997,7 @@
         "qty": 6,
         "unitPrice": 31.36,
         "category": "M365 & Power Platform",
-        "subcategory": "M365 E3/E5 Licenses",
-        "vendor_hint": "Microsoft"
+        "subcategory": "M365 E3/E5 Licenses"
       },
       {
         "name": "Visio P1 Sub Per User",
@@ -1058,8 +1005,7 @@
         "qty": 2,
         "unitPrice": 3.87,
         "category": "M365 & Power Platform",
-        "subcategory": "Visio / Project",
-        "vendor_hint": "Microsoft"
+        "subcategory": "Visio / Project"
       },
       {
         "name": "Visio P2 Sub Per User",
@@ -1067,8 +1013,7 @@
         "qty": 2,
         "unitPrice": 10.44,
         "category": "M365 & Power Platform",
-        "subcategory": "Visio / Project",
-        "vendor_hint": "Microsoft"
+        "subcategory": "Visio / Project"
       },
       {
         "name": "W365 Ent 4vCPU/16GB/128GB Sub Per User",
@@ -1076,8 +1021,7 @@
         "qty": 4,
         "unitPrice": 59.4,
         "category": "M365 & Power Platform",
-        "subcategory": "Windows 365 Cloud PC",
-        "vendor_hint": "Microsoft"
+        "subcategory": "Windows 365 Cloud PC"
       },
       {
         "name": "Az Consumption Commit Amt in Pool",
@@ -1085,26 +1029,23 @@
         "qty": 1,
         "unitPrice": 100.0,
         "category": "M365 & Power Platform",
-        "subcategory": "Azure Commitments",
-        "vendor_hint": "Microsoft"
+        "subcategory": "Azure Commitments"
       },
       {
         "name": "D365 Guides Device Sub Per Device",
         "sku": "SNV-00001",
         "qty": 1,
         "unitPrice": 502.77,
-        "category": "M365 & Power Platform",
-        "subcategory": "Power Platform",
-        "vendor_hint": "Microsoft"
+        "category": "Network & Telecom",
+        "subcategory": "General"
       },
       {
         "name": "D365 Remote Assist Device Sub Per Device",
         "sku": "STH-00001",
         "qty": 1,
         "unitPrice": 502.77,
-        "category": "M365 & Power Platform",
-        "subcategory": "Power Platform",
-        "vendor_hint": "Microsoft"
+        "category": "Network & Telecom",
+        "subcategory": "General"
       },
       {
         "name": "Defender Threat Intelligence Sub Per User",
@@ -1112,8 +1053,7 @@
         "qty": 1,
         "unitPrice": 1611.46,
         "category": "Cybersecurity",
-        "subcategory": "Threat Intelligence",
-        "vendor_hint": "Microsoft"
+        "subcategory": "Endpoint Protection"
       },
       {
         "name": "Defender Vulnerability AO Sub Per User",
@@ -1121,26 +1061,23 @@
         "qty": 1,
         "unitPrice": 1.4,
         "category": "Cybersecurity",
-        "subcategory": "Vulnerability Mgmt",
-        "vendor_hint": "Microsoft"
+        "subcategory": "Endpoint Protection"
       },
       {
         "name": "Exchange Online P2 Sub Per User",
         "sku": "TQA-00001",
         "qty": 1,
         "unitPrice": 6.19,
-        "category": "M365 & Power Platform",
-        "subcategory": "Exchange Online",
-        "vendor_hint": "Microsoft"
+        "category": "Network & Telecom",
+        "subcategory": "General"
       },
       {
         "name": "Permissions Management Sub",
         "sku": "NI7-00001",
         "qty": 1,
         "unitPrice": 4.03,
-        "category": "M365 & Power Platform",
-        "subcategory": "Power Platform",
-        "vendor_hint": "Microsoft"
+        "category": "Cybersecurity",
+        "subcategory": "Identity & Access"
       },
       {
         "name": "Power Apps Plan Sub Per User",
@@ -1148,8 +1085,7 @@
         "qty": 2,
         "unitPrice": 18.2,
         "category": "M365 & Power Platform",
-        "subcategory": "Power Platform",
-        "vendor_hint": "Microsoft"
+        "subcategory": "Power Platform"
       },
       {
         "name": "Unknown Service",
@@ -1157,53 +1093,47 @@
         "qty": 2,
         "unitPrice": 12.29,
         "category": "Network & Telecom",
-        "subcategory": "Unknown",
-        "vendor_hint": "Unknown"
+        "subcategory": "General"
       },
       {
         "name": "Unknown Service",
         "sku": "GSL-00002",
         "qty": 2,
         "unitPrice": 3477.27,
-        "category": "Professional Services",
-        "subcategory": "Unknown/Unidentified",
-        "vendor_hint": "Unknown"
+        "category": "Network & Telecom",
+        "subcategory": "General"
       },
       {
         "name": "Unknown Service",
         "sku": "GSN-00002",
         "qty": 2,
         "unitPrice": 6958.02,
-        "category": "Professional Services",
-        "subcategory": "Unknown/Unidentified",
-        "vendor_hint": "Unknown"
+        "category": "Network & Telecom",
+        "subcategory": "General"
       },
       {
         "name": "Unknown Service",
         "sku": "TRS-00002",
         "qty": 2,
         "unitPrice": 7.73,
-        "category": "Professional Services",
-        "subcategory": "Unknown/Unidentified",
-        "vendor_hint": "Unknown"
+        "category": "Network & Telecom",
+        "subcategory": "General"
       },
       {
         "name": "Per User Promo",
         "sku": "TK2-00060",
         "qty": 60,
         "unitPrice": 1.82,
-        "category": "M365 & Power Platform",
-        "subcategory": "M365 E3/E5 Licenses",
-        "vendor_hint": "Microsoft"
+        "category": "Network & Telecom",
+        "subcategory": "General"
       },
       {
         "name": "Unknown Service",
         "sku": "TJ9-00001",
         "qty": 1,
         "unitPrice": 21.84,
-        "category": "Professional Services",
-        "subcategory": "Unknown/Unidentified",
-        "vendor_hint": "Unknown"
+        "category": "Network & Telecom",
+        "subcategory": "General"
       }
     ],
     "price": 0.0,
@@ -1216,166 +1146,69 @@
     "region": "APAC",
     "country": "Thailand",
     "cat": "Network & Telecom",
-    "subcat": "Routing & Switching",
+    "subcat": "Cabling & Optics",
     "vendor": "Cisco",
     "file": "Final PASAP - NTT-Panasonic Auto-Cisco Network Equipment Rev.3.pdf",
     "folder": null,
     "services": [
       {
-        "name": "Cisco Catalyst C8300-1N1S-6T Router",
-        "sku": "C8300-1N1S-6T",
-        "qty": 2,
-        "unitPrice": 500000.0,
+        "name": "Catalyst 9200L 24-port data only, 4 x 1G, Network Essentials",
+        "sku": "C9200L-24T-4G-E",
+        "qty": 24,
+        "unitPrice": 5000.0,
         "category": "Network & Telecom",
-        "subcategory": "Routing & Switching",
-        "vendor_hint": "Cisco"
+        "subcategory": "Routing & Switching"
       },
       {
-        "name": "CX LEVEL 1 8X5XNBD Cisco Catalyst C8300",
-        "sku": "CON-L1NBD-C830IN6T",
-        "qty": 2,
-        "unitPrice": 0.0,
-        "category": "Professional Services",
-        "subcategory": "Support & Maintenance",
-        "vendor_hint": "Cisco"
-      },
-      {
-        "name": "Cisco Catalyst 8300 Edge 8GB memory",
-        "sku": "MEM-C8300-8GB",
-        "qty": 2,
-        "unitPrice": 0.0,
-        "category": "Network & Telecom",
-        "subcategory": "Routing & Switching",
-        "vendor_hint": "Cisco"
-      },
-      {
-        "name": "Cisco Catalyst 8000 Edge M.2 USB 16GB",
-        "sku": "M2USB-16G",
-        "qty": 2,
-        "unitPrice": 0.0,
-        "category": "Network & Telecom",
-        "subcategory": "Routing & Switching",
-        "vendor_hint": "Cisco"
-      },
-      {
-        "name": "RFID - 1RU for Cisco 8200/8300/8400/8500L Series",
-        "sku": "C-RFID-1R",
-        "qty": 2,
-        "unitPrice": 0.0,
-        "category": "Network & Telecom",
-        "subcategory": "Cabling & Optics",
-        "vendor_hint": "Cisco"
-      },
-      {
-        "name": "Rack mount kit - 19\" 1RU for Cisco 8300 Series",
-        "sku": "C8300-RM-19-1R",
-        "qty": 2,
-        "unitPrice": 0.0,
-        "category": "Network & Telecom",
-        "subcategory": "Cabling & Optics",
-        "vendor_hint": "Cisco"
-      },
-      {
-        "name": "NIM Blank for Cisco 8300 Series",
-        "sku": "C8300-NIM-BLANK",
-        "qty": 2,
-        "unitPrice": 0.0,
-        "category": "Network & Telecom",
-        "subcategory": "Routing & Switching",
-        "vendor_hint": "Cisco"
-      },
-      {
-        "name": "SM Blank for Cisco 8300 Series",
-        "sku": "C8300-SM-BLANK",
-        "qty": 2,
-        "unitPrice": 0.0,
-        "category": "Network & Telecom",
-        "subcategory": "Routing & Switching",
-        "vendor_hint": "Cisco"
-      },
-      {
-        "name": "PIM Blank for Cisco 8300 Series",
-        "sku": "C8300-PIM-BLANK",
-        "qty": 2,
-        "unitPrice": 0.0,
-        "category": "Network & Telecom",
-        "subcategory": "Routing & Switching",
-        "vendor_hint": "Cisco"
-      },
-      {
-        "name": "Network Plug-n-Play Connect for zero-touch device deployment",
-        "sku": "NETWORK-PNP-LIC",
-        "qty": 2,
-        "unitPrice": 0.0,
-        "category": "Network & Telecom",
-        "subcategory": "Network Services",
-        "vendor_hint": "Unknown"
-      },
-      {
-        "name": "TE agent for IOSXE on Enterprise Routing",
-        "sku": "TE-R-SW",
-        "qty": 2,
-        "unitPrice": 0.0,
-        "category": "Network & Telecom",
-        "subcategory": "Routing & Switching",
-        "vendor_hint": "Cisco"
-      },
-      {
-        "name": "UNIVERSAL",
-        "sku": "SC8KBEUK9-1712",
-        "qty": 2,
-        "unitPrice": 0.0,
-        "category": "M365 & Power Platform",
-        "subcategory": "M365 E3/E5 Licenses",
-        "vendor_hint": "Microsoft"
-      },
-      {
-        "name": "IOS XE Autonomous for Unified image",
-        "sku": "IOSXE-AUTO-MODE",
-        "qty": 2,
-        "unitPrice": 0.0,
-        "category": "Network & Telecom",
-        "subcategory": "Routing & Switching",
-        "vendor_hint": "Cisco"
-      },
-      {
-        "name": "Cisco C8300 1RU 250W AC Power supply",
-        "sku": "PWR-CC1-250WAC",
+        "name": "1000BASE-BX SFP, 1490NM",
+        "sku": "GLC-BX-D",
         "qty": 4,
-        "unitPrice": 0.0,
+        "unitPrice": 4000.0,
         "category": "Network & Telecom",
-        "subcategory": "Cabling & Optics",
-        "vendor_hint": "Cisco"
+        "subcategory": "Cabling & Optics"
       },
       {
-        "name": "AC Power Cord (North America), C13, NEMA 5-15P, 2.1m",
-        "sku": "CAB-AC",
+        "name": "10GBASE-CU SFP+ Cable 5 Meter",
+        "sku": "SFP-H10GB-CU5M",
+        "qty": 5,
+        "unitPrice": 2000.0,
+        "category": "Network & Telecom",
+        "subcategory": "Cabling & Optics"
+      },
+      {
+        "name": "Cisco Wireless License - Advantage",
+        "sku": "LIC-CW-A",
+        "qty": 107,
+        "unitPrice": 500.0,
+        "category": "Network & Telecom",
+        "subcategory": "Wireless / WiFi"
+      },
+      {
+        "name": "Wireless Cisco DNA On-Prem Advantage, 3Y Term Lic",
+        "sku": "AIR-DNA-A-3Y",
+        "qty": 39,
+        "unitPrice": 10000.0,
+        "category": "Network & Telecom",
+        "subcategory": "Wireless / WiFi"
+      },
+      {
+        "name": "10GBASE-SR SFP Module",
+        "sku": "SFP-10G-SR",
         "qty": 4,
-        "unitPrice": 0.0,
+        "unitPrice": 17500.0,
         "category": "Network & Telecom",
-        "subcategory": "Cabling & Optics",
-        "vendor_hint": "Unknown"
+        "subcategory": "Cabling & Optics"
       },
       {
-        "name": "Cisco DNA Subscription for Catalyst 8300 Series",
-        "sku": "L-DNA-C8300",
+        "name": "Cisco Catalyst 9800-L Wireless Controller_Fiber Uplink",
+        "sku": "C9800-L-F-K9",
         "qty": 2,
-        "unitPrice": 0.0,
+        "unitPrice": 80000.0,
         "category": "Network & Telecom",
-        "subcategory": "Cisco DNA Licensing",
-        "vendor_hint": "Cisco"
-      },
-      {
-        "name": "C8300-1N1S-6T Platform Selection for DNA Subscription",
-        "sku": "C83-1N1S-6T-PF",
-        "qty": 2,
-        "unitPrice": 0.0,
-        "category": "Network & Telecom",
-        "subcategory": "Cisco DNA Licensing",
-        "vendor_hint": "Cisco"
+        "subcategory": "Wireless / WiFi"
       }
     ],
-    "price": 1000000.0,
+    "price": 7582500.0,
     "year": 2025,
     "quarter": "Q4",
     "quoteDate": "2025-11-07"
@@ -1396,8 +1229,7 @@
         "qty": 9300,
         "unitPrice": 31.36,
         "category": "M365 & Power Platform",
-        "subcategory": "M365 E3/E5 Licenses",
-        "vendor_hint": "Microsoft"
+        "subcategory": "M365 E3/E5 Licenses"
       },
       {
         "name": "Visio P1 Sub Per User",
@@ -1405,8 +1237,7 @@
         "qty": 50,
         "unitPrice": 3.87,
         "category": "M365 & Power Platform",
-        "subcategory": "Visio / Project",
-        "vendor_hint": "Microsoft"
+        "subcategory": "Visio / Project"
       },
       {
         "name": "Visio P2 Sub Per User",
@@ -1414,8 +1245,7 @@
         "qty": 710,
         "unitPrice": 10.44,
         "category": "M365 & Power Platform",
-        "subcategory": "Visio / Project",
-        "vendor_hint": "Microsoft"
+        "subcategory": "Visio / Project"
       },
       {
         "name": "W365 Ent 4vCPU/16GB/128GB Sub Per User",
@@ -1423,8 +1253,7 @@
         "qty": 500,
         "unitPrice": 59.4,
         "category": "M365 & Power Platform",
-        "subcategory": "Windows 365 Cloud PC",
-        "vendor_hint": "Microsoft"
+        "subcategory": "Windows 365 Cloud PC"
       },
       {
         "name": "Azure Monetary Commitment Provision",
@@ -1432,8 +1261,7 @@
         "qty": 1,
         "unitPrice": 0.0,
         "category": "M365 & Power Platform",
-        "subcategory": "Azure Commitments",
-        "vendor_hint": "Microsoft"
+        "subcategory": "Visio / Project"
       }
     ],
     "price": 3499776.0,
