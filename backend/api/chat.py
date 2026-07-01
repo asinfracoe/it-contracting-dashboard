@@ -11,7 +11,7 @@ import uuid
 import json
 import re
 
-from db import get_cosmos_client, ChatSession, ChatMessage, SessionContext
+from db import get_cosmos_client, get_adls_client, ChatSession, ChatMessage, SessionContext
 from config import get_settings
 
 router = APIRouter(prefix="/api/bom", tags=["chat"])
@@ -365,6 +365,8 @@ async def start_session(request: StartSessionRequest):
     session_dict["_id"] = session_id  # ensure mock stores under the correct key
     session_dict["id"] = session_id
     cosmos_client.create_session(session_dict)
+    # Seed ADLS archive with initial session (welcome message)
+    _archive_session_to_adls(session, request.user_id or "demo_user")
     return StartSessionResponse(session_id=session_id, category=request.category, message=welcome_content)
 
 
@@ -393,6 +395,9 @@ async def send_message(request: ChatMessageRequest):
         session.completed_at = datetime.utcnow()
 
     cosmos_client.update_session(request.session_id, session.model_dump(mode="json"))
+
+    # Archive full conversation to ADLS (best-effort — non-blocking, fails silently)
+    _archive_session_to_adls(session, request.user_id or "demo_user")
 
     try:
         from api.audit import log_action
@@ -430,6 +435,119 @@ async def get_session_status(session_id: str):
         progress=int(session.context.progress_percentage),
         message_count=len(session.conversation),
     )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Chat History  (Cosmos index + ADLS full-transcript archive)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class SessionSummary(BaseModel):
+    session_id: str
+    user_id: Optional[str] = None
+    status: str = "active"
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+    message_count: int = 0
+    category: Optional[str] = None
+    project: Optional[str] = None
+    progress: int = 0
+
+
+@router.get("/history", response_model=List[SessionSummary])
+async def list_chat_history(user_id: str = "demo_user", limit: int = 30):
+    """Return recent chat sessions for the sidebar — indexed from Cosmos DB."""
+    cosmos_client = get_cosmos_client()
+    try:
+        sessions = cosmos_client.list_sessions(user_id=user_id, limit=limit)
+    except Exception as exc:
+        logger.warning("list_sessions failed: %s", exc)
+        sessions = []
+    result = []
+    for s in sessions:
+        ctx = s.get("context") or {}
+        result.append(SessionSummary(
+            session_id=s.get("session_id") or s.get("_id") or "",
+            user_id=s.get("user_id"),
+            status=s.get("status", "active"),
+            created_at=s.get("created_at"),
+            updated_at=s.get("updated_at"),
+            message_count=s.get("message_count", 0),
+            category=ctx.get("category"),
+            project=ctx.get("project_name"),
+            progress=int(ctx.get("progress_percentage", 0)),
+        ))
+    return result
+
+
+@router.get("/history/{session_id}/transcript")
+async def get_session_transcript(session_id: str, user_id: str = "demo_user"):
+    """Return full conversation for a session — from ADLS archive or Cosmos fallback."""
+    # 1. Try ADLS first (cheapest, long-term store)
+    try:
+        adls_client = get_adls_client()
+        date_prefix = datetime.utcnow().strftime("%Y/%m")
+        adls_path = f"{user_id}/{date_prefix}/{session_id}.json"
+        raw = adls_client.download_file(settings.adls_container_chat_history, adls_path)
+        return json.loads(raw.decode("utf-8"))
+    except Exception:
+        pass  # fall through to Cosmos
+
+    # 2. Fall back to Cosmos (full session still has conversation array)
+    cosmos_client = get_cosmos_client()
+    session_data = cosmos_client.get_session(session_id)
+    if not session_data:
+        raise HTTPException(status_code=404, detail="Session not found")
+    conv = session_data.get("conversation", [])
+    ctx  = session_data.get("context", {})
+    return {
+        "session_id": session_id,
+        "category": ctx.get("category"),
+        "project": ctx.get("project_name"),
+        "messages": [{"role": m.get("role"), "content": m.get("content"), "timestamp": m.get("timestamp")} for m in conv],
+        "source": "cosmos",
+    }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ADLS Archive helper
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _archive_session_to_adls(session: ChatSession, user_id: str):
+    """Write full conversation JSON to ADLS chat-history container (best-effort)."""
+    try:
+        adls_client = get_adls_client()
+        date_prefix = datetime.utcnow().strftime("%Y/%m")
+        path = f"{user_id}/{date_prefix}/{session.session_id}.json"
+        # SessionContext has category but not project_name — pull from phase_data
+        project = (session.context.phase_data or {}).get("project_name") or \
+                  (session.context.phase_data or {}).get("project") or None
+        payload = {
+            "session_id": session.session_id,
+            "user_id": user_id,
+            "category": session.context.category,
+            "project": project,
+            "status": session.status,
+            "created_at": session.created_at.isoformat() if session.created_at else None,
+            "updated_at": session.updated_at.isoformat() if session.updated_at else None,
+            "messages": [
+                {
+                    "role": m.role,
+                    "content": m.content,
+                    "timestamp": m.timestamp.isoformat() if getattr(m, "timestamp", None) else None,
+                }
+                for m in session.conversation
+            ],
+        }
+        adls_client.upload_file(
+            settings.adls_container_chat_history,
+            path,
+            json.dumps(payload, ensure_ascii=False, indent=2).encode("utf-8"),
+            overwrite=True,
+        )
+        logger.info("Archived session %s to ADLS at %s", session.session_id, path)
+    except Exception as exc:
+        logger.warning("ADLS archive failed (non-fatal): %s", exc)
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # AI Orchestration

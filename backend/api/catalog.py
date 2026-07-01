@@ -23,20 +23,67 @@ _CATALOG_PATHS = [
 
 @lru_cache(maxsize=1)
 def _load_catalog() -> list:
-    """Load catalog JSON once and cache in memory."""
+    """
+    Load catalog JSON and flatten nested services[] arrays into individual items.
+
+    catalog_data.json schema:
+      [{ proj, vendor, cat, region, price, services: [{name, sku, qty, unitPrice, category}] }]
+
+    We explode each services[] entry into a flat catalog record so the frontend
+    can display individual line items with proper name, SKU, price, and vendor.
+    """
     for path in _CATALOG_PATHS:
         if path.exists():
             try:
                 raw = json.loads(path.read_text(encoding="utf-8"))
-                # Support both array root and {"items": [...]} wrapper
-                if isinstance(raw, list):
-                    return raw
-                if isinstance(raw, dict):
+                outer_items = raw if isinstance(raw, list) else []
+                if not outer_items:
                     for key in ("items", "catalog", "products", "data"):
                         if isinstance(raw.get(key), list):
-                            return raw[key]
-                    # Flat dict: {sku: {fields}}
-                    return [{"sku": k, **v} for k, v in raw.items() if isinstance(v, dict)]
+                            outer_items = raw[key]
+                            break
+
+                result = []
+                for entry in outer_items:
+                    services = entry.get("services") or []
+                    vendor   = entry.get("vendor", "")
+                    proj     = entry.get("proj", "")
+                    region   = entry.get("region", "US")
+                    cat      = entry.get("cat", "General")
+
+                    # If the outer entry itself has no services, treat it as a flat item
+                    if not services:
+                        result.append({
+                            "id":          entry.get("id") or entry.get("sku") or f"cat-{len(result)}",
+                            "description": entry.get("description") or entry.get("name") or "",
+                            "sku":         entry.get("sku") or entry.get("part_number") or "",
+                            "category":    entry.get("category") or cat,
+                            "vendor":      vendor,
+                            "unit_price":  entry.get("unit_price") or entry.get("unitPrice") or entry.get("price") or 0,
+                            "qty":         entry.get("qty") or 1,
+                            "region":      region,
+                            "proj":        proj,
+                        })
+                        continue
+
+                    # Flatten each service into its own catalog record
+                    for svc in services:
+                        price = svc.get("unitPrice") or svc.get("unit_price") or svc.get("price") or 0
+                        name  = svc.get("name") or svc.get("description") or ""
+                        if not name:
+                            continue  # skip unnamed services
+                        result.append({
+                            "id":          f"{entry.get('file','')[:20]}-{svc.get('sku','')}",
+                            "description": name,
+                            "sku":         svc.get("sku") or svc.get("part_number") or "",
+                            "category":    svc.get("category") or cat,
+                            "vendor":      svc.get("vendor_hint") or vendor,
+                            "unit_price":  price,
+                            "qty":         svc.get("qty") or 1,
+                            "region":      region,
+                            "proj":        proj,
+                        })
+                return result
             except Exception:
                 pass
     return []
@@ -105,6 +152,14 @@ async def list_vendors():
     items = _load_catalog()
     vendors = sorted({i.get("vendor", "") for i in items if i.get("vendor")})
     return {"vendors": vendors}
+
+
+@router.post("/reload")
+async def reload_catalog():
+    """Clear the in-memory cache and reload from disk (dev/admin use)."""
+    _load_catalog.cache_clear()
+    items = _load_catalog()
+    return {"status": "reloaded", "count": len(items)}
 
 
 @router.get("/sku/{sku}")

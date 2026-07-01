@@ -152,6 +152,68 @@ function buildBOM(project, category, qty = 1) {
 
 const fmt = (v) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v)
 
+// BOM modification commands — always handled locally (backend has no in-memory BOM state)
+function isLocalBOMCmd(msg) {
+  const m = msg.toLowerCase().trim()
+  return (
+    // Explicit item-level updates: "change item 2 qty to 8", "update item 3 price to $500"
+    /^(change|update|set|modify|adjust)\s+(item\s+)?\d+/.test(m) ||
+    // Remove: "remove item 5", "delete item 3"
+    /^(remove|delete|drop)\s+(item\s+)?\d+/.test(m) ||
+    // Add — any phrasing: "add", "include", "insert", "i want to add", "can you add"
+    /^(add|include|insert|append)\s+/.test(m) ||
+    /\b(add|include|insert)\s+(a\s+)?(new\s+)?(item|service|product|tool|software|license)/i.test(m) ||
+    // "modify/update this BOM by adding..."
+    /\b(modify|update|change)\s+(this\s+)?(bom|list)\s+(by\s+)?(adding|including|inserting)/i.test(m) ||
+    // Save / confirm
+    /^(save|confirm|done|ok|yes|looks good|perfect)/.test(m) ||
+    // Export
+    /^(export|download|csv|excel)/.test(m) ||
+    // Analysis
+    /^(analyz|insight|saving|cost|cheaper|break|summary|show\s+(cost|spend))/.test(m) ||
+    // List BOMs
+    /^(show|list)\s+(my\s+)?(bom|all)/.test(m) ||
+    // Load / RFQ
+    /^(load|open|edit)\s+/.test(m) ||
+    /^(send\s+to\s+rfq|rfq)/.test(m)
+  )
+}
+
+// Parse an item-add request from many natural language phrasings:
+// "add CrowdStrike Falcon EDR at $345"
+// "add new item in BOM - CrowdStrike Falcon EDR amount - $345"
+// "modify this BOM by adding this new item name - CrowdStrike Falcon EDR amount - $345"
+function parseAddItem(rawMsg) {
+  let m = rawMsg
+
+  // Strip command preamble
+  m = m.replace(/^.*(add|include|insert|append)\s+(this\s+)?(new\s+)?(item\s+)?(in\s+(bom|list)\s*[-:–]?\s*)?/i, '')
+  m = m.replace(/^.*(modify|update|change)\s+(this\s+)?(bom|list)\s+(by\s+)?(adding|including)\s+(this\s+)?(new\s+)?(item\s+)?(name\s*[-:–]?\s*)?/i, '')
+  m = m.replace(/^(name\s*[-:–]?\s*)/i, '')
+  m = m.trim()
+
+  // Extract price: "at $345", "amount - $345", "price: $345", "cost $345", "$345"
+  const priceM = m.match(/(?:at|amount|price|cost|for)\s*[-:–]?\s*\$?([\d,]+(?:\.\d+)?)/i)
+    || m.match(/\$\s*([\d,]+(?:\.\d+)?)/i)
+  const price = priceM ? parseFloat(priceM[1].replace(/,/g, '')) : 0
+
+  // Extract vendor: "from CDW", "vendor: CDW"
+  const vendorM = m.match(/(?:^|\s)(?:from|vendor[:.]?\s*)([\w][\w\s]{1,30}?)(?=\s+(?:at|amount|price|cost|\$)|$)/i)
+  const vendor = vendorM ? vendorM[1].trim() : 'CDW'
+
+  // Description: strip price/vendor parts from what remains
+  let desc = m
+    .replace(/(?:from|vendor[:.]?\s*)[\w][\w\s]{1,30}?(?=\s+(?:at|amount|price|cost|\$)|$)/i, '')
+    .replace(/(?:at|amount|price|cost|for)\s*[-:–]?\s*\$?[\d,]+(?:\.\d+)?/i, '')
+    .replace(/\$\s*[\d,]+(?:\.\d+)?/i, '')
+    .replace(/[-–,]+$/, '')
+    .trim()
+
+  // Capitalise
+  if (desc) desc = desc.charAt(0).toUpperCase() + desc.slice(1)
+  return { desc, vendor, price }
+}
+
 function exportBOMasCSV(bom) {
   const headers = ['Line No', 'Description', 'Category', 'Unit', 'Qty', 'Unit Price (USD)', 'Ext Price (USD)', 'Vendor', 'Status']
   const rows = bom.lineItems.map(i => [
@@ -197,31 +259,47 @@ function getAIResponse(userMsg, currentBOM, bomList, ctx) {
     if (currentBOM) return { type: 'rfq', text: 'BOM **"' + currentBOM.name + '"** is ready for the RFQ Builder.', bom: currentBOM, actions: ['rfq'] }
   }
 
-  // Add item to BOM: "add [qty]x [description] from [vendor]" or "add [description]"
-  const addMatch = msg.match(/^add\s+(?:(\d+)\s*x\s+)?(.+?)(?:\s+from\s+([\w\s]+?))?(?:\s+at\s+\$?([\d,]+))?$/i)
-  if (addMatch && currentBOM) {
-    const addQty = parseInt(addMatch[1]) || 1
-    const addDesc = addMatch[2].trim()
-    const addVendor = addMatch[3]?.trim() || 'CDW'
-    const addPrice = parseFloat((addMatch[4] || '').replace(/,/g, '')) || 0
+  // ── Add item to BOM — handles many natural-language phrasings ───────────
+  const isAddIntent = (
+    /^(add|include|insert|append)\s+/i.test(userMsg) ||
+    /\b(add|include|insert)\s+(a\s+)?(new\s+)?(item|service|product|tool|software|license)/i.test(userMsg) ||
+    /\b(modify|update|change)\s+(this\s+)?(bom|list)\s+(by\s+)?(adding|including|inserting)/i.test(userMsg)
+  )
+  if (isAddIntent) {
+    if (!currentBOM) return {
+      type: 'text',
+      text: 'Please create or load a BOM first, then I can add items.\n\nTry: **Create a Data Center BOM for Panasonic**',
+    }
+    const { desc, vendor, price } = parseAddItem(userMsg)
+    if (!desc || desc.length < 2) return {
+      type: 'text',
+      text: 'I couldn\'t identify the item name. Try:\n- **Add CrowdStrike Falcon EDR at $345**\n- **Add 5x Cisco Switch from CDW at $7800**',
+    }
+    // qty from message e.g. "add 5x" or "add 5 units of"
+    const qtyM = userMsg.match(/(?:^|\s)(\d+)\s*x\s+/i) || userMsg.match(/add\s+(\d+)\s+/i)
+    const addQty = qtyM ? parseInt(qtyM[1]) : 1
     const newItem = {
       id: 'li_' + Date.now(),
       lineNo: currentBOM.lineItems.length + 1,
-      category: detectCategory(addDesc) || 'Network & Telecom',
-      description: addDesc.charAt(0).toUpperCase() + addDesc.slice(1),
-      unit: '/unit', qty: addQty, unitPrice: addPrice, extPrice: addPrice * addQty,
-      vendor: addVendor, status: 'draft',
+      category: detectCategory(desc) || detectCategory(userMsg) || 'General',
+      description: desc,
+      unit: '/unit', qty: addQty, unitPrice: price, extPrice: price * addQty,
+      vendor, status: 'draft',
     }
     const newItems = [...currentBOM.lineItems, newItem]
-    const newBOM = { ...currentBOM, lineItems: newItems, totalValue: newItems.reduce((s, i) => s + i.extPrice, 0), updatedAt: new Date().toISOString() }
+    const newBOM = {
+      ...currentBOM, lineItems: newItems,
+      totalValue: newItems.reduce((s, i) => s + i.extPrice, 0),
+      updatedAt: new Date().toISOString(),
+    }
+    const priceNote = price
+      ? `unit price **${fmt(price)}**`
+      : `price **TBD** — set it with: *Change item ${newItem.lineNo} price to $XXXX*`
     return {
       type: 'updated',
-      text: 'Added **Item ' + newItem.lineNo + '**: ' + newItem.description + ' (qty: ' + addQty + ', vendor: ' + addVendor + (addPrice ? ', price: ' + fmt(addPrice) : '') + ').\n\nBOM now has **' + newItems.length + ' items**' + (addPrice ? ' - revised total: **' + fmt(newBOM.totalValue) + '**' : ' - set the price by saying: Change item ' + newItem.lineNo + ' price to $XXXX'),
+      text: `Added **Item ${newItem.lineNo}: ${desc}**\n- Qty: ${addQty} · Vendor: ${vendor} · ${priceNote}\n\nBOM now has **${newItems.length} items** — revised total: **${fmt(newBOM.totalValue)}**`,
       bom: newBOM,
     }
-  }
-  if (msg.match(/^add\s+/i) && !currentBOM) {
-    return { type: 'text', text: 'Please create or load a BOM first, then I can add items to it. Try: Create a Data Center BOM for Panasonic' }
   }
 
   // Update price of item N
@@ -426,7 +504,8 @@ export default function ChatPage() {
   const [currentBOM, setLocalBOM] = useState(savedCurrentBOM || null)
   const [ctx, setCtx] = useState({ project: null, category: null })
   const msgEndRef = useRef(null)
-  const backendWarnedRef = useRef(false)   // show "AI unavailable" toast only once per mount
+  const backendWarnedRef = useRef(false)
+  const sendingRef = useRef(false)
 
   // Backend AI state
   const [sessionId, setSessionId]       = useState(null)
@@ -435,19 +514,35 @@ export default function ChatPage() {
   const [backendChecked, setBackendChecked] = useState(false)
   const [toast, setToast] = useState({ open: false, msg: '', severity: 'info' })
 
+  // Chat history (from backend — persisted in Cosmos + ADLS)
+  const [chatHistory, setChatHistory] = useState([])
+
   // Derive current phase (1-10) from progress percentage
   const currentPhase = phaseProgress > 0 ? Math.max(1, Math.min(10, Math.ceil(phaseProgress / 10))) : 0
   const phaseName = PHASE_NAMES[currentPhase] || ''
   const phaseChips = PHASE_CHIPS[currentPhase] || []
 
-  // Check if backend is available on mount
+  // On mount: check backend + load chat history
   useEffect(() => {
     chatApi.ping().then(online => {
       setBackendMode(online)
       setBackendChecked(true)
-      if (online) backendWarnedRef.current = false  // reset so warning fires if it goes offline
+      if (online) {
+        backendWarnedRef.current = false
+        // Load persisted chat history from Cosmos / ADLS
+        chatApi.getHistory('demo_user', 30)
+          .then(sessions => setChatHistory(sessions))
+          .catch(() => {})
+      }
     })
   }, [])
+
+  // Reload history whenever a session completes (new BOM created via backend)
+  const refreshHistory = () => {
+    if (backendMode) {
+      chatApi.getHistory('demo_user', 30).then(sessions => setChatHistory(sessions)).catch(() => {})
+    }
+  }
 
   useEffect(() => {
     const welcome = savedCurrentBOM
@@ -464,11 +559,30 @@ export default function ChatPage() {
   const handleSend = useCallback(async (text) => {
     const userText = (text || input).trim()
     if (!userText) return
+    if (sendingRef.current) return   // already processing — ignore duplicate trigger
+    sendingRef.current = true
     setInput('')
     addMsg({ role: 'user', type: 'text', text: userText })
     setIsTyping(true)
 
-    // ── Try backend AI first ──────────────────────────────────────────────
+    // ── Always handle BOM modification commands locally ────────────────────
+    // The backend has no knowledge of the in-memory BOM; these commands are
+    // handled by getAIResponse which operates on the currentBOM state directly.
+    if (isLocalBOMCmd(userText)) {
+      await new Promise(r => setTimeout(r, 350))
+      setIsTyping(false)
+      const resp = getAIResponse(userText, currentBOM, bomList, ctx)
+      if (resp.bom) {
+        setLocalBOM(resp.bom)
+        dispatch(setCurrentBOM(resp.bom))
+      }
+      if (resp.type === 'saved' && resp.bom) dispatch(saveBOM(resp.bom))
+      addMsg({ role: 'ai', ...resp })
+      sendingRef.current = false
+      return
+    }
+
+    // ── Try backend AI for BOM creation / multi-phase questions ──────────
     if (backendMode) {
       try {
         let sid = sessionId
@@ -479,8 +593,9 @@ export default function ChatPage() {
           const startResp = await chatApi.startSession(cat, proj)
           sid = startResp.session_id
           setSessionId(sid)
-          // Show the backend welcome without interrupting the typing indicator
-          addMsg({ role: 'ai', type: 'text', text: startResp.message })
+          // Store welcome — only show it if the next sendMessage doesn't produce a BOM
+          // (avoids showing "Hello! I am your AI..." immediately before a BOM creation msg)
+          var pendingWelcome = startResp.message
         }
         let resp
         try {
@@ -508,6 +623,12 @@ export default function ChatPage() {
           const proj = detectProject(userText) || ctx.project || 'New Project'
           aiBOM = backendBOMtoFrontend(resp.partial_bom, proj)
           if (aiBOM) { setLocalBOM(aiBOM); dispatch(setCurrentBOM(aiBOM)) }
+        }
+
+        // Show welcome only when the response is NOT a BOM creation
+        // (avoids redundant "Hello..." + "✅ Created..." back-to-back)
+        if (pendingWelcome && !resp.complete) {
+          addMsg({ role: 'ai', type: 'text', text: pendingWelcome })
         }
 
         // Auto-save to backend when BOM is complete
@@ -544,6 +665,13 @@ export default function ChatPage() {
           bom: aiBOM,
           actions: resp.complete && aiBOM ? ['library', 'rfq'] : undefined,
         })
+        // When creating a new BOM while one already exists → session divider + reset session
+        if (resp.complete && aiBOM && currentBOM) {
+          addMsg({ role: 'divider', type: 'divider', prevBOM: currentBOM.name })
+          setSessionId(null)
+        }
+        if (resp.complete) refreshHistory()   // pull updated history from Cosmos/ADLS
+        sendingRef.current = false
         return
       } catch (err) {
         // Backend call failed — fall through to local logic
@@ -562,7 +690,14 @@ export default function ChatPage() {
       const resp = getAIResponse(userText, currentBOM, bomList, ctx)
       if (resp.bom) { setLocalBOM(resp.bom); dispatch(setCurrentBOM(resp.bom)) }
       if (resp.type === 'saved' && resp.bom) dispatch(saveBOM(resp.bom))
+      // When creating a NEW BOM while one already exists → insert a session divider
+      // and reset the backend session so the next creation gets a fresh context
+      if (resp.type === 'bom_created' && currentBOM) {
+        addMsg({ role: 'divider', type: 'divider', prevBOM: currentBOM.name })
+        setSessionId(null)
+      }
       addMsg({ role: 'ai', ...resp })
+      sendingRef.current = false
     }, 600 + Math.random() * 400)
   }, [input, backendMode, sessionId, currentBOM, bomList, ctx, dispatch])
 
@@ -649,7 +784,7 @@ export default function ChatPage() {
   return (
     <Box sx={{ display: 'flex', height: 'calc(100vh - 44px)', bgcolor: '#F9FAFB', overflow: 'hidden' }}>
 
-      {/* Left: BOM Sessions */}
+      {/* Left: Sessions + History Sidebar */}
       <Box sx={{ width: 220, flexShrink: 0, bgcolor: 'white', borderRight: '1px solid #F3F4F6', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <Box sx={{ p: 1.25, borderBottom: '1px solid #F3F4F6' }}>
           <Button fullWidth variant="contained" size="small" startIcon={<Add sx={{ fontSize: 14 }} />}
@@ -665,7 +800,50 @@ export default function ChatPage() {
             New BOM Chat
           </Button>
         </Box>
-        <Box sx={{ p: 1, pb: 0.5 }}>
+
+        {/* Chat History (persisted in Cosmos DB + ADLS) */}
+        {chatHistory.length > 0 && (
+          <>
+            <Box sx={{ px: 1, pt: 1, pb: 0.25, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Typography sx={{ fontSize: '0.55rem', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.7px' }}>
+                Chat History
+              </Typography>
+              <Tooltip title="Stored in Azure ADLS + Cosmos DB"><CloudDone sx={{ fontSize: 11, color: '#10B981' }} /></Tooltip>
+            </Box>
+            <Box sx={{ maxHeight: 180, overflowY: 'auto', px: 1, pb: 0.5 }}>
+              {chatHistory.map(sess => {
+                const isActive = sess.session_id === sessionId
+                const label = sess.category || sess.project || 'Session'
+                const date = sess.updated_at ? new Date(sess.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''
+                return (
+                  <Box key={sess.session_id}
+                    onClick={() => {
+                      // Load transcript from ADLS/Cosmos and restore messages
+                      chatApi.getTranscript(sess.session_id).then(data => {
+                        const restored = (data.messages || []).map((m, i) => ({
+                          id: i + 1, role: m.role === 'assistant' ? 'ai' : m.role, type: 'text', text: m.content,
+                        }))
+                        setMessages(restored.length ? restored : [{ id: 1, role: 'ai', type: 'text', text: 'Session loaded — no messages found.' }])
+                        setSessionId(sess.session_id)
+                        setPhaseProgress(sess.progress || 0)
+                      }).catch(() => setToast({ open: true, msg: 'Could not load session transcript', severity: 'error' }))
+                    }}
+                    sx={{ p: '5px 6px', mb: 0.4, borderRadius: '6px', cursor: 'pointer', border: '1px solid ' + (isActive ? '#FBBF9F' : '#F3F4F6'), bgcolor: isActive ? '#FDF3ED' : 'white', '&:hover': { bgcolor: '#F9FAFB' } }}>
+                    <Typography sx={{ fontSize: '0.66rem', fontWeight: 600, color: isActive ? '#D04A02' : '#374151', lineHeight: 1.2 }} noWrap>{label}</Typography>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.25 }}>
+                      <Typography sx={{ fontSize: '0.56rem', color: '#9CA3AF' }}>{sess.message_count} msgs</Typography>
+                      <Typography sx={{ fontSize: '0.56rem', color: '#9CA3AF' }}>{date}</Typography>
+                    </Box>
+                  </Box>
+                )
+              })}
+            </Box>
+            <Box sx={{ borderTop: '1px solid #F3F4F6', mx: 1, mb: 0.5 }} />
+          </>
+        )}
+
+        {/* Saved BOMs */}
+        <Box sx={{ px: 1, pt: chatHistory.length ? 0.5 : 1, pb: 0.5 }}>
           <Typography sx={{ fontSize: '0.55rem', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.7px' }}>Saved BOMs</Typography>
         </Box>
         <Box sx={{ flex: 1, overflowY: 'auto', px: 1 }}>
@@ -726,7 +904,24 @@ export default function ChatPage() {
         </Box>
 
         <Box sx={{ flex: 1, overflowY: 'auto', p: 1.5, display: 'flex', flexDirection: 'column', gap: 1 }}>
-          {messages.map(msg => (
+          {messages.map(msg => {
+            // ── Session divider between BOM conversations ──────────────────────
+            if (msg.type === 'divider') return (
+              <Box key={msg.id} sx={{ display: 'flex', alignItems: 'center', gap: 1, my: 0.75 }}>
+                <Box sx={{ flex: 1, height: '1px', bgcolor: '#E5E7EB' }} />
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.2 }}>
+                  <Typography sx={{ fontSize: '0.58rem', color: '#9CA3AF', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap' }}>
+                    ↑ {msg.prevBOM || 'Previous BOM'} session
+                  </Typography>
+                  <Box sx={{ height: '1px', width: '100%', bgcolor: '#E5E7EB' }} />
+                  <Typography sx={{ fontSize: '0.58rem', color: '#D04A02', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap' }}>
+                    ↓ New BOM session
+                  </Typography>
+                </Box>
+                <Box sx={{ flex: 1, height: '1px', bgcolor: '#E5E7EB' }} />
+              </Box>
+            )
+            return (
             <Box key={msg.id} sx={{ display: 'flex', justifyContent: isAI(msg) ? 'flex-start' : 'flex-end', alignItems: 'flex-start', gap: 0.75 }}>
               {isAI(msg) && (
                 <Avatar sx={{ width: 26, height: 26, bgcolor: '#D04A02', flexShrink: 0 }}>
@@ -757,8 +952,8 @@ export default function ChatPage() {
                       <Typography sx={{ fontSize: '0.62rem', color: '#9CA3AF', mb: 0.5 }}>Try asking:</Typography>
                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.4 }}>
                         {msg.suggestions.map(s => (
-                          <Box key={s} onClick={() => handleSend(s)}
-                            sx={{ fontSize: '0.7rem', color: '#3B82F6', cursor: 'pointer', p: '4px 8px', borderRadius: '4px', bgcolor: '#EFF6FF', '&:hover': { bgcolor: '#DBEAFE' } }}>
+                          <Box key={s} onClick={() => !isTyping && !sendingRef.current && handleSend(s)}
+                            sx={{ fontSize: '0.7rem', color: '#3B82F6', cursor: isTyping ? 'default' : 'pointer', p: '4px 8px', borderRadius: '4px', bgcolor: '#EFF6FF', opacity: isTyping ? 0.5 : 1, '&:hover': { bgcolor: isTyping ? '#EFF6FF' : '#DBEAFE' } }}>
                             {s}
                           </Box>
                         ))}
@@ -825,7 +1020,7 @@ export default function ChatPage() {
                 </Avatar>
               )}
             </Box>
-          ))}
+          )})}
 
           {isTyping && (
             <Box sx={{ display: 'flex', gap: 0.75, alignItems: 'center' }}>
@@ -850,7 +1045,7 @@ export default function ChatPage() {
           {phaseChips.length > 0 && (
             <Box sx={{ mb: 1, display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
               {phaseChips.map(chip => (
-                <Chip key={chip} label={chip} size="small" onClick={() => handleSend(chip)}
+                <Chip key={chip} label={chip} size="small" disabled={isTyping} onClick={() => !isTyping && handleSend(chip)}
                   sx={{ fontSize: '0.65rem', height: 20, cursor: 'pointer', bgcolor: '#F0F9FF', color: '#0369A1',
                     border: '1px solid #BAE6FD', '&:hover': { bgcolor: '#0369A1', color: 'white' } }} />
               ))}
@@ -861,7 +1056,7 @@ export default function ChatPage() {
               multiline maxRows={4} fullWidth
               placeholder="Ask me to create, update, or analyze a BOM..."
               value={input} onChange={e => setInput(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !sendingRef.current) { e.preventDefault(); handleSend() } }}
               sx={{ bgcolor: '#F9FAFB', '& .MuiInputBase-input': { fontSize: '0.8rem', py: '8px' }, '& .MuiOutlinedInput-root': { '& fieldset': { borderColor: '#E5E7EB' }, '&:hover fieldset': { borderColor: '#D04A02' }, '&.Mui-focused fieldset': { borderColor: '#D04A02' } } }}
             />
             <IconButton onClick={() => handleSend()} disabled={!input.trim() || isTyping}

@@ -260,6 +260,26 @@ class MockCosmosDBClient:
         """Update session in mock storage"""
         return self.update_item("sessions", session_id, session_data)
 
+    def list_sessions(self, user_id: str = None, limit: int = 50) -> list:
+        """List sessions ordered by updated_at desc, optionally filtered by user_id"""
+        items = list(self.collections["sessions"].values())
+        if user_id:
+            items = [s for s in items if s.get("user_id") == user_id]
+        items.sort(key=lambda s: s.get("updated_at", ""), reverse=True)
+        # Return lightweight summary (no full conversation payload)
+        return [
+            {
+                "session_id": s.get("session_id") or s.get("_id"),
+                "user_id": s.get("user_id"),
+                "status": s.get("status", "active"),
+                "created_at": s.get("created_at"),
+                "updated_at": s.get("updated_at"),
+                "message_count": len(s.get("conversation", [])),
+                "context": s.get("context", {}),
+            }
+            for s in items[:limit]
+        ]
+
     def close(self):
         """Mock close - no-op"""
         logger.info("Mock Cosmos DB closed (no-op)")

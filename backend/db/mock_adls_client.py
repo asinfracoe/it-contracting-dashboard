@@ -22,7 +22,8 @@ class MockADLSClient:
             "raw-boms": self.base_path / "raw-boms",
             "processed-boms": self.base_path / "processed-boms",
             "templates": self.base_path / "templates",
-            "exports": self.base_path / "exports"
+            "exports": self.base_path / "exports",
+            "chat-history": self.base_path / "chat-history",
         }
         logger.info("Initialized MockADLSClient (local file system)")
     

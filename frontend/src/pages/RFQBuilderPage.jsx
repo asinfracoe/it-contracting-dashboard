@@ -5,10 +5,12 @@ import {
   Box, Typography, Grid, Paper, Chip, Button, IconButton, TextField,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   Alert, Tooltip, Select, MenuItem, FormControl, InputLabel, Divider,
+  Dialog, DialogTitle, DialogContent, DialogActions, Checkbox, FormControlLabel,
+  LinearProgress,
 } from '@mui/material'
 import {
   Add, Remove, Delete, Download, AutoAwesome, CheckCircle,
-  TrendingDown, Send, Build,
+  TrendingDown, Send, Build, Email, Schedule, Person,
 } from '@mui/icons-material'
 import { setCurrentBOM } from '../store/slices/bomSlice'
 
@@ -16,6 +18,17 @@ const fmt = (v) => new Intl.NumberFormat('en-US', { style: 'currency', currency:
 const SL = { fontSize: '0.58rem', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.7px' }
 
 const VENDORS = ['CDW', 'NTT Data', 'Equinix', 'PC Connection', 'Cisco', 'Microsoft', 'Zscaler', 'NTT DOCOMO']
+
+const VENDOR_CONTACTS = {
+  'CDW':           { email: 'enterprise@cdw.com',      contact: 'Sarah Mitchell',  turnaround: '2–3 days' },
+  'NTT Data':      { email: 'rfq@nttdata.com',         contact: 'James Thornton',  turnaround: '3–5 days' },
+  'Equinix':       { email: 'sales@equinix.com',       contact: 'Laura Patel',     turnaround: '5–7 days' },
+  'PC Connection': { email: 'bids@pcconnection.com',   contact: 'Mark Stevenson',  turnaround: '2–4 days' },
+  'Cisco':         { email: 'enterprise@cisco.com',    contact: 'David Chen',      turnaround: '3–5 days' },
+  'Microsoft':     { email: 'licensing@microsoft.com', contact: 'Anna Kovacs',     turnaround: '2–3 days' },
+  'Zscaler':       { email: 'sales@zscaler.com',       contact: 'Ryan Murphy',     turnaround: '1–2 days' },
+  'NTT DOCOMO':    { email: 'b2b@docomo.com',          contact: 'Yuki Tanaka',     turnaround: '4–6 days' },
+}
 
 function exportRFQasCSV(items, projectName) {
   const headers = ['Line No', 'Description', 'Category', 'Unit', 'Qty', 'Target Price (USD)', 'Ext Target (USD)', 'Market Min (USD)', 'Preferred Vendor', 'Status']
@@ -55,6 +68,16 @@ export default function RFQBuilderPage() {
   const [vendor, setVendor] = useState('All Vendors')
   const [notes, setNotes] = useState('')
   const [rfqSent, setRfqSent] = useState(false)
+  // Send RFQ dialog state
+  const [sendOpen, setSendOpen] = useState(false)
+  const [sendVendors, setSendVendors] = useState({})
+  const [deadline, setDeadline] = useState(() => {
+    const d = new Date(); d.setDate(d.getDate() + 7)
+    return d.toISOString().split('T')[0]
+  })
+  const [rfqNote, setRfqNote] = useState('')
+  const [sending, setSending] = useState(false)
+  const [sentLog, setSentLog] = useState([]) // { vendor, email, sentAt, items }
 
   // Pre-populate from activeBOMForRFQ when page loads
   useEffect(() => {
@@ -86,6 +109,35 @@ export default function RFQBuilderPage() {
   const savingsPct = totalTarget > 0 ? ((totalSavings / (totalTarget + totalSavings)) * 100).toFixed(1) : '0.0'
 
   const vendorGroups = cart.reduce((a, i) => { if (i.vendor) a[i.vendor] = (a[i.vendor] || 0) + 1; return a }, {})
+
+  // Open send dialog — pre-check all vendors in the cart
+  const openSendDialog = () => {
+    const initial = {}
+    Object.keys(vendorGroups).forEach(v => { initial[v] = true })
+    setSendVendors(initial)
+    setSendOpen(true)
+  }
+
+  const handleSendRFQ = async () => {
+    setSending(true)
+    // Simulate sending — in production this would call a backend email API
+    await new Promise(r => setTimeout(r, 1200))
+    const now = new Date().toISOString()
+    const newEntries = Object.entries(sendVendors)
+      .filter(([, checked]) => checked)
+      .map(([v]) => ({
+        vendor: v,
+        email: VENDOR_CONTACTS[v]?.email || `sales@${v.toLowerCase().replace(/\s+/g, '')}.com`,
+        contact: VENDOR_CONTACTS[v]?.contact || 'Accounts Team',
+        sentAt: now,
+        items: cart.filter(i => i.vendor === v).length,
+        total: fmt(cart.filter(i => i.vendor === v).reduce((s, i) => s + i.qty * i.targetPrice, 0)),
+      }))
+    setSentLog(prev => [...prev, ...newEntries])
+    setSending(false)
+    setSendOpen(false)
+    setRfqSent(true)
+  }
 
   return (
     <Box sx={{ bgcolor: '#FAFAFA', p: 2 }}>
@@ -289,17 +341,38 @@ export default function RFQBuilderPage() {
             {/* Send RFQ */}
             <Paper sx={{ border: '1px solid #E5E7EB' }}>
               <Box sx={{ p: 1.25 }}>
-                {rfqSent ? (
-                  <Alert severity="success" sx={{ fontSize: '0.72rem', py: 0.5 }}>
-                    <strong>RFQ sent!</strong> Vendors have been notified.
-                  </Alert>
+                {rfqSent && sentLog.length > 0 ? (
+                  <Box>
+                    <Alert severity="success" sx={{ fontSize: '0.72rem', py: 0.4, mb: 1 }}>
+                      RFQ dispatched to {sentLog.length} vendor{sentLog.length > 1 ? 's' : ''}.
+                    </Alert>
+                    {sentLog.map((entry, i) => (
+                      <Box key={i} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', py: 0.4, borderBottom: i < sentLog.length - 1 ? '1px solid #F3F4F6' : 'none' }}>
+                        <Box>
+                          <Box sx={{ fontSize: '0.68rem', fontWeight: 600 }}>{entry.vendor}</Box>
+                          <Box sx={{ fontSize: '0.58rem', color: '#9CA3AF' }}>{entry.email}</Box>
+                        </Box>
+                        <Box sx={{ textAlign: 'right' }}>
+                          <Chip label="Sent" size="small" sx={{ bgcolor: '#D1FAE5', color: '#065F46', fontSize: '0.55rem', height: 14 }} />
+                          <Box sx={{ fontSize: '0.58rem', color: '#9CA3AF', mt: 0.2 }}>{entry.items} items · {entry.total}</Box>
+                        </Box>
+                      </Box>
+                    ))}
+                    <Button fullWidth size="small" variant="outlined" startIcon={<Send sx={{ fontSize: 13 }} />}
+                      onClick={() => { setRfqSent(false); openSendDialog() }}
+                      sx={{ mt: 1, textTransform: 'none', fontSize: '0.68rem', borderColor: '#D04A02', color: '#D04A02' }}>
+                      Send to More Vendors
+                    </Button>
+                  </Box>
                 ) : (
                   <>
                     <Typography sx={{ fontSize: '0.65rem', color: '#6B7280', mb: 1 }}>
-                      Ready to send to {Object.keys(vendorGroups).length} vendor{Object.keys(vendorGroups).length !== 1 ? 's' : ''}: {Object.keys(vendorGroups).slice(0, 3).join(', ')}
+                      {Object.keys(vendorGroups).length > 0
+                        ? `Ready to send to ${Object.keys(vendorGroups).length} vendor${Object.keys(vendorGroups).length !== 1 ? 's' : ''}: ${Object.keys(vendorGroups).slice(0, 3).join(', ')}`
+                        : 'Assign vendors to line items above, then send.'}
                     </Typography>
                     <Button fullWidth variant="contained" size="small" startIcon={<Send sx={{ fontSize: 14 }} />}
-                      onClick={() => setRfqSent(true)} disabled={cart.length === 0}
+                      onClick={openSendDialog} disabled={cart.length === 0 || Object.keys(vendorGroups).length === 0}
                       sx={{ textTransform: 'none', fontSize: '0.72rem', fontWeight: 700, bgcolor: '#D04A02', '&:hover': { bgcolor: '#A33A00' } }}>
                       Send RFQ to Vendors
                     </Button>
@@ -315,6 +388,76 @@ export default function RFQBuilderPage() {
           </Grid>
         </Grid>
       )}
+
+      {/* ── Send RFQ Dialog ─────────────────────────────────────────────── */}
+      <Dialog open={sendOpen} onClose={() => setSendOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700, fontSize: '0.95rem', pb: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Email sx={{ color: '#D04A02', fontSize: 18 }} />
+            Send RFQ to Vendors
+          </Box>
+        </DialogTitle>
+        <DialogContent dividers sx={{ py: 2 }}>
+          {sending && <LinearProgress sx={{ mb: 1.5, borderRadius: 1, bgcolor: '#FFE5D0', '& .MuiLinearProgress-bar': { bgcolor: '#D04A02' } }} />}
+
+          {/* Vendor selection */}
+          <Box sx={{ mb: 2 }}>
+            <Box sx={{ fontSize: '0.65rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', mb: 0.75 }}>Select Vendors</Box>
+            {Object.keys(vendorGroups).length === 0 ? (
+              <Alert severity="warning" sx={{ fontSize: '0.72rem', py: 0.5 }}>No vendors assigned to line items. Go back and assign vendors first.</Alert>
+            ) : (
+              Object.keys(vendorGroups).map(v => {
+                const info = VENDOR_CONTACTS[v] || {}
+                return (
+                  <Box key={v} sx={{ display: 'flex', alignItems: 'center', gap: 1, p: 1, mb: 0.5, border: '1px solid #E5E7EB', borderRadius: 1, bgcolor: sendVendors[v] ? '#FFF7F0' : '#FAFAFA', cursor: 'pointer' }}
+                    onClick={() => setSendVendors(prev => ({ ...prev, [v]: !prev[v] }))}>
+                    <Checkbox size="small" checked={!!sendVendors[v]} onChange={e => setSendVendors(prev => ({ ...prev, [v]: e.target.checked }))} sx={{ p: 0.25, color: '#D04A02', '&.Mui-checked': { color: '#D04A02' } }} onClick={e => e.stopPropagation()} />
+                    <Box sx={{ flex: 1 }}>
+                      <Box sx={{ fontSize: '0.72rem', fontWeight: 600 }}>{v}</Box>
+                      <Box sx={{ fontSize: '0.6rem', color: '#9CA3AF' }}>
+                        <Person sx={{ fontSize: 10, mr: 0.25 }} />{info.contact || 'Accounts Team'} · {info.email || 'N/A'}
+                      </Box>
+                    </Box>
+                    <Box sx={{ textAlign: 'right' }}>
+                      <Chip label={`${vendorGroups[v]} items`} size="small" sx={{ fontSize: '0.55rem', height: 16 }} />
+                      {info.turnaround && <Box sx={{ fontSize: '0.58rem', color: '#9CA3AF', mt: 0.25 }}><Schedule sx={{ fontSize: 9, mr: 0.25 }} />{info.turnaround}</Box>}
+                    </Box>
+                  </Box>
+                )
+              })
+            )}
+          </Box>
+
+          {/* Deadline */}
+          <Box sx={{ mb: 2 }}>
+            <Box sx={{ fontSize: '0.65rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', mb: 0.5 }}>Response Deadline</Box>
+            <TextField type="date" size="small" value={deadline} onChange={e => setDeadline(e.target.value)} sx={{ width: 200, '& input': { fontSize: '0.78rem' } }} />
+          </Box>
+
+          {/* Message */}
+          <Box>
+            <Box sx={{ fontSize: '0.65rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', mb: 0.5 }}>Custom Message (optional)</Box>
+            <TextField multiline rows={3} fullWidth size="small" placeholder="Add any special instructions, T&Cs, or notes for vendors..."
+              value={rfqNote} onChange={e => setRfqNote(e.target.value)}
+              sx={{ '& textarea': { fontSize: '0.72rem' } }} />
+          </Box>
+
+          {/* Summary */}
+          <Box sx={{ mt: 2, p: 1, bgcolor: '#F9FAFB', borderRadius: 1, border: '1px solid #E5E7EB' }}>
+            <Box sx={{ fontSize: '0.62rem', color: '#6B7280' }}>
+              Sending <strong>{cart.length} line items</strong> · <strong>{fmt(cart.reduce((s, i) => s + i.qty * i.targetPrice, 0))} target value</strong> · Deadline <strong>{deadline}</strong>
+            </Box>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 2, py: 1.5, gap: 1 }}>
+          <Button onClick={() => setSendOpen(false)} size="small" sx={{ textTransform: 'none', fontSize: '0.72rem', color: '#6B7280' }}>Cancel</Button>
+          <Button onClick={handleSendRFQ} variant="contained" size="small" startIcon={<Send sx={{ fontSize: 14 }} />}
+            disabled={sending || Object.values(sendVendors).every(v => !v)}
+            sx={{ textTransform: 'none', fontSize: '0.72rem', fontWeight: 700, bgcolor: '#D04A02', '&:hover': { bgcolor: '#A33A00' } }}>
+            {sending ? 'Sending…' : `Send to ${Object.values(sendVendors).filter(Boolean).length} Vendor${Object.values(sendVendors).filter(Boolean).length !== 1 ? 's' : ''}`}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   )
 }

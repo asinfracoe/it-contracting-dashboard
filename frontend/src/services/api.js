@@ -41,6 +41,12 @@ export const chatApi = {
     apiClient.post('/api/bom/chat', { session_id: sessionId, message, user_id: userId }).then(r => r.data),
   getSession: (sessionId) =>
     apiClient.get(`/api/bom/session/${sessionId}`).then(r => r.data),
+  /** List past sessions from Cosmos (sidebar history) */
+  getHistory: (userId = 'demo_user', limit = 30) =>
+    apiClient.get('/api/bom/history', { params: { user_id: userId, limit } }).then(r => r.data),
+  /** Load full conversation transcript from ADLS / Cosmos */
+  getTranscript: (sessionId, userId = 'demo_user') =>
+    apiClient.get(`/api/bom/history/${sessionId}/transcript`, { params: { user_id: userId } }).then(r => r.data),
 }
 
 // ── BOM CRUD API ──────────────────────────────────────────────────────────

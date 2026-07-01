@@ -48,7 +48,8 @@ class ADLSClient:
             settings.adls_container_raw_boms,
             settings.adls_container_processed,
             settings.adls_container_templates,
-            settings.adls_container_exports
+            settings.adls_container_exports,
+            settings.adls_container_chat_history,
         ]
         
         for container in container_names:
@@ -64,7 +65,8 @@ class ADLSClient:
             settings.adls_container_raw_boms,
             settings.adls_container_processed,
             settings.adls_container_templates,
-            settings.adls_container_exports
+            settings.adls_container_exports,
+            settings.adls_container_chat_history,
         ]
         
         for container in containers:

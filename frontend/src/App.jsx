@@ -7,6 +7,7 @@ import VendorPriceSelectorPage from './pages/VendorPriceSelectorPage'
 import QuoteExtractorPage from './pages/QuoteExtractorPage'
 import RFQBuilderPage from './pages/RFQBuilderPage'
 import BOMReviewPage from './pages/BOMReviewPage'
+import AnalyticsPage from './pages/AnalyticsPage'
 
 function App() {
   return (
@@ -14,6 +15,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Navigate to="/overview" replace />} />
         <Route path="/overview" element={<OverviewPage />} />
+        <Route path="/analytics" element={<AnalyticsPage />} />
         <Route path="/bom-library" element={<BOMLibraryPage />} />
         <Route path="/chat" element={<ChatPage />} />
         <Route path="/vendor-selector" element={<VendorPriceSelectorPage />} />

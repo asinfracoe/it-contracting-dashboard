@@ -109,81 +109,144 @@ class BOMOrchestrator:
     def _rule_based(self, category: str, phase: int, message: str, user_turns: int = 0) -> str:
         """
         Rule-based fallback when AI is unavailable.
-        Detects BOM-creation intent and returns a fully-formed template BOM JSON
-        so the frontend can render it immediately.
+        - Phase 1 questions first turn (user_turns == 0).
+        - Phase 2 questions second turn (user_turns == 1) for DC/COLO; other cats skip to BOM.
+        - Explicit creation intent at ANY turn → generate immediately.
+        - After user has answered 2+ rounds (user_turns >= 2) → generate BOM.
         """
-        import re, datetime
+        import re
 
         msg = message.lower()
 
-        # ── Detect project name ───────────────────────────────────────────
+        # ── Detect project name from message ─────────────────────────────
         project_map = {
             "panasonic": "Panasonic", "idemia": "Idemia", "tenneco": "Tenneco",
             "honeywell": "Honeywell", "pwc": "PwC", "cisco": "Cisco",
-            "microsoft": "Microsoft", "oracle": "Oracle",
+            "microsoft": "Microsoft", "oracle": "Oracle", "aon": "Aon",
         }
         project = next((v for k, v in project_map.items() if k in msg), "New Project")
 
-        # ── BOM creation intent OR user is answering questions ──────────────
-        # user_turns >= 1 means user already answered Phase 1 questions once;
-        # generate the BOM now instead of asking the same question again.
+        # ── Detect explicit BOM creation intent ──────────────────────────
         create_pat = re.compile(
-            r"\b(create|build|generate|make|prepare|draft)\b.*\bbom\b"
-            r"|\bnew bom\b"
-            r"|\bbuild.*bom\b|\bbom.*build\b"
-            r"|\bcreate.*bom\b|\bbom.*create\b",
+            r"\b(create|build|generate|make|prepare|draft|give me|show me)\b.{0,30}\bbom\b"
+            r"|\bnew bom\b|\bgenerate bom\b|\bjust create\b|\bskip\b.{0,20}\bquestion",
             re.I,
         )
-        # Also detect clear creation intent even without the word "bom"
-        strong_intent = bool(create_pat.search(msg)) or (
-            re.search(r"\b(create|build|generate|make|draft)\b", msg, re.I)
-            and (category or project)
+        explicit_create = bool(create_pat.search(msg))
+
+        # ── Detect info answers (numbers, dates, yes/no) ─────────────────
+        has_answer = bool(re.search(
+            r"\d+\s*(rack|server|site|node|user|vm|tb|gb|core|vcpu|watt|kw|mw)"
+            r"|\d{1,2}[/-]\d{1,2}[/-]\d{2,4}"      # date pattern
+            r"|\byes\b|\bno\b|\bvmware\b|\bhyper.?v\b|\baws\b|\bazure\b"
+            r"|\bmpls\b|\bdia\b|\bfibre\b|\binternet\b",
+            msg, re.I
+        ))
+
+        # ── Decision: generate BOM now? ───────────────────────────────────
+        # Generate when: explicit intent, phase advanced, or enough turns collected
+        # For non-DC categories use a lower threshold (5-question flow is faster)
+        is_dc = "data center" in category.lower() or "colo" in category.lower()
+        turn_threshold = 2 if is_dc else 1   # DC: ask 2 rounds; others: 1 round
+
+        should_generate = (
+            explicit_create
+            or phase >= 4
+            or user_turns >= turn_threshold
+            or (has_answer and user_turns >= 1)
         )
-        if strong_intent or phase >= 4 or user_turns >= 1:
+
+        if should_generate:
             bom = self._build_template_bom(category, project)
             bom_json = json.dumps(bom, indent=2)
+            item_count = len(bom["line_items"])
+            total = bom.get("total_value", sum(
+                i.get("qty", 1) * i.get("unit_price", 0) for i in bom["line_items"]
+            ))
+            note = (
+                "\n\n> **Note:** Live AI is currently unavailable — this BOM uses "
+                "industry-standard templates. Once AI is configured (add `OPENAI_API_KEY` "
+                "or `ANTHROPIC_API_KEY` to backend `.env`), responses will be fully "
+                "tailored to your specific requirements."
+            )
             return (
                 f"I've built a **{category}** BOM for **{project}** "
                 f"using industry-standard templates.\n\n"
-                f"The BOM contains **{len(bom['line_items'])} line items** "
-                f"totalling **${bom['total_value']:,.0f}**.\n\n"
+                f"The BOM contains **{item_count} line items** "
+                f"totalling **${total:,.0f}**.\n\n"
                 f"Review the items in the right panel. You can ask me to:\n"
                 f"- Add or remove specific items\n"
                 f"- Adjust quantities or pricing\n"
                 f"- Change vendors\n"
-                f"- Export or save the BOM\n\n"
+                f"- Export or save the BOM\n"
+                f"{note}\n\n"
                 f"```json\n{bom_json}\n```"
             )
 
-        # ── Phase questions (phases 1–3, before creation intent detected) ──
-        phase_questions = {
-            1: (
+        # ── Phase questions ────────────────────────────────────────────────
+        if is_dc:
+            phase_questions = {
+                1: (
+                    f"I'll help you build a **{category}** BOM for **{project}**.\n\n"
+                    "**Phase 1 — Scope & Constraints**\n\n"
+                    "1. What is the **Day 1 cutover date** for this project?\n"
+                    "2. How many **racks / physical sites** are in scope?\n"
+                    "3. Any specialised hardware (GPU, AS400, bare metal, high-memory)?\n\n"
+                    "*Say **\"create the BOM\"** to skip ahead and generate a full template immediately.*"
+                ),
+                2: (
+                    "**Phase 2 — Inventory & Sizing**\n\n"
+                    "1. How many **servers** are being conveyed (transferred in the deal)?\n"
+                    "2. Are any running **EOL operating systems** (Server 2012 or older)?\n"
+                    "3. What is the **hypervisor** in use — VMware or Hyper-V?\n\n"
+                    "*Say **\"create the BOM now\"** to generate from templates.*"
+                ),
+            }
+            return phase_questions.get(
+                phase if phase in phase_questions else 1,
+                f"Tell me more about your **{category}** requirements, "
+                f"or say **\"create the BOM\"** to generate a complete template now.",
+            )
+        else:
+            # Non-DC: single question round using the 5-question flow
+            category_q = {
+                "SD-WAN": (
+                    "1. How many **sites** will connect via SD-WAN?\n"
+                    "2. What **ISP type** per site — MPLS, broadband, or both?\n"
+                    "3. Is **HA** required (active/active or active/passive)?\n"
+                ),
+                "Cybersecurity": (
+                    "1. How many **endpoints** need protection?\n"
+                    "2. What **compliance** frameworks apply (PCI, HIPAA, SOC 2)?\n"
+                    "3. Current tooling gaps — EDR, SIEM, PAM, or email security?\n"
+                ),
+                "Network Equipment": (
+                    "1. Total **port count** required (access layer)?\n"
+                    "2. **PoE** required — how many PoE+ ports?\n"
+                    "3. Target **uplink speed** — 10G, 25G, or 100G?\n"
+                ),
+                "M365 & Power Platform": (
+                    "1. **User count** — how many E3 vs E5 licenses needed?\n"
+                    "2. Is **Power BI Premium** (per capacity or per user) required?\n"
+                    "3. Migrating from **Exchange on-prem** or Google Workspace?\n"
+                ),
+                "Laptops": (
+                    "1. **User count** and role breakdown (exec / dev / standard)?\n"
+                    "2. **OS preference** — Windows, macOS, or mixed fleet?\n"
+                    "3. **MDM platform** already in place — Intune or Jamf?\n"
+                ),
+            }
+            q_block = category_q.get(
+                category,
+                "1. What is the **scope and scale** (sites, users, devices)?\n"
+                "2. Any **compliance** requirements (PCI, HIPAA, SOC 2)?\n"
+                "3. Preferred **vendors** or existing contracts to honour?\n"
+            )
+            return (
                 f"I'll help you build a **{category}** BOM for **{project}**.\n\n"
-                "**Phase 1 — Scope & Constraints**\n\n"
-                "1. What is the Day 1 cutover date for this project?\n"
-                "2. How many racks / physical sites are in scope?\n"
-                "3. Are there any specialized hardware requirements (GPU, AS400, bare metal)?\n\n"
-                "*Or just say **\"create the BOM\"** and I will generate a complete template immediately.*"
-            ),
-            2: (
-                "**Phase 2 — Seller Inventory**\n\n"
-                "1. How many servers are being conveyed?\n"
-                "2. Are any running EOL operating systems (Windows Server 2012 or older)?\n\n"
-                "*Tip: say **\"create the BOM now\"** to skip to a full template.*"
-            ),
-            3: (
-                "**Phase 3 — Compute Sizing**\n\n"
-                "1. How many vCPUs does the largest workload require?\n"
-                "2. What is the total RAM requirement across all workloads?\n"
-                "3. Is VMware or Hyper-V the hypervisor?\n\n"
-                "*Tip: say **\"create the BOM now\"** to skip to a full template.*"
-            ),
-        }
-        return phase_questions.get(
-            phase,
-            f"Tell me more about your **{category}** requirements, or say "
-            f"**\"create the BOM\"** to generate a complete template now.",
-        )
+                f"{q_block}\n"
+                "*Say **\"create the BOM\"** to skip ahead and generate a full template immediately.*"
+            )
 
     # ── Template BOM builder (rule-based, no AI needed) ───────────────────
 

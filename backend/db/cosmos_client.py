@@ -226,74 +226,102 @@ class CosmosDBClient:
             raise
     
     # ========================================================================
-    # Specific Operations for BOMs
+    # Specific Operations for BOMs  (dict-based — same interface as MockCosmosDBClient)
     # ========================================================================
-    
-    def create_bom(self, bom: BOM) -> BOM:
-        """Create a new BOM"""
-        bom_dict = bom.model_dump(by_alias=True, exclude_none=True)
-        created = self.create_item(settings.cosmos_container_boms, bom_dict)
-        return BOM(**created)
-    
-    def get_bom(self, bom_id: str, project_name: str) -> Optional[BOM]:
-        """Get a BOM by ID"""
-        item = self.read_item(settings.cosmos_container_boms, bom_id, project_name)
-        return BOM(**item) if item else None
-    
-    def update_bom(self, bom: BOM) -> BOM:
-        """Update a BOM"""
-        bom_dict = bom.model_dump(by_alias=True, exclude_none=True)
-        updated = self.update_item(settings.cosmos_container_boms, bom.bom_id, bom_dict)
-        return BOM(**updated)
-    
-    def list_boms(
-        self, 
-        category: Optional[str] = None, 
-        status: Optional[str] = None,
-        limit: int = 100
-    ) -> List[BOM]:
-        """List BOMs with optional filters"""
+
+    def create_bom(self, bom_data: dict) -> dict:
+        """Create BOM — accepts and returns plain dict."""
+        return self.create_item(settings.cosmos_container_boms, bom_data)
+
+    def get_bom(self, bom_id: str) -> Optional[dict]:
+        """Get BOM by ID.  Uses cross-partition query so no project_name needed."""
+        try:
+            items = self.query_items(
+                settings.cosmos_container_boms,
+                "SELECT * FROM c WHERE c.bom_id = @id OR c._id = @id OR c.id = @id",
+                [{"name": "@id", "value": bom_id}],
+            )
+            return items[0] if items else None
+        except Exception as e:
+            logger.error("get_bom(%s) failed: %s", bom_id, e)
+            return None
+
+    def update_bom(self, bom_id: str, bom_data: dict) -> dict:
+        """Update BOM — dict in, dict out."""
+        return self.update_item(settings.cosmos_container_boms, bom_id, bom_data)
+
+    def list_boms(self, filters: Optional[dict] = None, limit: int = 50) -> list:
+        """List BOMs with optional dict filters — returns list of raw dicts."""
         query = "SELECT * FROM c"
-        where_clauses = []
-        parameters = []
-        
-        if category:
-            where_clauses.append("c.category = @category")
-            parameters.append({"name": "@category", "value": category})
-        
-        if status:
-            where_clauses.append("c.status = @status")
-            parameters.append({"name": "@status", "value": status})
-        
+        where_clauses: list = []
+        parameters: list = []
+        if filters:
+            if filters.get("category"):
+                where_clauses.append("c.category = @category")
+                parameters.append({"name": "@category", "value": filters["category"]})
+            if filters.get("status"):
+                where_clauses.append("c.status = @status")
+                parameters.append({"name": "@status", "value": filters["status"]})
+            if filters.get("user_id"):
+                where_clauses.append("c.created_by = @user_id")
+                parameters.append({"name": "@user_id", "value": filters["user_id"]})
         if where_clauses:
             query += " WHERE " + " AND ".join(where_clauses)
-        
-        query += f" ORDER BY c.created_at DESC OFFSET 0 LIMIT {limit}"
-        
         items = self.query_items(settings.cosmos_container_boms, query, parameters)
-        return [BOM(**item) for item in items]
-    
+        return items[:limit]
+
     # ========================================================================
-    # Specific Operations for Chat Sessions
+    # Specific Operations for Chat Sessions (dict-based)
     # ========================================================================
-    
-    def create_session(self, session: ChatSession) -> ChatSession:
-        """Create a new chat session"""
-        session_dict = session.model_dump(by_alias=True, exclude_none=True)
-        created = self.create_item(settings.cosmos_container_sessions, session_dict)
-        return ChatSession(**created)
-    
-    def get_session(self, session_id: str, user_id: str) -> Optional[ChatSession]:
-        """Get a chat session by ID"""
-        item = self.read_item(settings.cosmos_container_sessions, session_id, user_id)
-        return ChatSession(**item) if item else None
-    
-    def update_session(self, session: ChatSession) -> ChatSession:
-        """Update a chat session"""
-        session_dict = session.model_dump(by_alias=True, exclude_none=True)
-        updated = self.update_item(settings.cosmos_container_sessions, session.session_id, session_dict)
-        return ChatSession(**updated)
-    
+
+    def create_session(self, session_data: dict) -> dict:
+        """Create session — dict in, dict out."""
+        return self.create_item(settings.cosmos_container_sessions, session_data)
+
+    def get_session(self, session_id: str) -> Optional[dict]:
+        """Get session by ID — cross-partition query (no user_id needed)."""
+        try:
+            items = self.query_items(
+                settings.cosmos_container_sessions,
+                "SELECT * FROM c WHERE c.session_id = @id OR c._id = @id OR c.id = @id",
+                [{"name": "@id", "value": session_id}],
+            )
+            return items[0] if items else None
+        except Exception as e:
+            logger.error("get_session(%s) failed: %s", session_id, e)
+            return None
+
+    def update_session(self, session_id: str, session_data: dict) -> dict:
+        """Update session — dict in, dict out."""
+        return self.update_item(settings.cosmos_container_sessions, session_id, session_data)
+
+    def list_sessions(self, user_id: Optional[str] = None, limit: int = 50) -> list:
+        """List recent sessions.  Sorted in Python (avoids Cosmos composite index requirement)."""
+        query = "SELECT c.session_id, c.user_id, c.status, c.created_at, c.updated_at, c.context FROM c"
+        parameters: list = []
+        if user_id:
+            query += " WHERE c.user_id = @user_id"
+            parameters.append({"name": "@user_id", "value": user_id})
+        try:
+            items = self.query_items(settings.cosmos_container_sessions, query, parameters)
+        except Exception as exc:
+            logger.warning("list_sessions query failed: %s", exc)
+            return []
+        items.sort(key=lambda s: s.get("updated_at") or "", reverse=True)
+        return [
+            {
+                "session_id": s.get("session_id") or s.get("_id") or s.get("id"),
+                "user_id": s.get("user_id"),
+                "status": s.get("status", "active"),
+                "created_at": s.get("created_at"),
+                "updated_at": s.get("updated_at"),
+                "message_count": len(s.get("conversation") or []),
+                "context": s.get("context", {}),
+            }
+            for s in items[:limit]
+        ]
+
+
     # ========================================================================
     # Close connection
     # ========================================================================

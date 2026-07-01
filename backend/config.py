@@ -58,6 +58,7 @@ class Settings(BaseSettings):
     adls_container_processed: str = Field(default="processed-boms", alias="ADLS_CONTAINER_PROCESSED")
     adls_container_templates: str = Field(default="templates", alias="ADLS_CONTAINER_TEMPLATES")
     adls_container_exports: str = Field(default="exports", alias="ADLS_CONTAINER_EXPORTS")
+    adls_container_chat_history: str = Field(default="chat-history", alias="ADLS_CONTAINER_CHAT_HISTORY")
     
     # Azure Key Vault (optional when using dummy data)
     keyvault_url: str = Field(default="https://dummy-keyvault.vault.azure.net/", alias="KEYVAULT_URL")
@@ -69,6 +70,10 @@ class Settings(BaseSettings):
     claude_model_complex: str = Field(default="claude-opus-4-6")
     claude_max_tokens: int = Field(default=4096)
     claude_temperature: float = Field(default=0.3)
+
+    # Direct OpenAI API (alternative when no Azure/Anthropic credentials)
+    openai_api_key: str = Field(default="dummy-openai-key", alias="OPENAI_API_KEY")
+    openai_model_default: str = Field(default="gpt-4o", alias="OPENAI_MODEL_DEFAULT")
     
     # Azure OpenAI (alternative to Anthropic Claude)
     azure_openai_endpoint: str = Field(default="https://dummy.openai.azure.com/", alias="AZURE_OPENAI_ENDPOINT")

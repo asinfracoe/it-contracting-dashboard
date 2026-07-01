@@ -1,4 +1,4 @@
-﻿import { useState } from 'react'
+﻿import { useState, useEffect, useMemo } from 'react'
 import { useSelector } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -21,15 +21,14 @@ import {
   TableRow,
   Alert,
   Button,
-  AlertTitle,
   Collapse,
   IconButton,
+  Tooltip,
 } from '@mui/material'
-import { ExpandMore, ExpandLess, Warning, Error as ErrorIcon, Info } from '@mui/icons-material'
-import { Bar } from 'react-chartjs-2'
-import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js'
+import { ExpandMore, ExpandLess, Warning, Refresh, Analytics } from '@mui/icons-material'
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip as CJSTooltip, Legend } from 'chart.js'
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend)
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, CJSTooltip, Legend)
 
 const projects = [
   { name: 'Idemia', files: 9, categories: 3, services: 32, vendors: 4, totalSpend: 122.62, avgQuote: 57.85, bestPrice: 310, color: '#D04A02', timeline: [30, 45, 25] },
@@ -69,12 +68,6 @@ const topServices = [
   { name: 'Colocation Tier-4 Full Rack', category: 'Hosting', vendors: 6, quotes: 44, price: '$6.21M' },
 ]
 
-const chartOpts = {
-  responsive: true, maintainAspectRatio: false,
-  plugins: { legend: { display: false }, tooltip: { bodyFont: { size: 10 }, titleFont: { size: 10 } } },
-  scales: { x: { grid: { display: false }, ticks: { font: { size: 9 }, maxRotation: 30 } }, y: { grid: { color: '#F3F4F6' }, beginAtZero: true, ticks: { font: { size: 9 } } } },
-}
-const chartOptsH = { ...chartOpts, indexAxis: 'y', scales: { x: { grid: { color: '#F3F4F6' }, beginAtZero: true, ticks: { font: { size: 9 } } }, y: { grid: { display: false }, ticks: { font: { size: 9 } } } } }
 const SL = { color: '#1F2937', fontWeight: 700, letterSpacing: '0.6px', textTransform: 'uppercase', mb: 0.75, display: 'block', fontSize: '0.62rem' }
 
 export default function OverviewPage() {
@@ -83,10 +76,53 @@ export default function OverviewPage() {
   const [country, setCountry] = useState('All')
   const [dateRange, setDateRange] = useState('All')
   const [alertsOpen, setAlertsOpen] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const navigate = useNavigate()
   const bomList = useSelector(s => s.bom?.bomList || [])
 
-  // Derive live alerts from Redux BOM state
+  // ── Load live data (just used for refresh button availability) ────────
+  const loadLiveData = () => {}  // BOM data comes from Redux
+
+  // ── Derive live project cards from Redux bomList ────────────────────────
+  const PROJ_COLORS = ['#D04A02', '#10B981', '#3B82F6', '#8B5CF6', '#F59E0B']
+  const liveProjects = useMemo(() => {
+    const groups = {}
+    bomList.forEach(b => {
+      const key = b.project || 'Other'
+      if (!groups[key]) groups[key] = { name: key, boms: [] }
+      groups[key].boms.push(b)
+    })
+    return Object.entries(groups).map(([name, g], i) => {
+      const totalVal = g.boms.reduce((s, b) => s + (b.totalValue || 0), 0)
+      const allItems = g.boms.flatMap(b => b.lineItems || [])
+      const vendorSet = new Set(allItems.map(i => i.vendor).filter(Boolean))
+      return {
+        name,
+        files: g.boms.length,
+        categories: new Set(g.boms.map(b => b.category)).size,
+        services: allItems.length,
+        vendors: vendorSet.size,
+        totalSpend: (totalVal / 1e6).toFixed(2),
+        avgQuote: g.boms.length ? (totalVal / g.boms.length / 1e6).toFixed(2) : '0.00',
+        bestPrice: allItems.length ? Math.round(Math.min(...allItems.map(i => i.unitPrice || 0).filter(p => p > 0)) / 1000) : 0,
+        color: PROJ_COLORS[i % PROJ_COLORS.length],
+        status: g.boms[0]?.status || 'draft',
+      }
+    })
+  }, [bomList])
+
+  // Use live projects if available, else fall back to static
+  const portfolioProjects = liveProjects.length > 0 ? liveProjects : projects
+
+  // ── Derive live stats from bomList (compact, for status strip) ─────────
+  const liveKpis = useMemo(() => {
+    const pending = bomList.filter(b => b.status === 'review').length
+    const approved = bomList.filter(b => b.status === 'approved').length
+    const totalVal = bomList.reduce((s, b) => s + (b.totalValue || 0), 0)
+    return { total: bomList.length, pending, approved, totalVal }
+  }, [bomList])
+
+  // ── Alerts derived from Redux BOM state ────────────────────────────────
   const now = new Date()
   const alerts = []
   bomList.forEach(bom => {
@@ -95,15 +131,6 @@ export default function OverviewPage() {
     if (bom.status === 'review' && updatedDays > 7) alerts.push({ severity: 'error', bom, msg: `"${bom.name}" has been In Review for ${updatedDays} days — pending approval.` })
     if (bom.lineItems?.filter(i => i.status === 'quoted').length === 0 && bom.status !== 'archived') alerts.push({ severity: 'info', bom, msg: `"${bom.name}" has 0 quoted items — send to RFQ Builder to get vendor pricing.` })
   })
-
-  const trimLabel = (s, n=12) => s.length > n ? s.slice(0,n)+'...' : s
-
-  const charts = [
-    { title: 'Categories vs Quote Volume', data: { labels: categories.map(c => trimLabel(c.name.split(' ')[0],8)), datasets: [{ data: categories.map(c=>c.files), backgroundColor: categories.map(c=>c.color), borderRadius:3 }] }, opts: chartOpts },
-    { title: 'Services per Category', data: { labels: categories.map(c=>trimLabel(c.name)), datasets: [{ data: categories.map(c=>c.services), backgroundColor: categories.map(c=>c.color), borderRadius:3 }] }, opts: chartOptsH },
-    { title: 'Vendors by Quote Volume', data: { labels: vendorConcentration.map(v=>trimLabel(v.vendor,11)), datasets: [{ data: vendorConcentration.map(v=>v.quotes), backgroundColor:'#D04A02', borderRadius:3 }] }, opts: chartOptsH },
-    { title: 'Vendors by Avg Price Quoted', data: { labels: vendorConcentration.map(v=>trimLabel(v.vendor,11)), datasets: [{ data: vendorConcentration.map(v=>v.spend), backgroundColor:'#3B82F6', borderRadius:3 }] }, opts: chartOptsH },
-  ]
 
   return (
     <Box sx={{ bgcolor: '#FAFAFA', minHeight: 'calc(100vh - 42px)', overflowX: 'hidden' }}>
@@ -122,6 +149,35 @@ export default function OverviewPage() {
           <Box sx={{ color: '#6B7280', fontWeight: 500, fontSize: '0.72rem' }}>
             Strategic view of vendor spend, service coverage and pricing intelligence
           </Box>
+          <Box sx={{ flexGrow: 1 }} />
+          <Tooltip title="Refresh live data">
+            <IconButton size="small" onClick={loadLiveData} disabled={refreshing} sx={{ color: '#6B7280' }}>
+              <Refresh sx={{ fontSize: 16 }} />
+            </IconButton>
+          </Tooltip>
+          <Button size="small" variant="outlined" startIcon={<Analytics sx={{ fontSize: 14 }} />}
+            onClick={() => navigate('/analytics')}
+            sx={{ textTransform: 'none', fontSize: '0.68rem', borderColor: '#D04A02', color: '#D04A02' }}>
+            Full Analytics
+          </Button>
+        </Box>
+
+        {/* Compact Status Strip — quick glance, details are in Analytics */}
+        <Box sx={{ display: 'flex', gap: 1, mb: 1.25, flexWrap: 'wrap', alignItems: 'center', p: 1, bgcolor: 'white', border: '1px solid #F3F4F6', borderRadius: 1 }}>
+          {[
+            { label: `${liveKpis.total} BOMs`, color: '#3B82F6' },
+            { label: `${liveKpis.approved} approved`, color: '#10B981' },
+            { label: `${liveKpis.pending} pending review`, color: '#F59E0B' },
+            { label: `$${(liveKpis.totalVal / 1e6).toFixed(1)}M total value`, color: '#D04A02' },
+          ].map(({ label, color }) => (
+            <Chip key={label} label={label} size="small"
+              sx={{ bgcolor: 'transparent', border: `1px solid ${color}`, color, fontWeight: 700, fontSize: '0.65rem', height: 22 }} />
+          ))}
+          <Box sx={{ flexGrow: 1 }} />
+          <Button size="small" variant="text" onClick={() => navigate('/analytics')}
+            sx={{ fontSize: '0.65rem', textTransform: 'none', color: '#D04A02', fontWeight: 600 }}>
+            View detailed analytics →
+          </Button>
         </Box>
 
         {/* Alert Panel */}
@@ -151,7 +207,7 @@ export default function OverviewPage() {
 
         {/* Filters row */}
         <Box sx={{ display: 'flex', gap: 0.6, mb: 1.25, flexWrap: 'wrap', alignItems: 'center' }}>
-          {[{ label:'All', count:48 }, ...projects.map(p=>({label:p.name, count:p.files}))].map(({ label, count }) => (
+          {[{ label:'All', count: bomList.length }, ...portfolioProjects.map(p=>({label:p.name, count:p.files}))].map(({ label, count }) => (
             <Chip key={label} label={`${label} · ${count}`} size="small" onClick={() => setSelectedProject(label)}
               sx={{ bgcolor: selectedProject===label?'#1F2937':'white', color: selectedProject===label?'white':'#6B7280', fontWeight:700, fontSize:'0.68rem', cursor:'pointer', border:'1px solid #E5E7EB', height:24 }} />
           ))}
@@ -171,27 +227,37 @@ export default function OverviewPage() {
         </Box>
 
         {/* PROJECT PORTFOLIO */}
-        <Box sx={SL}>PROJECT PORTFOLIO · Click to drill in · each card shows full project snapshot</Box>
+        <Box sx={SL}>PROJECT PORTFOLIO · {liveProjects.length > 0 ? `${liveProjects.length} live projects from Cosmos DB` : 'Loading from backend...'}</Box>
         <Grid container spacing={1.25} sx={{ mb: 1.75 }}>
-          {projects.map(proj => (
+          {portfolioProjects.map(proj => {
+            const statusColors = { active:'#D1FAE5', draft:'#FEF3C7', review:'#DBEAFE', approved:'#F3E8FF' }
+            return (
             <Grid item xs={12} md={4} key={proj.name}>
-              <Card sx={{ borderLeft:`5px solid ${proj.color}`, cursor:'pointer', '&:hover':{boxShadow:3} }}>
+              <Card sx={{ borderLeft:`5px solid ${proj.color}`, cursor:'pointer', '&:hover':{boxShadow:3} }}
+                onClick={() => navigate('/bom-library')}>
                 <Box sx={{ p:1.25 }}>
                   <Box sx={{ display:'flex', justifyContent:'space-between', alignItems:'center', mb:0.4 }}>
                     <Box sx={{ fontWeight:700, fontFamily:'"Playfair Display",serif', fontSize:'0.95rem', color:'#1F2937' }}>{proj.name}</Box>
-                    <Chip label={`${proj.files} files`} size="small" sx={{ bgcolor:'#D04A02', color:'white', fontWeight:700, fontSize:'0.6rem', height:18 }} />
+                    <Box sx={{ display: 'flex', gap: 0.5 }}>
+                      {proj.status && <Chip label={proj.status} size="small" sx={{ bgcolor: statusColors[proj.status] || '#F3F4F6', color: '#1F2937', fontSize: '0.55rem', height: 16 }} />}
+                      <Chip label={`${proj.files} BOMs`} size="small" sx={{ bgcolor:'#D04A02', color:'white', fontWeight:700, fontSize:'0.6rem', height:18 }} />
+                    </Box>
                   </Box>
                   <Box sx={{ color:'#6B7280', mb:0.75, fontSize:'0.67rem' }}>
-                    {proj.categories} categories · {proj.services} services · {proj.vendors} vendors
+                    {proj.categories} categories · {proj.services} line items · {proj.vendors} vendors
                   </Box>
                   <Box sx={{ display:'flex', height:5, mb:0.4, borderRadius:1, overflow:'hidden' }}>
-                    {proj.timeline.map((pct,i) => <Box key={i} sx={{ width:`${pct}%`, bgcolor:['#FFD4B3','#FFB380',proj.color][i] }} />)}
+                    {[30,45,25].map((pct,i) => <Box key={i} sx={{ width:`${pct}%`, bgcolor:['#FFD4B3','#FFB380',proj.color][i] }} />)}
                   </Box>
                   <Box sx={{ display:'flex', justifyContent:'space-between', mb:0.75 }}>
                     {['2024','2025','2026'].map(y=><Box key={y} sx={{ color:'#9CA3AF', fontSize:'0.58rem' }}>{y}</Box>)}
                   </Box>
                   <Grid container spacing={0.75}>
-                    {[['TOTAL SPEND',`$${proj.totalSpend}M`,'#1F2937'],['AVG QUOTE',`$${proj.avgQuote}M`,'#D04A02'],['BEST PRICE',`$${proj.bestPrice}K`,'#10B981']].map(([lbl,val,clr])=>(
+                    {[
+                      ['TOTAL VALUE', `$${proj.totalSpend}M`, '#1F2937'],
+                      ['AVG / BOM', `$${proj.avgQuote}M`, '#D04A02'],
+                      ['BEST PRICE', proj.bestPrice > 0 ? `$${proj.bestPrice}K` : '—', '#10B981'],
+                    ].map(([lbl,val,clr])=>(
                       <Grid item xs={4} key={lbl}>
                         <Box sx={{ fontWeight:700, fontFamily:'"Playfair Display",serif', fontSize:'0.9rem', color:clr, lineHeight:1.1 }}>{val}</Box>
                         <Box sx={{ color:'#6B7280', fontSize:'0.55rem', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.3px' }}>{lbl}</Box>
@@ -201,103 +267,11 @@ export default function OverviewPage() {
                 </Box>
               </Card>
             </Grid>
-          ))}
+          )})}
         </Grid>
 
-        {/* AT A GLANCE */}
-        <Box sx={SL}>AT A GLANCE · Simple metrics for quick understanding</Box>
-        <Grid container spacing={1.25} sx={{ mb: 1.75 }}>
-          {charts.map(({ title, data, opts }) => (
-            <Grid item xs={12} sm={6} md={3} key={title}>
-              <Paper sx={{ p:1.25, height:195 }}>
-                <Box sx={{ color:'#6B7280', fontSize:'0.68rem', fontWeight:600, mb:0.6 }}>{title}</Box>
-                <Box sx={{ height:158 }}>
-                  <Bar data={data} options={opts} />
-                </Box>
-              </Paper>
-            </Grid>
-          ))}
-        </Grid>
-
-        {/* SPEND TREEMAP + AVG QUOTE PRICE */}
-        <Box sx={SL}>SPEND DISTRIBUTION · Visual breakdown of total spend by category</Box>
-        <Grid container spacing={1.25} sx={{ mb: 1.75 }}>
-          {/* Spend Treemap */}
-          <Grid item xs={12} md={6}>
-            <Paper sx={{ p: 1.5, height: 220 }}>
-              <Box sx={{ display:'flex', alignItems:'center', gap:0.75, mb:1 }}>
-                <Box sx={{ color:'#3B82F6', fontSize:'0.85rem' }}>▦</Box>
-                <Box sx={{ fontWeight:700, fontSize:'0.78rem' }}>Spend Treemap</Box>
-              </Box>
-              <Box sx={{ display:'flex', flexDirection:'column', gap:0.5, height:158 }}>
-                {/* Row 1: top 5 categories proportional width */}
-                <Box sx={{ display:'flex', gap:0.5, flex:'0 0 60%' }}>
-                  {[
-                    { name:'Network & Telecom', value:'$396.22M', pct:'90.8%', color:'#1F2937', flex:9.08 },
-                    { name:'Hosting', value:'$46.48M', pct:'7.1%', color:'#3B82F6', flex:0.71 },
-                    { name:'Cybersecurity', value:'$7.63M', pct:'1.2%', color:'#D04A02', flex:0.12 },
-                    { name:'M365 & Power\nPlatform', value:'$2.93M', pct:'0.4%', color:'#8B5CF6', flex:0.04 },
-                    { name:'Service\nManagement\n(SNow)', value:'$1.98M', pct:'0.3%', color:'#10B981', flex:0.03 },
-                  ].map(t=>(
-                    <Box key={t.name} sx={{
-                      flex: t.flex, bgcolor: t.color, borderRadius:1, p: t.flex > 1 ? '6px 8px' : '4px',
-                      display:'flex', flexDirection:'column', justifyContent:'flex-end', overflow:'hidden', cursor:'pointer',
-                      '&:hover': { filter:'brightness(1.15)' }, transition:'filter 0.15s',
-                      minWidth: t.flex < 0.1 ? 32 : 'auto',
-                    }}>
-                      {t.flex > 0.5 && <Box sx={{ color:'white', fontSize:'0.6rem', fontWeight:600, mb:0.25, lineHeight:1.2, opacity:0.85 }}>{t.name}</Box>}
-                      {t.flex > 0.5 && <Box sx={{ color:'white', fontWeight:800, fontSize: t.flex > 1 ? '0.95rem' : '0.65rem', fontFamily:'"Playfair Display",serif', lineHeight:1.1 }}>{t.value}</Box>}
-                      {t.flex > 0.5 && <Box sx={{ color:'rgba(255,255,255,0.7)', fontSize:'0.55rem', fontWeight:600 }}>{t.pct} of total</Box>}
-                    </Box>
-                  ))}
-                </Box>
-                {/* Row 2: IaAM full width */}
-                <Box sx={{
-                  flex:'1', bgcolor:'#F59E0B', borderRadius:1, p:'6px 10px',
-                  display:'flex', alignItems:'center', gap:2, cursor:'pointer',
-                  '&:hover':{ filter:'brightness(1.1)' }, transition:'filter 0.15s',
-                }}>
-                  <Box sx={{ color:'white', fontSize:'0.72rem', fontWeight:600 }}>IaAM</Box>
-                  <Box sx={{ color:'white', fontWeight:800, fontSize:'1rem', fontFamily:'"Playfair Display",serif' }}>$1.25M</Box>
-                  <Box sx={{ color:'rgba(255,255,255,0.8)', fontSize:'0.62rem' }}>0.2% of total</Box>
-                </Box>
-              </Box>
-            </Paper>
-          </Grid>
-
-          {/* Avg Quote Price by Category */}
-          <Grid item xs={12} md={6}>
-            <Paper sx={{ p:1.5, height:220 }}>
-              <Box sx={{ display:'flex', alignItems:'center', gap:0.75, mb:1 }}>
-                <Box sx={{ color:'#F59E0B', fontSize:'0.85rem' }}>📊</Box>
-                <Box sx={{ fontWeight:700, fontSize:'0.78rem' }}>Average Quote Price by Category</Box>
-              </Box>
-              <Box sx={{ height:160 }}>
-                <Bar
-                  data={{
-                    labels: ['Network & Telecom','Hosting','Service Mgmt','Cybersecurity','M365 & Power...','IaAM'],
-                    datasets:[{
-                      data: [31120000, 6640000, 990000, 7630000, 5880000, 2080000],
-                      backgroundColor: ['#1F2937','#3B82F6','#10B981','#D04A02','#8B5CF6','#F59E0B'],
-                      borderRadius: 3,
-                    }],
-                  }}
-                  options={{
-                    responsive:true, maintainAspectRatio:false, indexAxis:'y',
-                    plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: ctx => ` $${(ctx.raw/1000000).toFixed(2)}M` }, bodyFont:{size:10}, titleFont:{size:10} } },
-                    scales:{
-                      x:{ grid:{color:'#F3F4F6'}, beginAtZero:true, ticks:{ font:{size:8.5}, callback: v => `$${(v/1000000).toFixed(0)}M` } },
-                      y:{ grid:{display:false}, ticks:{font:{size:8.5}} },
-                    },
-                  }}
-                />
-              </Box>
-            </Paper>
-          </Grid>
-        </Grid>
-
-        {/* DETAILED INSIGHTS */}
-        <Box sx={SL}>DETAILED INSIGHTS · Deeper analysis for strategic decisions</Box>
+        {/* VENDOR & CATEGORY INTELLIGENCE */}
+        <Box sx={SL}>VENDOR & CATEGORY INTELLIGENCE · Heatmap + deep-dive · go to Analytics for trend charts</Box>
         <Paper sx={{ p:1.5, mb:1.75 }}>
           <Box sx={{ display:'flex', justifyContent:'space-between', alignItems:'center', mb:0.75 }}>
             <Box sx={{ fontWeight:700, fontSize:'0.78rem' }}>🔥 Vendor × Category Spend Heatmap</Box>

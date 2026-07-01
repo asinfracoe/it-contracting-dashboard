@@ -45,18 +45,27 @@ const CATALOG = [
 
 const CATEGORIES_DEFAULT = ['All', ...new Set(CATALOG.map(c => c.category))]
 
-// Normalise a backend catalog item into the format the page expects
+// Normalise a backend catalog item (flat schema from catalog API) into the
+// multi-vendor format the page expects.
 function normaliseCatalogItem(item, idx) {
-  // If item already has vendor pricing array, use it
+  // Already in multi-vendor format — use as-is
   if (Array.isArray(item.vendors) && item.vendors.length > 0) return item
-  // Build a synthetic single-vendor entry from flat fields
+
+  const name = item.description || item.name || item.sku || ''
+  if (!name) return null  // skip unnamed items
+
   return {
-    id: item.id || item.sku || `cat-${idx}`,
-    name: item.description || item.name || item.sku || 'Unknown',
-    sku: item.sku || item.part_number || '',
+    id:       item.id || item.sku || `cat-${idx}`,
+    name,
+    sku:      item.sku || item.part_number || '',
     category: item.category || 'General',
-    unit: item.unit || '/unit',
-    vendors: [{ name: item.vendor || 'CDW', price: item.unit_price || item.price || 0, quotes: 1, region: 'US' }],
+    unit:     item.unit || '/unit',
+    vendors:  [{
+      name:   item.vendor || 'Unknown',
+      price:  item.unit_price || item.unitPrice || item.price || 0,
+      quotes: item.quotes || 1,
+      region: item.region || 'US',
+    }],
   }
 }
 
@@ -78,13 +87,22 @@ export default function VendorPriceSelectorPage() {
   const loadCatalog = async () => {
     setCatalogLoading(true); setCatalogError(null)
     try {
+      // Clear server-side lru_cache so we get the freshly flattened catalog
+      await fetch('/api/catalog/reload', { method: 'POST' }).catch(() => {})
       const resp = await catalogApi.list({ search: search || undefined, category: category !== 'All' ? category : undefined, limit: 200 })
       if (resp?.items?.length > 0) {
-        setCatalogItems(resp.items.map(normaliseCatalogItem))
-        setBackendTotal(resp.total)
+        const normalised = resp.items
+          .map(normaliseCatalogItem)
+          .filter(Boolean)                       // remove null (unnamed items)
+          .filter(i => i.vendors[0]?.price > 0)  // remove zero-price items
+        if (normalised.length > 0) {
+          setCatalogItems([...CATALOG, ...normalised.filter(
+            n => !CATALOG.some(c => c.sku === n.sku && n.sku)  // dedup by SKU
+          )])
+          setBackendTotal(resp.total)
+        }
       }
     } catch {
-      // Stay on local fallback — no need to show error for optional backend
       setCatalogError('Using local catalog — backend unavailable')
     } finally {
       setCatalogLoading(false)
@@ -209,7 +227,7 @@ export default function VendorPriceSelectorPage() {
         ))}
       </Grid>
 
-      {/* Filters */}
+      {/* Filters + Bulk Action bar */}
       <Box sx={{ display: 'flex', gap: 1, mb: 1.5, flexWrap: 'wrap', alignItems: 'center' }}>
         <TextField size="small" placeholder="Search service name or SKU..."
           value={search} onChange={e => setSearch(e.target.value)}
@@ -221,7 +239,37 @@ export default function VendorPriceSelectorPage() {
               sx={{ fontSize: '0.65rem', height: 24, cursor: 'pointer', bgcolor: category === c ? '#D04A02' : 'white', color: category === c ? 'white' : '#374151', border: '1px solid ' + (category === c ? '#D04A02' : '#E5E7EB'), fontWeight: category === c ? 700 : 400 }} />
           ))}
         </Box>
+        <Box sx={{ flexGrow: 1 }} />
+        {currentBOM && filtered.length > 0 && (
+          <Tooltip title={`Add cheapest price for all ${filtered.length} filtered items to ${currentBOM.name}`}>
+            <Button size="small" variant="contained" startIcon={<Add sx={{ fontSize: 13 }} />}
+              onClick={() => {
+                filtered.forEach(item => addToBOM(item, cheapestVendor(item)))
+              }}
+              sx={{ textTransform: 'none', fontSize: '0.68rem', bgcolor: '#10B981', '&:hover': { bgcolor: '#059669' }, fontWeight: 700 }}>
+              Bulk Add Best Prices ({filtered.length})
+            </Button>
+          </Tooltip>
+        )}
       </Box>
+
+      {/* Savings summary bar */}
+      {filtered.length > 0 && (
+        <Paper sx={{ p: 1, mb: 1.5, bgcolor: '#F0FDF4', border: '1px solid #A7F3D0', display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <TrendingDown sx={{ fontSize: 14, color: '#10B981' }} />
+            <Box sx={{ fontSize: '0.7rem', color: '#065F46', fontWeight: 600 }}>
+              Best-price total: <strong>{fmt(filtered.reduce((s, i) => s + cheapestVendor(i).price, 0))}</strong>
+            </Box>
+          </Box>
+          <Box sx={{ fontSize: '0.7rem', color: '#065F46' }}>
+            vs market max: <strong>{fmt(filtered.reduce((s, i) => s + priceRange(i).max, 0))}</strong>
+          </Box>
+          <Box sx={{ fontSize: '0.7rem', fontWeight: 700, color: '#10B981' }}>
+            Potential savings: <strong>{fmt(totalSavingsAvailable)}</strong> ({Math.round(totalSavingsAvailable / Math.max(1, filtered.reduce((s, i) => s + priceRange(i).max, 0)) * 100)}%)
+          </Box>
+        </Paper>
+      )}
 
       {/* Catalog table */}
       <Paper sx={{ border: '1px solid #E5E7EB', overflow: 'hidden' }}>
@@ -229,7 +277,7 @@ export default function VendorPriceSelectorPage() {
           <Table size="small">
             <TableHead>
               <TableRow sx={{ bgcolor: '#F9FAFB' }}>
-                {['Service', 'SKU', 'Category', 'Unit', 'Vendor Quotes', 'Price Range', 'Savings Potential', 'Add to BOM'].map(h => (
+                {['Service', 'SKU / Category', 'Unit', 'Vendor Quotes', 'Price Range', 'Confidence', 'Add to BOM'].map(h => (
                   <TableCell key={h} sx={{ fontSize: '0.58rem', fontWeight: 700, textTransform: 'uppercase', py: 0.6, color: '#6B7280' }}>{h}</TableCell>
                 ))}
               </TableRow>
@@ -239,27 +287,45 @@ export default function VendorPriceSelectorPage() {
                 const cv = cheapestVendor(item)
                 const pr = priceRange(item)
                 const savingPct = savings(item)
+                const totalQuotes = item.vendors.reduce((s, v) => s + (v.quotes || 0), 0)
+                const confidence = totalQuotes >= 15 ? 'High' : totalQuotes >= 8 ? 'Medium' : 'Low'
+                const confColor = confidence === 'High' ? '#065F46' : confidence === 'Medium' ? '#92400E' : '#6B7280'
+                const confBg = confidence === 'High' ? '#D1FAE5' : confidence === 'Medium' ? '#FEF3C7' : '#F3F4F6'
                 return (
                   <TableRow key={item.id} sx={{ '&:hover': { bgcolor: '#FAFAFA' } }}>
-                    <TableCell sx={{ py: 0.6 }}>
-                      <Typography sx={{ fontSize: '0.75rem', fontWeight: 600, color: '#1F2937' }}>{item.name}</Typography>
+                    <TableCell sx={{ py: 0.6, maxWidth: 200 }}>
+                      <Typography sx={{ fontSize: '0.75rem', fontWeight: 600, color: '#1F2937' }} noWrap>{item.name}</Typography>
+                      {savingPct >= 15 && <Chip label={`${savingPct}% savings`} size="small" sx={{ fontSize: '0.55rem', height: 14, bgcolor: '#D1FAE5', color: '#065F46', mt: 0.25 }} />}
                     </TableCell>
-                    <TableCell sx={{ fontSize: '0.62rem', color: '#6B7280', py: 0.6 }}>{item.sku}</TableCell>
                     <TableCell sx={{ py: 0.6 }}>
-                      <Chip label={item.category} size="small" sx={{ fontSize: '0.6rem', height: 18 }} />
+                      <Typography sx={{ fontSize: '0.62rem', color: '#6B7280', fontFamily: 'monospace' }}>{item.sku}</Typography>
+                      <Chip label={item.category} size="small" sx={{ fontSize: '0.55rem', height: 16, mt: 0.25 }} />
                     </TableCell>
                     <TableCell sx={{ fontSize: '0.65rem', color: '#6B7280', py: 0.6 }}>{item.unit}</TableCell>
-                    <TableCell sx={{ py: 0.6 }}>
+                    <TableCell sx={{ py: 0.6, minWidth: 200 }}>
                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.4 }}>
                         {item.vendors.map(v => {
                           const isCheapest = v.name === cv.name && v.price === cv.price
+                          const pctAboveMin = pr.min > 0 ? ((v.price - pr.min) / pr.min * 100).toFixed(0) : 0
                           return (
                             <Box key={v.name} sx={{ display: 'flex', alignItems: 'center', gap: 0.75, p: '2px 6px', borderRadius: 1, bgcolor: isCheapest ? '#F0FDF4' : 'transparent', border: isCheapest ? '1px solid #A7F3D0' : '1px solid transparent' }}>
-                              {isCheapest && <TrendingDown sx={{ fontSize: 12, color: '#10B981' }} />}
+                              {isCheapest
+                                ? <TrendingDown sx={{ fontSize: 12, color: '#10B981' }} />
+                                : <TrendingUp sx={{ fontSize: 12, color: '#9CA3AF' }} />
+                              }
                               <Typography sx={{ fontSize: '0.65rem', fontWeight: isCheapest ? 700 : 400, color: isCheapest ? '#065F46' : '#374151', flex: 1 }}>{v.name}</Typography>
+                              <Tooltip title={`${v.quotes} quotes · ${v.region}`}>
+                                <Box sx={{ fontSize: '0.55rem', color: '#9CA3AF', display: 'flex', alignItems: 'center', gap: 0.25 }}>
+                                  {v.quotes}q · {v.region}
+                                </Box>
+                              </Tooltip>
                               <Typography sx={{ fontSize: '0.68rem', fontWeight: 700, color: isCheapest ? '#10B981' : '#374151' }}>{fmt(v.price)}</Typography>
-                              <Typography sx={{ fontSize: '0.55rem', color: '#9CA3AF' }}>{v.quotes}q</Typography>
-                              <Tooltip title={'Add to BOM (' + v.name + ')'}><IconButton size="small" onClick={() => addToBOM(item, v)} sx={{ p: 0.2, color: '#D04A02', '&:hover': { bgcolor: '#FDF3ED' } }}><Add sx={{ fontSize: 12 }} /></IconButton></Tooltip>
+                              {!isCheapest && Number(pctAboveMin) > 0 && <Chip label={`+${pctAboveMin}%`} size="small" sx={{ fontSize: '0.52rem', height: 13, bgcolor: '#FEF3C7', color: '#92400E' }} />}
+                              <Tooltip title={`Add ${v.name} price to BOM`}>
+                                <IconButton size="small" onClick={() => addToBOM(item, v)} sx={{ p: 0.2, color: '#D04A02', '&:hover': { bgcolor: '#FDF3ED' } }}>
+                                  <Add sx={{ fontSize: 12 }} />
+                                </IconButton>
+                              </Tooltip>
                             </Box>
                           )
                         })}
@@ -268,22 +334,19 @@ export default function VendorPriceSelectorPage() {
                     <TableCell sx={{ py: 0.6 }}>
                       <Typography sx={{ fontSize: '0.68rem', color: '#10B981', fontWeight: 700 }}>{fmt(pr.min)}</Typography>
                       <Typography sx={{ fontSize: '0.58rem', color: '#9CA3AF' }}>to {fmt(pr.max)}</Typography>
-                    </TableCell>
-                    <TableCell sx={{ py: 0.6 }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-                        <Box sx={{ flex: 1, height: 5, bgcolor: '#F3F4F6', borderRadius: 1, overflow: 'hidden', minWidth: 50 }}>
-                          <Box sx={{ width: savingPct + '%', height: '100%', bgcolor: savingPct > 15 ? '#10B981' : savingPct > 8 ? '#F59E0B' : '#E5E7EB' }} />
-                        </Box>
-                        <Typography sx={{ fontSize: '0.68rem', fontWeight: 700, color: savingPct > 15 ? '#10B981' : savingPct > 8 ? '#F59E0B' : '#6B7280', minWidth: 28 }}>
-                          {savingPct}%
-                        </Typography>
+                      <Box sx={{ width: 50, height: 4, bgcolor: '#F3F4F6', borderRadius: 1, mt: 0.4, overflow: 'hidden' }}>
+                        <Box sx={{ width: savingPct + '%', height: '100%', bgcolor: savingPct > 15 ? '#10B981' : savingPct > 8 ? '#F59E0B' : '#E5E7EB' }} />
                       </Box>
                     </TableCell>
                     <TableCell sx={{ py: 0.6 }}>
-                      <Button size="small" variant="outlined" startIcon={<Add sx={{ fontSize: 11 }} />}
+                      <Chip size="small" label={confidence} sx={{ fontSize: '0.58rem', height: 18, bgcolor: confBg, color: confColor, fontWeight: 700 }} />
+                      <Typography sx={{ fontSize: '0.58rem', color: '#9CA3AF', mt: 0.25 }}>{totalQuotes} quotes</Typography>
+                    </TableCell>
+                    <TableCell sx={{ py: 0.6 }}>
+                      <Button size="small" variant="outlined" startIcon={<CheckCircle sx={{ fontSize: 11 }} />}
                         onClick={() => addToBOM(item, cv)}
                         sx={{ textTransform: 'none', fontSize: '0.62rem', borderColor: '#10B981', color: '#10B981', py: 0.2, px: 0.75, '&:hover': { bgcolor: '#F0FDF4' } }}>
-                        Best price
+                        Best
                       </Button>
                     </TableCell>
                   </TableRow>
