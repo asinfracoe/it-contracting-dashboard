@@ -14,8 +14,14 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:8000',
+        target: 'http://localhost:8001',
         changeOrigin: true,
+        // Don't throw when backend is down — return the error so the UI can show a fallback
+        configure: (proxy) => {
+          proxy.on('error', (err) => {
+            console.warn('[Vite proxy] Backend unreachable:', err.message)
+          })
+        },
       },
       '/ws': {
         target: 'ws://localhost:8000',

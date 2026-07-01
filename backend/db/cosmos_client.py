@@ -27,18 +27,22 @@ class CosmosDBClient:
         self.containers: Dict[str, ContainerProxy] = {}
         
     def connect(self):
-        """Connect to Cosmos DB"""
+        """Connect to Cosmos DB and auto-provision database + containers."""
         try:
             self.client = CosmosClient(
                 settings.cosmos_db_endpoint,
                 credential=settings.cosmos_db_key
             )
-            self.database = self.client.get_database_client(settings.cosmos_db_database)
+            # Auto-create database if it doesn't exist
+            self.database = self.client.create_database_if_not_exists(
+                id=settings.cosmos_db_database
+            )
             logger.info(f"Connected to Cosmos DB: {settings.cosmos_db_database}")
-            
-            # Initialize container references
+
+            # Auto-create containers then initialise references
+            self.create_containers_if_not_exist()
             self._init_containers()
-            
+
         except Exception as e:
             logger.error(f"Failed to connect to Cosmos DB: {e}")
             raise

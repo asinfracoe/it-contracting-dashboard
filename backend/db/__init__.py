@@ -9,6 +9,8 @@ from db.mock_cosmos_client import MockCosmosDBClient
 from db.mock_adls_client import MockADLSClient
 from db.schemas import (
     BOM, LineItem, BOMTotals, BOMStatus,
+    BOMApproval, ApprovalStatus,
+    AuditEvent,
     ChatSession, ChatMessage, SessionContext,
     Pattern, BundleRule, QuantityFormula, PricingPattern,
     Template, TemplateQuestion, TemplateItem,

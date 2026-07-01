@@ -6,10 +6,12 @@ Entry point for the IT BOM Creation System backend
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.exceptions import RequestValidationError
 import logging
 import time
+import os
 from typing import Dict, Any
 
 from config import get_settings
@@ -33,6 +35,22 @@ app = FastAPI(
     redoc_url="/api/redoc",
     openapi_url="/api/openapi.json"
 )
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Eagerly connect to Cosmos DB and ADLS on boot so misconfiguration is caught early."""
+    from db import get_cosmos_client, get_adls_client
+    try:
+        get_cosmos_client()
+        logger.info("Cosmos DB: connected")
+    except Exception as e:
+        logger.warning(f"Cosmos DB unavailable at startup (will use mock or fail on request): {e}")
+    try:
+        get_adls_client()
+        logger.info("ADLS: connected")
+    except Exception as e:
+        logger.warning(f"ADLS unavailable at startup (will use mock or fail on request): {e}")
 
 # CORS Middleware
 app.add_middleware(
@@ -122,12 +140,14 @@ async def root() -> Dict[str, str]:
 
 
 # Import and register API routers
-from api import chat, bom, analytics, templates
+from api import chat, bom, analytics, templates, audit, catalog
 
 app.include_router(chat.router)
 app.include_router(bom.router)
 app.include_router(analytics.router)
 app.include_router(templates.router)
+app.include_router(audit.router)
+app.include_router(catalog.router)
 
 
 if __name__ == "__main__":
@@ -139,3 +159,17 @@ if __name__ == "__main__":
         reload=settings.debug,
         log_level=settings.log_level.lower()
     )
+
+# ── Serve built React frontend (production / Docker) ─────────────────────────
+# Static files are present when built via Docker multi-stage (Stage 1 copies
+# frontend/dist → /app/static). In local dev this folder won't exist, so we
+# skip mounting silently and rely on Vite dev server instead.
+_static_dir = os.path.join(os.path.dirname(__file__), "static")
+if os.path.isdir(_static_dir):
+    app.mount("/assets", StaticFiles(directory=os.path.join(_static_dir, "assets")), name="assets")
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def serve_spa(full_path: str):
+        """Catch-all: return index.html for any non-API route (React SPA routing)."""
+        index = os.path.join(_static_dir, "index.html")
+        return FileResponse(index)

@@ -1,17 +1,18 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
 import {
   Box, Typography, Grid, Paper, Chip, Button, IconButton, TextField,
   Select, MenuItem, FormControl, InputLabel, Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow, Collapse, Alert, Tooltip, Dialog,
-  DialogTitle, DialogContent, DialogActions,
+  DialogTitle, DialogContent, DialogActions, CircularProgress,
 } from '@mui/material'
 import {
   Search, ExpandMore, ExpandLess, Send, Archive, Download,
-  AutoAwesome, ContentCopy, Compare, CheckCircle, RateReview, Edit, Save, Close,
+  AutoAwesome, ContentCopy, Compare, CheckCircle, RateReview, Edit, Save, Close, Refresh,
 } from '@mui/icons-material'
 import { setActiveBOMForRFQ, setCurrentBOM, archiveBOM, saveBOM } from '../store/slices/bomSlice'
+import { bomService } from '../services/api'
 
 const fmt = (v) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v)
 const fmtDate = (s) => new Date(s).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
@@ -29,35 +30,59 @@ const CC = {
 }
 const SL = { fontSize: '0.58rem', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.7px' }
 
-function exportBOMExcel(bom) {
-  // Build CSV with BOM-friendly format (Excel will open it)
-  const headers = ['Line No', 'Description', 'Category', 'Unit', 'Qty', 'Unit Price', 'Ext Price', 'Vendor', 'Status']
-  const rows = bom.lineItems.map(i => [
-    i.lineNo,
-    '"' + (i.description || '').replace(/"/g, '""') + '"',
-    '"' + (i.category || '').replace(/"/g, '""') + '"',
-    '"' + (i.unit || '').replace(/"/g, '""') + '"',
-    i.qty, i.unitPrice, i.extPrice,
-    '"' + (i.vendor || '') + '"', i.status,
-  ])
-  const meta = [
-    ['BOM Name', '"' + bom.name + '"'],
-    ['Project', '"' + bom.project + '"'],
-    ['Category', '"' + bom.category + '"'],
-    ['Version', 'v' + bom.version],
-    ['Status', bom.status],
-    ['Total Value', bom.totalValue],
-    ['Created', bom.createdAt],
-    [''],
-  ]
-  const csv = [...meta.map(r => r.join(',')), headers.join(','), ...rows.map(r => r.join(','))].join('\n')
-  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = bom.name.replace(/[^a-zA-Z0-9 _-]/g, '') + '_BOM.csv'
-  document.body.appendChild(a); a.click(); document.body.removeChild(a)
-  URL.revokeObjectURL(url)
+// Convert backend snake_case BOM → frontend camelCase shape
+function backendToFrontend(b) {
+  return {
+    id: b.bom_id,
+    name: `${b.project_name} — ${b.category} BOM`,
+    project: b.project_name,
+    category: b.category,
+    status: b.status === 'in_progress' ? 'draft' : b.status,
+    version: b.version || 1,
+    totalValue: b.totals?.total_otc || 0,
+    createdAt: b.created_at,
+    updatedAt: b.updated_at || b.created_at,
+    notes: b.notes || '',
+    approvals: b.approvals || [],
+    lineItems: (b.line_items || []).map((item, idx) => ({
+      id: `item_${idx}`,
+      lineNo: item.line_number || idx + 1,
+      description: item.description,
+      category: item.category || '',
+      sku: item.sku || '',
+      qty: item.quantity,
+      unit: item.term || '/unit',
+      unitPrice: item.unit_price,
+      extPrice: item.extended_price,
+      vendor: item.vendor || '',
+      status: item.eol_flag ? 'eol' : 'active',
+      eolFlag: item.eol_flag || false,
+      orderSequence: item.order_sequence,
+    })),
+  }
+}
+
+async function exportBOMExcel(bom) {
+  try {
+    const blob = await bomService.exportExcel(bom.id)
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = bom.name.replace(/[^a-zA-Z0-9 _-]/g, '') + '.xlsx'
+    document.body.appendChild(a); a.click(); document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  } catch {
+    // Fallback to CSV if backend unavailable
+    const headers = ['Line No', 'Description', 'Category', 'Qty', 'Unit Price', 'Ext Price', 'Vendor']
+    const rows = bom.lineItems.map(i => [i.lineNo, `"${i.description}"`, `"${i.category}"`, i.qty, i.unitPrice, i.extPrice, `"${i.vendor}"`])
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url; a.download = bom.name + '_BOM.csv'
+    document.body.appendChild(a); a.click(); document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
 }
 
 export default function BOMLibraryPage() {
@@ -68,10 +93,29 @@ export default function BOMLibraryPage() {
   const [filterProject, setFilterProject] = useState('All')
   const [filterStatus, setFilterStatus] = useState('All')
   const [expandedId, setExpandedId] = useState(null)
-  const [editingCell, setEditingCell] = useState(null) // { bomId, itemId, field }
+  const [editingCell, setEditingCell] = useState(null)
   const [editValue, setEditValue] = useState('')
   const [compareIds, setCompareIds] = useState([])
   const [compareOpen, setCompareOpen] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [backendError, setBackendError] = useState(null)
+
+  // Load BOMs from backend on mount — merge into Redux
+  const loadFromBackend = useCallback(async () => {
+    setLoading(true)
+    setBackendError(null)
+    try {
+      const data = await bomService.list()
+      const boms = (data.boms || []).map(backendToFrontend)
+      boms.forEach(b => dispatch(saveBOM(b)))
+    } catch (err) {
+      setBackendError('Could not reach backend — showing local data')
+    } finally {
+      setLoading(false)
+    }
+  }, [dispatch])
+
+  useEffect(() => { loadFromBackend() }, [loadFromBackend])
 
   const filtered = bomList.filter(b => {
     if (filterProject !== 'All' && b.project !== filterProject) return false
@@ -90,7 +134,7 @@ export default function BOMLibraryPage() {
 
   // Inline cell edit helpers
   const startEdit = (bomId, itemId, field, value) => { setEditingCell({ bomId, itemId, field }); setEditValue(String(value)) }
-  const commitEdit = (bom) => {
+  const commitEdit = async (bom) => {
     if (!editingCell) return
     const newItems = bom.lineItems.map(i => {
       if (i.id !== editingCell.itemId) return i
@@ -98,8 +142,19 @@ export default function BOMLibraryPage() {
       updates.extPrice = (updates.qty || 1) * (updates.unitPrice || 0)
       return updates
     })
-    dispatch(saveBOM({ ...bom, lineItems: newItems, totalValue: newItems.reduce((s, i) => s + i.extPrice, 0), updatedAt: new Date().toISOString() }))
+    const updated = { ...bom, lineItems: newItems, totalValue: newItems.reduce((s, i) => s + i.extPrice, 0), updatedAt: new Date().toISOString() }
+    dispatch(saveBOM(updated))
     setEditingCell(null)
+    // Persist to backend
+    try {
+      await bomService.update(bom.id, {
+        line_items: newItems.map(i => ({
+          line_number: i.lineNo, description: i.description, category: i.category,
+          sku: i.sku, quantity: i.qty, unit_price: i.unitPrice, extended_price: i.extPrice,
+          vendor: i.vendor, term: i.unit,
+        })),
+      })
+    } catch { /* silent — Redux already updated */ }
   }
 
   // Duplicate BOM
@@ -151,6 +206,12 @@ export default function BOMLibraryPage() {
           <Typography sx={{ color: '#6B7280', fontSize: '0.72rem' }}>All versions tracked - synchronized across modules - click any cell to edit inline</Typography>
         </Box>
         <Box sx={{ display: 'flex', gap: 1 }}>
+          {backendError && <Alert severity="warning" sx={{ py: 0, fontSize: '0.7rem' }}>{backendError}</Alert>}
+          <Tooltip title="Refresh from backend">
+            <IconButton size="small" onClick={loadFromBackend} disabled={loading}>
+              {loading ? <CircularProgress size={16} /> : <Refresh sx={{ fontSize: 18 }} />}
+            </IconButton>
+          </Tooltip>
           {compareIds.length === 2 && (
             <Button size="small" variant="outlined" startIcon={<Compare sx={{ fontSize: 14 }} />}
               onClick={() => setCompareOpen(true)}
@@ -235,7 +296,7 @@ export default function BOMLibraryPage() {
                 </Tooltip>
                 {/* Approval workflow buttons */}
                 {bom.status === 'draft' && <Tooltip title="Submit for Review"><IconButton size="small" onClick={() => changeStatus(bom, 'review')} sx={{ color: '#3B82F6' }}><RateReview sx={{ fontSize: 16 }} /></IconButton></Tooltip>}
-                {bom.status === 'review' && <Tooltip title="Approve BOM"><IconButton size="small" onClick={() => changeStatus(bom, 'approved')} sx={{ color: '#10B981' }}><CheckCircle sx={{ fontSize: 16 }} /></IconButton></Tooltip>}
+                {bom.status === 'review' && <Tooltip title="3-Party Approval"><IconButton size="small" onClick={() => navigate(`/bom-review/${bom.id}`)} sx={{ color: '#10B981' }}><CheckCircle sx={{ fontSize: 16 }} /></IconButton></Tooltip>}
                 {bom.status === 'approved' && <Tooltip title="Mark Active"><IconButton size="small" onClick={() => changeStatus(bom, 'active')} sx={{ color: '#10B981' }}><CheckCircle sx={{ fontSize: 16 }} /></IconButton></Tooltip>}
                 {bom.status !== 'archived' && <Tooltip title="Archive"><IconButton size="small" onClick={() => dispatch(archiveBOM(bom.id))} sx={{ color: '#9CA3AF' }}><Archive sx={{ fontSize: 16 }} /></IconButton></Tooltip>}
                 <IconButton size="small" onClick={() => setExpandedId(isX ? null : bom.id)} sx={{ color: '#6B7280' }}>

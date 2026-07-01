@@ -11,7 +11,7 @@ import os
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables"""
-    
+
     # Application
     app_name: str = "IT BOM Creation System"
     environment: str = Field(default="development", alias="ENVIRONMENT")
@@ -62,11 +62,11 @@ class Settings(BaseSettings):
     # Azure Key Vault (optional when using dummy data)
     keyvault_url: str = Field(default="https://dummy-keyvault.vault.azure.net/", alias="KEYVAULT_URL")
     
-    # Anthropic Claude (optional when using dummy responses)
+    # Anthropic Claude — primary AI model
     anthropic_api_key: str = Field(default="dummy-api-key", alias="ANTHROPIC_API_KEY")
-    claude_model_default: str = Field(default="claude-3-5-sonnet-20241022")
-    claude_model_fast: str = Field(default="claude-3-haiku-20240307")
-    claude_model_complex: str = Field(default="claude-3-opus-20240229")
+    claude_model_default: str = Field(default="claude-opus-4-6")
+    claude_model_fast: str = Field(default="claude-haiku-4-5")
+    claude_model_complex: str = Field(default="claude-opus-4-6")
     claude_max_tokens: int = Field(default=4096)
     claude_temperature: float = Field(default=0.3)
     
@@ -79,10 +79,15 @@ class Settings(BaseSettings):
     azure_openai_max_tokens: int = Field(default=4096)
     azure_openai_temperature: float = Field(default=0.3)
     
-    # SharePoint (optional when using dummy data)
+    # SharePoint / Microsoft Graph API (optional when using dummy data)
     sharepoint_site_url: str = Field(default="https://dummy.sharepoint.com/sites/dummy", alias="SHAREPOINT_SITE_URL")
     sharepoint_client_id: str = Field(default="dummy-sp-client-id", alias="SHAREPOINT_CLIENT_ID")
     sharepoint_client_secret: str = Field(default="dummy-sp-client-secret", alias="SHAREPOINT_CLIENT_SECRET")
+    sharepoint_tenant_id: str = Field(default="", alias="SHAREPOINT_TENANT_ID")
+
+    # Azure AI Search (optional)
+    azure_search_endpoint: str = Field(default="", alias="AZURE_SEARCH_ENDPOINT")
+    azure_search_admin_key: str = Field(default="", alias="AZURE_SEARCH_ADMIN_KEY")
     
     # Email (SendGrid) (optional when using dummy data)
     sendgrid_api_key: str = Field(default="dummy-sendgrid-key", alias="SENDGRID_API_KEY")
@@ -99,6 +104,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = False
+        extra = "ignore"  # ignore unknown env vars (e.g. SHAREPOINT_DRIVE_PATH)
 
 
 # Global settings instance

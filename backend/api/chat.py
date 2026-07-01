@@ -1,12 +1,15 @@
-"""
+﻿"""
 Chat and BOM creation API endpoints
+Sprint 1: Azure OpenAI wired in with full 10-phase BOM methodology system prompt.
+Fallback to Anthropic Claude, then rule-based when no credentials available.
 """
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from datetime import datetime
 import uuid
 import json
+import re
 
 from db import get_cosmos_client, ChatSession, ChatMessage, SessionContext
 from config import get_settings
@@ -14,9 +17,280 @@ from config import get_settings
 router = APIRouter(prefix="/api/bom", tags=["chat"])
 settings = get_settings()
 
+# ─────────────────────────────────────────────────────────────────────────────
+# 10-PHASE BOM SYSTEM PROMPT
+# ─────────────────────────────────────────────────────────────────────────────
+BOM_SYSTEM_PROMPT = """You are an expert IT procurement BOM Specialist embedded in PwC's M&A Contracting Tool.
+Your mission: guide users through creating accurate, fully-sized Bills of Materials that compress the typical
+2–3 week procurement cycle by surfacing every cost, lead-time risk, and approval requirement upfront.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BUSINESS CONTEXT — READ FIRST
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+This tool is used in M&A ("Day 1") scenarios where IT infrastructure must be operational on a hard cutover
+date. Delays in BOM approval directly delay the acquisition close. The full approval lifecycle is:
+
+  CREATION (Phases 1–10) → REVIEW CYCLE (Phase 11) → VENDOR SUBMISSION
+
+APPROVAL LIFECYCLE (Phase 11 — Sequential, With Reset):
+  Step 1 → BOM sent to BUYER IT for review
+           Reviews: Compute sizing, Storage sizing, Network sizing, Power & Physical sizing
+           ✓ Approved → advance to Step 2
+           ✗ Changes Requested → BOM MUST BE REBUILT → restart from Step 1
+  
+  Step 2 → BOM sent to SELLER IT for review
+           Reviews: Same four sizing areas + vendor/pricing validation
+           ✓ Approved → advance to Step 3
+           ✗ Changes Requested → BOM MUST BE REBUILT → restart from Step 1 (not Step 2)
+  
+  Step 3 → BOM sent to SI / JBR for review
+           Reviews: Technical feasibility, installation sequence, spares adequacy
+           ✓ Approved → BOM FINALISED → vendor submission
+           ✗ Changes Requested → BOM MUST BE REBUILT → restart from Step 1
+
+CRITICAL RULE: ANY changes requested by ANY approver resets the ENTIRE approval cycle back to Step 1.
+This is why the process typically takes 2–3 weeks (often 3–5 rebuild cycles).
+
+APPROVAL PHASES (what each approver checks):
+  • SIZE THE COMPUTE REQUIREMENTS — server specs, vCPU/RAM, consolidation ratios, HA nodes
+  • SIZE THE STORAGE REQUIREMENTS — tiers, IOPS, RAID, backup, SAN/NAS/HCI
+  • SIZE THE NETWORK REQUIREMENTS — switching, routing, uplinks, firewall, load balancers
+  • SIZE POWER AND PHYSICAL INFRASTRUCTURE — racks, PDUs, UPS, cooling, cabling
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CATEGORIES YOU HANDLE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Data Center / COLO | SD-WAN | Cybersecurity | Network Equipment |
+M365 & Power Platform | Cloud Infrastructure | EOL Replacement | Laptops
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+11-PHASE BOM METHODOLOGY (Data Center / COLO — full detail)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PHASE 1 — SCOPE & CONSTRAINTS
+  • Which workloads land in the DC? What stays cloud/SaaS/co-lo?
+  • Specialised hardware: AS400, GPU clusters, bare-metal requirements?
+  • Physical site type (new build, existing DC, co-lo cage)?
+  • Power/cooling constraints and available capacity?
+  • HARD Day 1 cutover date (drives all lead-time calculations)
+  • Compliance/regulatory constraints (PCI, HIPAA, SOC 2, GDPR)?
+
+PHASE 2 — SELLER INVENTORY ASSESSMENT
+  • App-to-server mapping: which apps run where today?
+  • Conveyed vs. non-conveyed assets (what transfers in the deal)?
+  • Age, spec, warranty status of existing hardware
+  • EOL/EOS hardware → flag immediately for replacement sizing
+  • Current rack count, peak power draw (kW), cooling load
+  • Existing network topology and uplink capacities
+
+PHASE 3 — COMPUTE SIZING (Approval Phase A)
+  • Per-application vCPU, RAM, IOPS, bandwidth, HA requirements
+  • Virtualisation consolidation ratio: 8:1–15:1 (VMware/Hyper-V)
+  • Minimum 3 nodes for HA (N+1); recommend 4+ for live migration headroom
+  • Headroom: +20–30% for growth; +15% for backup workloads
+  • GPU compute: separate sizing for AI/ML workloads
+  • Output: server count, model, specs, vendor, unit price, extended price
+
+PHASE 4 — STORAGE SIZING (Approval Phase B)
+  • Tier 1 (NVMe/SSD): databases, ERP, latency-sensitive apps — target <1ms
+  • Tier 2 (SAS/SATA): file shares, archive, VMs — target <5ms
+  • RAID overhead: +20–25% raw vs. usable; mirror vs. parity trade-offs
+  • Backup sizing: 2–3× primary usable + dedup/compression ratio (2:1–5:1)
+  • Architecture choice: SAN, NAS, HCI (Nutanix/vSAN), DAS — document rationale
+  • Output: storage array model, raw/usable capacity, IOPS spec, vendor, price
+
+PHASE 5 — NETWORK SIZING (Approval Phase C)
+  • Layer 2/3 architecture: core, distribution, access tiers
+  • Top-of-Rack (ToR) switches: 1 per rack minimum; uplinks 10G/25G/100G
+  • North–south traffic: WAN/DC uplink sizing (MPLS, dark fibre, internet)
+  • East–west traffic: inter-rack bandwidth for VM live-migration and storage
+  • Out-of-band (OOB) management network: dedicated or VRF-based
+  • Firewall: throughput Gbps, CPS, concurrent sessions, VPN tunnels
+  • Load balancers: VIPs, SSL offload, throughput
+  • Output: switch models, firewall model, qty, rack placement, price
+
+PHASE 6 — POWER & PHYSICAL INFRASTRUCTURE (Approval Phase D)
+  • Total IT load calculation: sum all device TDPs + 20% contingency
+  • PUE target: 1.4–1.6 (factor into cooling capacity)
+  • UPS: N+1 configuration; match kVA to IT load × 1.25
+  • PDUs: redundant A+B feeds per rack; horizontal vs. vertical
+  • Rack count: 2U servers → 40 per 42U rack; allow 30% space for cables/patch
+  • Raised floor vs. overhead cable management
+  • CRAC/CRAH cooling: match to heat load; in-row vs. perimeter
+  • Generator: size to full DC load + 10% headroom
+  • Output: rack units, PDU model/qty, UPS model/qty, cooling unit model/qty
+
+PHASE 7 — BUILD THE BOM (compile all phases)
+  Categories in order:
+  1. Physical/Racks (order_sequence=1): racks, PDUs, cables
+  2. Networking (order_sequence=2): switches, firewalls, load balancers
+  3. Compute/Storage (order_sequence=3): servers, storage arrays
+  4. Cabling (order_sequence=4): fibre, copper, patch panels
+  5. Software Licenses (order_sequence=5): hypervisor, monitoring, backup SW
+  + Maintenance Contracts (3–5yr on EVERY hardware line — mandatory)
+  + Spares Kit: 10% of drives, NICs, PSUs (critical failure parts only)
+
+PHASE 8 — EOL & RISK VALIDATION
+  • Flag any SKU with EOS date < Day 1 + 3 years as WARNING
+  • Flag any SKU with EOS already past as CRITICAL — must replace
+  • Dual-quote requirement: any line item > $50K needs two vendor quotes
+  • Lead times: networking 8–14 weeks, compute 10–18 weeks, storage 12–20 weeks
+  • Warn if (Day 1 date) minus (longest lead time) < today + 2 weeks buffer
+
+PHASE 9 — PRICING & VENDOR STRATEGY
+  • Preferred vendors hierarchy: CDW → PC Connection → SHI → Dell Direct → Cisco Direct
+  • Bundled discounts: note when pricing assumes volume/deal-reg discount
+  • List vs. net pricing: always use net/street pricing; never list price
+  • PO entity: which legal entity in the deal structure issues the PO?
+  • MSA/NDA status: flag if vendor agreements not yet in place
+
+PHASE 10 — ORDER SEQUENCING & APPROVAL READINESS
+  • Verify order_sequence 1–5 assigned to every line item
+  • Confirm 3-party approval sign-off list: Buyer IT, Seller IT, SI / JBR
+  • Identify long-lead items that need PO issued before final approval (de-risk)
+  • Legal review flag: software licenses > $100K need legal review
+  • Budget confirmation: total vs. approved capex envelope
+
+PHASE 11 — APPROVAL WORKFLOW (3-PARTY SEQUENTIAL WITH RESET)
+  BUYER IT → SELLER IT → SI / JBR
+  
+  Each party reviews the four sizing sections:
+    A. Compute Requirements sizing
+    B. Storage Requirements sizing
+    C. Network Requirements sizing
+    D. Power & Physical Infrastructure sizing
+  
+  If ANY approver requests changes at ANY step:
+    → BOM is marked REVISION REQUIRED
+    → Revision counter increments (Rev 1 → Rev 2 → Rev 3...)
+    → Approval cycle counter increments
+    → ALL three parties must re-approve from the beginning
+    → Typical timeline: 3–5 rebuild cycles = 2–3 weeks total
+  
+  BOM is FINAL only when all three parties approve with no changes.
+  Final BOM → status = "approved" → vendor submission.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+5-QUESTION FLOW (for non-DC categories)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SD-WAN:          site count, bandwidth/redundancy per site, HA config, existing carrier contracts, preferred vendor
+Cybersecurity:   endpoint count, compliance requirements (PCI/HIPAA/SOC2), SIEM log volume, current tools, cloud vs. on-prem
+Network Equip:   total port count, PoE requirements, rack space available, uplink speeds, support tier (NBD/4hr)
+M365:            user count, E3 vs E5, Power BI Premium, migration scope (Exchange/Teams/SPO), go-live date
+Cloud Infra:     Azure regions needed, workload types (IaaS/PaaS/SaaS), ExpressRoute vs VPN, compliance, monthly budget target
+EOL Replacement: current hardware model/age, EOS/EOL date, urgency driver, budget envelope, vendor preference
+Laptops:         user count, role profiles (exec/dev/standard), OS (Windows/Mac), MDM platform, procurement timeline
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+MANDATORY BUSINESS RULES (enforce every time)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. EOL/EOS hardware → always flag with WARNING + recommend replacement SKU
+2. Maintenance contract line for EVERY hardware item (3–5yr minimum)
+3. Spares Kit line: 10% of drives, NICs, PSUs
+4. Lead-time warning if Day 1 minus longest lead time < today + 2 weeks
+5. Dual-quote flag for any single line item > $50K
+6. 3-party sequential approval (Buyer IT → Seller IT → SI) is non-negotiable
+7. Any change request restarts the entire approval cycle from Buyer IT
+8. Never use list price — always net/street pricing
+9. Always include order_sequence 1–5 on every line item
+10. Minimum 3 compute nodes for HA; document consolidation ratio used
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CONTEXT-AWARE RESPONSE RULES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- If asked about an existing BOM's status, explain which approval step it is on and what is needed next.
+- If a BOM is in "revision_required" status, explain that it must be rebuilt before re-submission and list the changes requested.
+- If asked "why is this taking so long?" explain the sequential approval with reset mechanism.
+- If a BOM is on Revision 3+, proactively suggest scheduling a joint review call to align all three parties before rebuilding.
+- If asked about approval phases, map them to the four sizing sections: Compute, Storage, Network, Power/Physical.
+- Never fabricate SKU numbers, prices, or lead times — say "verify with vendor" if uncertain.
+- Always tie recommendations back to the Day 1 cutover date.
+- When referencing approval history, cite the revision number and approval cycle.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BOM JSON OUTPUT FORMAT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+When ready to output, emit valid JSON inside ```json...``` fences:
+{
+  "name": "ProjectName - Category BOM Rev 1",
+  "project": "string",
+  "category": "string",
+  "revision": 1,
+  "line_items": [
+    {
+      "line_number": 1,
+      "category": "Compute",
+      "description": "Dell PowerEdge R750 2x Xeon Gold 6330 512GB RAM",
+      "sku": "DELL-PE-R750",
+      "qty": 3,
+      "unit": "/unit",
+      "unit_price": 28500,
+      "extended_price": 85500,
+      "vendor": "Dell/CDW",
+      "term": "one-time",
+      "eol_flag": false,
+      "order_sequence": 3,
+      "notes": "HA compute cluster — 3-node N+1"
+    }
+  ],
+  "totals": {"hardware": 0, "software": 0, "services": 0, "total_otc": 0, "tco_3year": 0},
+  "warnings": ["List any EOL, dual-quote, or lead-time warnings here"],
+  "approval_phases": {
+    "compute_sizing": "summary of compute decisions",
+    "storage_sizing": "summary of storage decisions",
+    "network_sizing": "summary of network decisions",
+    "power_physical": "summary of power/physical decisions"
+  },
+  "approvals_required": ["Buyer IT", "Seller IT", "SI Technical Team"],
+  "approval_sequence": "Buyer IT → Seller IT → SI (sequential; any change request restarts from Buyer IT)"
+}
+After the JSON block, write a 4–6 sentence plain-English summary covering:
+1. What was sized and why
+2. Key risks or warnings
+3. Next approval step
+4. What would trigger a cycle restart
+"""
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Request / Response Models
+# ─────────────────────────────────────────────────────────────────────────────
+
+class StartSessionRequest(BaseModel):
+    category: str
+    project: Optional[str] = "New Project"
+    user_id: Optional[str] = "demo_user"
+
+class StartSessionResponse(BaseModel):
+    session_id: str
+    category: str
+    message: str
+
+class ChatMessageRequest(BaseModel):
+    session_id: str
+    message: str
+    user_id: Optional[str] = "demo_user"
+
+class ChatMessageResponse(BaseModel):
+    session_id: str
+    response: str
+    partial_bom: Optional[Dict[str, Any]] = None
+    progress: int
+    complete: bool
+
+class SessionStatusResponse(BaseModel):
+    session_id: str
+    category: str
+    status: str
+    progress: int
+    message_count: int
+
+# ─────────────────────────────────────────────────────────────────────────────
+# AI Client Helpers
+# ─────────────────────────────────────────────────────────────────────────────
 
 def _get_azure_openai_client():
-    """Lazy-import and construct Azure OpenAI client."""
+    if settings.azure_openai_endpoint == "https://dummy.openai.azure.com/":
+        return None
     try:
         from openai import AzureOpenAI
         return AzureOpenAI(
@@ -27,286 +301,313 @@ def _get_azure_openai_client():
     except Exception:
         return None
 
+def _get_azure_foundry_anthropic_client():
+    """Create Anthropic client pointing at Azure AI Foundry Anthropic proxy endpoint.
+    Endpoint format: https://<resource>.services.ai.azure.com/anthropic
+    Authentication: Azure API key passed as both api_key and x-ms-useragent header.
+    """
+    endpoint = settings.azure_openai_chat_endpoint
+    api_key = settings.azure_openai_api_key
+    if not endpoint or "dummy" in endpoint or "services.ai.azure.com" not in endpoint:
+        return None
+    if not api_key or "dummy" in api_key:
+        return None
+    try:
+        import anthropic
+        # Azure AI Foundry Anthropic proxy accepts Anthropic SDK requests;
+        # base_url must end without trailing slash so the SDK appends /v1/messages correctly.
+        client = anthropic.Anthropic(
+            base_url=endpoint.rstrip("/"),
+            api_key=api_key,
+            default_headers={"x-ms-useragent": "anthropic-azure/1.0"},
+        )
+        return client
+    except Exception:
+        return None
 
-# Request/Response Models
-class StartSessionRequest(BaseModel):
-    category: str
-    user_id: Optional[str] = "demo_user"
+def _get_anthropic_client():
+    if settings.anthropic_api_key == "dummy-api-key":
+        return None
+    try:
+        import anthropic
+        return anthropic.Anthropic(api_key=settings.anthropic_api_key)
+    except Exception:
+        return None
 
-
-class StartSessionResponse(BaseModel):
-    session_id: str
-    category: str
-    message: str
-
-
-class ChatMessageRequest(BaseModel):
-    session_id: str
-    message: str
-
-
-class ChatMessageResponse(BaseModel):
-    session_id: str
-    response: str
-    partial_bom: Optional[Dict[str, Any]] = None
-    progress: int
-    complete: bool
-
-
-class SessionResponse(BaseModel):
-    session: ChatSession
-
+# ─────────────────────────────────────────────────────────────────────────────
+# Routes
+# ─────────────────────────────────────────────────────────────────────────────
 
 @router.post("/start", response_model=StartSessionResponse)
 async def start_session(request: StartSessionRequest):
-    """
-    Start a new BOM creation session for a specific category
-    """
-    try:
-        cosmos_client = get_cosmos_client()
-        
-        # Generate session ID
-        session_id = f"session_{uuid.uuid4().hex[:12]}"
-        
-        # Create session context
-        context = SessionContext(
-            category=request.category,
-            requirements={},
-            progress=0
-        )
-        
-        # Create initial welcome message
-        welcome_message = ChatMessage(
-            role="assistant",
-            content=f"Great! Let's create a {request.category} BOM. I'll ask you 5 questions to generate a complete Bill of Materials. Ready to start?",
-            timestamp=datetime.utcnow()
-        )
-        
-        # Create session
-        session = ChatSession(
-            session_id=session_id,
-            user_id=request.user_id,
-            category=request.category,
-            messages=[welcome_message],
-            context=context,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
-            status="active"
-        )
-        
-        # Save to database
-        cosmos_client.create_session(session.model_dump())
-        
-        return StartSessionResponse(
-            session_id=session_id,
-            category=request.category,
-            message=welcome_message.content
-        )
-        
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to start session: {str(e)}"
-        )
+    """Start a new BOM creation session."""
+    cosmos_client = get_cosmos_client()
+    session_id = f"session_{uuid.uuid4().hex[:12]}"
+    context = SessionContext(
+        category=request.category,
+        requirements={"project": request.project},
+        progress_percentage=0.0,
+    )
+    welcome_content = (
+        f"Hello! I am your AI BOM specialist. Let us build a **{request.category}** BOM "
+        f"for **{request.project}**.\n\n"
+        f"I will guide you step by step and generate a complete, vendor-ready Bill of Materials.\n\n"
+        f"To start: {_opening_question(request.category)}"
+    )
+    welcome = ChatMessage(role="assistant", content=welcome_content)
+    session = ChatSession(
+        session_id=session_id,
+        user_id=request.user_id,
+        conversation=[welcome],
+        context=context,
+    )
+    cosmos_client.create_session(session.model_dump(mode="json"))
+    return StartSessionResponse(session_id=session_id, category=request.category, message=welcome_content)
 
 
 @router.post("/chat", response_model=ChatMessageResponse)
 async def send_message(request: ChatMessageRequest):
-    """
-    Send a message in an active BOM creation session
-    """
+    """Send a message in an active BOM creation session."""
+    cosmos_client = get_cosmos_client()
+    session_data = cosmos_client.get_session(request.session_id)
+    if not session_data:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+
+    session = ChatSession(**session_data)
+    session.conversation.append(ChatMessage(role="user", content=request.message))
+
+    response_text, partial_bom, progress, complete = await _process_message(session, request.message)
+
+    session.conversation.append(ChatMessage(role="assistant", content=response_text))
+    session.context.progress_percentage = float(progress)
+    session.updated_at = datetime.utcnow()
+    if complete:
+        session.status = "completed"
+        session.completed_at = datetime.utcnow()
+
+    cosmos_client.update_session(request.session_id, session.model_dump(mode="json"))
+
     try:
-        cosmos_client = get_cosmos_client()
-        
-        # Get session
-        session_data = cosmos_client.get_session(request.session_id)
-        if not session_data:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Session not found"
-            )
-        
-        session = ChatSession(**session_data)
-        
-        # Add user message
-        user_message = ChatMessage(
-            role="user",
-            content=request.message,
-            timestamp=datetime.utcnow()
+        from api.audit import log_action
+        log_action(
+            user_id=request.user_id,
+            action="chat_message",
+            resource_type="session",
+            resource_id=request.session_id,
+            details={"progress": progress, "complete": complete, "has_bom": partial_bom is not None},
         )
-        session.messages.append(user_message)
-        
-        # TODO: Call AI agent to process message and generate response
-        # For now, use simple response logic
-        response_text, partial_bom, progress, complete = await process_chat_message(
-            session, request.message
-        )
-        
-        # Add assistant message
-        assistant_message = ChatMessage(
-            role="assistant",
-            content=response_text,
-            timestamp=datetime.utcnow()
-        )
-        session.messages.append(assistant_message)
-        
-        # Update session
-        session.context.progress = progress
-        session.updated_at = datetime.utcnow()
-        if complete:
-            session.status = "completed"
-        
-        cosmos_client.update_session(
-            request.session_id,
-            session.model_dump()
-        )
-        
-        return ChatMessageResponse(
-            session_id=request.session_id,
-            response=response_text,
-            partial_bom=partial_bom,
-            progress=progress,
-            complete=complete
-        )
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to process message: {str(e)}"
-        )
+    except Exception:
+        pass
 
-
-@router.get("/session/{session_id}", response_model=SessionResponse)
-async def get_session(session_id: str):
-    """
-    Get session details and history
-    """
-    try:
-        cosmos_client = get_cosmos_client()
-        
-        session_data = cosmos_client.get_session(session_id)
-        if not session_data:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Session not found"
-            )
-        
-        return SessionResponse(session=ChatSession(**session_data))
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get session: {str(e)}"
-        )
-
-
-# Helper function - AI agent orchestration
-async def process_chat_message(
-    session: ChatSession,
-    message: str
-) -> tuple[str, Optional[Dict], int, bool]:
-    """
-    Process chat message via Azure OpenAI if configured, else fallback to rule-based flow.
-    """
-    if settings.use_azure_openai and settings.azure_openai_endpoint != "https://dummy.openai.azure.com/":
-        return await _process_with_azure_openai(session, message)
-    return await _process_rule_based(session, message)
-
-
-async def _process_with_azure_openai(
-    session: ChatSession,
-    message: str
-) -> tuple[str, Optional[Dict], int, bool]:
-    """Call Azure OpenAI to generate BOM assistant response."""
-    client = _get_azure_openai_client()
-    if not client:
-        return await _process_rule_based(session, message)
-
-    system_prompt = (
-        "You are an IT procurement BOM (Bill of Materials) assistant. "
-        "Help the user create detailed BOMs for IT infrastructure projects. "
-        "Ask up to 5 targeted questions about: scale (units/sites/users), redundancy needs, "
-        "storage/capacity, DR/backup requirements, and preferred vendors. "
-        "Once you have enough information, generate a JSON BOM with line_items (each having: "
-        "line_number, description, qty, unit_price, extended_price, category). "
-        "When generating the BOM, wrap it in ```json ... ``` fences and follow it with a summary. "
-        f"The current project category is: {session.category}."
+    return ChatMessageResponse(
+        session_id=request.session_id,
+        response=response_text,
+        partial_bom=partial_bom,
+        progress=progress,
+        complete=complete,
     )
 
-    messages_payload = [{"role": "system", "content": system_prompt}]
-    for m in session.messages[-10:]:  # last 10 to stay within context
-        messages_payload.append({"role": m.role, "content": m.content})
-    messages_payload.append({"role": "user", "content": message})
 
+@router.get("/session/{session_id}", response_model=SessionStatusResponse)
+async def get_session_status(session_id: str):
+    """Get session status and metadata."""
+    cosmos_client = get_cosmos_client()
+    session_data = cosmos_client.get_session(session_id)
+    if not session_data:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+    session = ChatSession(**session_data)
+    return SessionStatusResponse(
+        session_id=session.session_id,
+        category=session.context.category or "Unknown",
+        status=session.status,
+        progress=int(session.context.progress_percentage),
+        message_count=len(session.conversation),
+    )
+
+# ─────────────────────────────────────────────────────────────────────────────
+# AI Orchestration
+# ─────────────────────────────────────────────────────────────────────────────
+
+async def _process_message(session: ChatSession, message: str) -> tuple:
+    """Route: BOMOrchestrator (Azure AI Foundry / Anthropic) → rule-based fallback."""
+    try:
+        from ai.agents.orchestrator import BOMOrchestrator
+        orch = BOMOrchestrator()
+        session_dict = session.model_dump(mode="json")
+        response_text, partial_bom, progress, complete = orch.process(session_dict, message)
+        # Sync phase back to session context
+        session.context.current_phase = session_dict.get("context", {}).get("current_phase", 1)
+        return response_text, partial_bom, progress, complete
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f"Orchestrator error: {e} — falling back")
+        return await _rule_based_fallback(session, message)
+
+
+async def _call_azure_openai(client, session: ChatSession, message: str) -> tuple:
+    """Call Azure OpenAI GPT-4 with 10-phase system prompt."""
+    category = session.context.category or "Data Center / COLO"
+    project = session.context.requirements.get("project", "New Project")
+    system = (
+        BOM_SYSTEM_PROMPT
+        + f"\n\nCURRENT SESSION:\nCategory: {category}\nProject: {project}\n"
+        f"Progress: {int(session.context.progress_percentage)}%\n"
+        f"Requirements gathered: {json.dumps(session.context.requirements)}"
+    )
+    history = [{"role": "system", "content": system}]
+    for m in session.conversation[-12:]:
+        history.append({"role": m.role, "content": m.content})
     try:
         completion = client.chat.completions.create(
             model=settings.azure_openai_chat_deployment,
-            messages=messages_payload,
+            messages=history,
             max_tokens=settings.azure_openai_max_tokens,
             temperature=settings.azure_openai_temperature,
         )
         response_text = completion.choices[0].message.content or ""
-    except Exception as e:
-        # Graceful fallback on API error
-        return await _process_rule_based(session, message)
+    except Exception:
+        return await _rule_based_fallback(session, message)
+    return _parse_ai_response(response_text, session)
 
-    # Extract JSON BOM if present in response
+
+async def _call_azure_foundry_anthropic(client, session: ChatSession, message: str) -> tuple:
+    """Call Claude via Azure AI Foundry Anthropic proxy endpoint.
+    Uses the deployment name (e.g. claude-opus-4-6) as the model identifier.
+    """
+    category = session.context.category or "Data Center / COLO"
+    project = session.context.requirements.get("project", "New Project")
+    system = (
+        BOM_SYSTEM_PROMPT
+        + f"\n\nCURRENT SESSION:\nCategory: {category}\nProject: {project}\n"
+        f"Progress: {int(session.context.progress_percentage)}%"
+    )
+    history = [{"role": m.role, "content": m.content} for m in session.conversation[-12:]]
+    try:
+        response = client.messages.create(
+            model=settings.azure_openai_chat_deployment,  # e.g. "claude-opus-4-6"
+            max_tokens=settings.claude_max_tokens,
+            system=system,
+            messages=history,
+        )
+        response_text = response.content[0].text
+    except Exception:
+        return await _rule_based_fallback(session, message)
+    return _parse_ai_response(response_text, session)
+
+
+async def _call_anthropic(client, session: ChatSession, message: str) -> tuple:
+    """Call direct Anthropic API with 10-phase system prompt."""
+    category = session.context.category or "Data Center / COLO"
+    project = session.context.requirements.get("project", "New Project")
+    system = (
+        BOM_SYSTEM_PROMPT
+        + f"\n\nCURRENT SESSION:\nCategory: {category}\nProject: {project}\n"
+        f"Progress: {int(session.context.progress_percentage)}%"
+    )
+    history = [{"role": m.role, "content": m.content} for m in session.conversation[-12:]]
+    try:
+        response = client.messages.create(
+            model=settings.claude_model_default,
+            max_tokens=settings.claude_max_tokens,
+            system=system,
+            messages=history,
+        )
+        response_text = response.content[0].text
+    except Exception:
+        return await _rule_based_fallback(session, message)
+    return _parse_ai_response(response_text, session)
+
+
+def _parse_ai_response(response_text: str, session: ChatSession) -> tuple:
+    """Extract BOM JSON from AI response if present, compute progress."""
     partial_bom = None
     complete = False
-    if "```json" in response_text:
+    json_match = re.search(r"```json\s*([\s\S]*?)```", response_text)
+    if json_match:
         try:
-            json_str = response_text.split("```json")[1].split("```")[0].strip()
-            parsed = json.loads(json_str)
-            if "line_items" in parsed:
+            parsed = json.loads(json_match.group(1).strip())
+            if "line_items" in parsed and len(parsed["line_items"]) > 0:
                 partial_bom = parsed
                 complete = True
-        except Exception:
+        except (json.JSONDecodeError, KeyError):
             pass
-
-    # Estimate progress from conversation length
-    progress = min(90, len([m for m in session.messages if m.role == "user"]) * 18)
+    user_count = sum(1 for m in session.conversation if m.role == "user")
     if complete:
         progress = 100
-
+    elif session.context.category == "Data Center / COLO":
+        progress = min(90, user_count * 9)
+    else:
+        progress = min(90, user_count * 18)
     return response_text, partial_bom, progress, complete
 
 
-async def _process_rule_based(
-    session: ChatSession,
-    message: str
-) -> tuple[str, Optional[Dict], int, bool]:
-    """Simple rule-based fallback when Azure OpenAI is unavailable."""
-    questions_asked = len([
-        m for m in session.messages
-        if m.role == "assistant" and "Question" in m.content
-    ])
+async def _rule_based_fallback(session: ChatSession, message: str) -> tuple:
+    """Rule-based fallback when no AI credentials configured."""
+    category = session.context.category or "Data Center / COLO"
+    user_turns = sum(1 for m in session.conversation if m.role == "user")
+    questions = _get_fallback_questions(category)
+    if user_turns <= len(questions):
+        q = questions[min(user_turns, len(questions) - 1)]
+        progress = int((user_turns / (len(questions) + 1)) * 90)
+        session.context.requirements[f"answer_{user_turns}"] = message
+        return q, None, progress, False
+    bom = _generate_fallback_bom(category, session.context.requirements)
+    summary = (
+        f"Based on your inputs, here is a **{category}** BOM draft with "
+        f"**{len(bom['line_items'])} line items** totalling "
+        f"**${bom['totals']['total_otc']:,.0f}** OTC.\n\n"
+        "Note: This is a rule-based template estimate. "
+        "Connect Azure OpenAI credentials for AI-powered precision sizing."
+    )
+    return summary, bom, 100, True
 
-    questions = [
-        "Question 1/5: How many units do you need? (e.g., servers, sites, users)",
-        "Question 2/5: Do you need high availability (HA pair)?",
-        "Question 3/5: What's your storage capacity requirement? (in TB)",
-        "Question 4/5: Do you need backup/disaster recovery?",
-        "Question 5/5: What's your preferred vendor? (CDW, Entity, or Direct)",
+
+def _opening_question(category: str) -> str:
+    qs = {
+        "Data Center / COLO": "What is your target Day 1 cutover date, and which workloads are moving into the data center vs. staying in cloud/SaaS?",
+        "SD-WAN": "How many branch sites need SD-WAN, and what is the primary bandwidth requirement per site?",
+        "Cybersecurity": "How many endpoints (servers + workstations) need protection, and are there compliance requirements (PCI, HIPAA, SOC 2)?",
+        "Network Equipment": "How many network ports are needed at the access layer, and do any locations require PoE for phones or access points?",
+        "M365 & Power Platform": "How many users need licenses, and are you targeting M365 E3 or E5?",
+        "Cloud Infrastructure": "Which Azure regions are required, and what types of workloads are you running?",
+        "EOL Replacement": "What hardware is reaching end-of-life, and what is the support contract expiration date driving this?",
+        "Laptops": "How many laptops are needed, and what are the primary user roles?",
+    }
+    return qs.get(category, "Can you describe the scope and scale of your IT infrastructure requirement?")
+
+
+def _get_fallback_questions(category: str) -> List[str]:
+    return [
+        f"Question 1: What is the project name and target go-live date for this {category} deployment?",
+        "Question 2: What is the approximate scale? (number of sites, users, servers, or racks as applicable)",
+        "Question 3: Do you need high availability or redundancy (N+1 or active-active)?",
+        "Question 4: What is the preferred vendor or any existing vendor contracts we should consider?",
+        "Question 5: What is the estimated budget range for this project?",
     ]
 
-    if questions_asked < len(questions):
-        progress = int((questions_asked + 1) / len(questions) * 100)
-        return questions[questions_asked], None, progress, False
 
-    dummy_bom = {
-        "line_items": [
-            {"line_number": 1, "description": "Dell PowerEdge R750 Server", "qty": 10, "unit_price": 18500, "extended_price": 185000, "category": "Compute"},
-            {"line_number": 2, "description": "VMware vSphere Enterprise Plus", "qty": 20, "unit_price": 4995, "extended_price": 99900, "category": "Software"},
-            {"line_number": 3, "description": "Dell ProSupport 5Y 24x7", "qty": 10, "unit_price": 3200, "extended_price": 32000, "category": "Services"},
-        ],
-        "totals": {"hardware": 185000, "software": 99900, "services": 32000, "total_otc": 316900},
+def _generate_fallback_bom(category: str, requirements: dict) -> dict:
+    """Generate a basic template BOM when AI is unavailable."""
+    line_items = [
+        {"line_number": 1, "category": "Compute", "description": "Dell PowerEdge R750 2x Xeon Gold 6330 512GB RAM", "sku": "DELL-PE-R750", "qty": 3, "unit": "/unit", "unit_price": 28500, "extended_price": 85500, "vendor": "Dell/CDW", "term": "one-time", "eol_flag": False, "order_sequence": 3, "notes": "HA compute cluster"},
+        {"line_number": 2, "category": "Storage", "description": "Dell PowerStore 1000T NVMe 50TB usable", "sku": "DELL-PS1000T", "qty": 1, "unit": "/unit", "unit_price": 65000, "extended_price": 65000, "vendor": "Dell/CDW", "term": "one-time", "eol_flag": False, "order_sequence": 3, "notes": "Shared storage array"},
+        {"line_number": 3, "category": "Networking", "description": "Cisco Nexus 9300 48p 25G ToR Switch", "sku": "N9K-C9300-48UX", "qty": 4, "unit": "/unit", "unit_price": 18500, "extended_price": 74000, "vendor": "Cisco/CDW", "term": "one-time", "eol_flag": False, "order_sequence": 2, "notes": "Top-of-rack switching"},
+        {"line_number": 4, "category": "Physical", "description": "42U Server Rack Cabinet with PDU", "sku": "RACK-42U-PDU", "qty": 4, "unit": "/unit", "unit_price": 2200, "extended_price": 8800, "vendor": "PC Connection", "term": "one-time", "eol_flag": False, "order_sequence": 1, "notes": ""},
+        {"line_number": 5, "category": "Power", "description": "APC Smart-UPS 10kVA N+1 config", "sku": "APC-UPS-10K", "qty": 2, "unit": "/unit", "unit_price": 12000, "extended_price": 24000, "vendor": "PC Connection", "term": "one-time", "eol_flag": False, "order_sequence": 1, "notes": "N+1 UPS configuration"},
+        {"line_number": 6, "category": "Software Licenses", "description": "VMware vSphere Enterprise Plus per-core 3-node", "sku": "VMWARE-VS-ENT-PLUS", "qty": 1, "unit": "/bundle", "unit_price": 42000, "extended_price": 42000, "vendor": "VMware/CDW", "term": "one-time", "eol_flag": False, "order_sequence": 5, "notes": ""},
+        {"line_number": 7, "category": "Maintenance", "description": "Dell ProSupport Plus 5Y on all compute and storage", "sku": "DELL-PROSUPPORT-5Y", "qty": 1, "unit": "/bundle", "unit_price": 28000, "extended_price": 28000, "vendor": "Dell", "term": "5yr", "eol_flag": False, "order_sequence": 3, "notes": "Required: hardware support"},
+        {"line_number": 8, "category": "Spares", "description": "Critical Spares Kit drives NICs PSUs 10 percent", "sku": "SPARES-KIT-10PCT", "qty": 1, "unit": "/kit", "unit_price": 15000, "extended_price": 15000, "vendor": "Dell/CDW", "term": "one-time", "eol_flag": False, "order_sequence": 4, "notes": "10% of critical components"},
+    ]
+    total_otc = sum(i["extended_price"] for i in line_items)
+    hw = sum(i["extended_price"] for i in line_items if i["category"] in ("Compute", "Storage", "Networking", "Physical", "Power", "Spares"))
+    sw = sum(i["extended_price"] for i in line_items if i["category"] == "Software Licenses")
+    svc = sum(i["extended_price"] for i in line_items if i["category"] == "Maintenance")
+    return {
+        "name": f"{requirements.get('project', 'Project')} - {category} BOM",
+        "project": requirements.get("project", "New Project"),
+        "category": category,
+        "line_items": line_items,
+        "totals": {"hardware": hw, "software": sw, "services": svc, "total_otc": total_otc, "tco_3year": total_otc + (svc * 2)},
+        "warnings": ["Rule-based estimate - connect Azure OpenAI for AI-powered precision", "Verify all specs with SI before ordering"],
+        "approvals_required": ["Buyer IT", "Seller IT", "SI Technical Team"],
     }
-    return (
-        "BOM generated successfully! You can review it in the preview panel. "
-        "Would you like to export it or make any adjustments?",
-        dummy_bom, 100, True
-    )

@@ -1,16 +1,17 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
 import {
   Box, Typography, Grid, Paper, Chip, Button, IconButton, TextField,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  Alert, Tooltip, InputAdornment, LinearProgress,
+  Alert, Tooltip, InputAdornment, LinearProgress, CircularProgress,
 } from '@mui/material'
 import {
   Search, TrendingDown, TrendingUp, Add, AutoAwesome, Download,
-  CheckCircle, Info,
+  CheckCircle, Info, Refresh, Warning,
 } from '@mui/icons-material'
 import { setCurrentBOM, saveBOM } from '../store/slices/bomSlice'
+import { catalogApi } from '../services/api'
 
 const fmt = (v) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v)
 const SL = { fontSize: '0.58rem', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.7px' }
@@ -42,7 +43,22 @@ const CATALOG = [
     vendors: [{ name: 'PC Connection', price: 2400, quotes: 8, region: 'US' }, { name: 'CDW', price: 2550, quotes: 5, region: 'US' }] },
 ]
 
-const CATEGORIES = ['All', ...new Set(CATALOG.map(c => c.category))]
+const CATEGORIES_DEFAULT = ['All', ...new Set(CATALOG.map(c => c.category))]
+
+// Normalise a backend catalog item into the format the page expects
+function normaliseCatalogItem(item, idx) {
+  // If item already has vendor pricing array, use it
+  if (Array.isArray(item.vendors) && item.vendors.length > 0) return item
+  // Build a synthetic single-vendor entry from flat fields
+  return {
+    id: item.id || item.sku || `cat-${idx}`,
+    name: item.description || item.name || item.sku || 'Unknown',
+    sku: item.sku || item.part_number || '',
+    category: item.category || 'General',
+    unit: item.unit || '/unit',
+    vendors: [{ name: item.vendor || 'CDW', price: item.unit_price || item.price || 0, quotes: 1, region: 'US' }],
+  }
+}
 
 export default function VendorPriceSelectorPage() {
   const dispatch = useDispatch()
@@ -53,11 +69,38 @@ export default function VendorPriceSelectorPage() {
   const [selected, setSelected] = useState([]) // { catalogId, vendorName, qty }
   const [addedAlert, setAddedAlert] = useState(null)
 
-  const filtered = useMemo(() => CATALOG.filter(item => {
+  // Backend catalog state
+  const [catalogItems, setCatalogItems] = useState(CATALOG)
+  const [catalogLoading, setCatalogLoading] = useState(false)
+  const [catalogError, setCatalogError] = useState(null)
+  const [backendTotal, setBackendTotal] = useState(null)
+
+  const loadCatalog = async () => {
+    setCatalogLoading(true); setCatalogError(null)
+    try {
+      const resp = await catalogApi.list({ search: search || undefined, category: category !== 'All' ? category : undefined, limit: 200 })
+      if (resp?.items?.length > 0) {
+        setCatalogItems(resp.items.map(normaliseCatalogItem))
+        setBackendTotal(resp.total)
+      }
+    } catch {
+      // Stay on local fallback — no need to show error for optional backend
+      setCatalogError('Using local catalog — backend unavailable')
+    } finally {
+      setCatalogLoading(false)
+    }
+  }
+
+  // Load from backend on mount
+  useEffect(() => { loadCatalog() }, [])
+
+  const CATEGORIES = ['All', ...new Set(catalogItems.map(c => c.category))]
+
+  const filtered = useMemo(() => catalogItems.filter(item => {
     if (category !== 'All' && item.category !== category) return false
     if (search && !item.name.toLowerCase().includes(search.toLowerCase()) && !item.sku.toLowerCase().includes(search.toLowerCase())) return false
     return true
-  }), [search, category])
+  }), [search, category, catalogItems])
 
   const cheapestVendor = (item) => item.vendors.reduce((a, b) => a.price < b.price ? a : b)
   const priceRange = (item) => ({ min: Math.min(...item.vendors.map(v => v.price)), max: Math.max(...item.vendors.map(v => v.price)) })
@@ -104,9 +147,18 @@ export default function VendorPriceSelectorPage() {
         <Box>
           <Typography sx={{ color: '#D04A02', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', fontSize: '0.6rem' }}>MARKET INTELLIGENCE</Typography>
           <Typography sx={{ fontWeight: 700, color: '#1F2937', fontSize: '1.3rem', fontFamily: '"Playfair Display", serif', lineHeight: 1.2 }}>Vendor Price Selector</Typography>
-          <Typography sx={{ color: '#6B7280', fontSize: '0.72rem' }}>{CATALOG.length} services across {new Set(CATALOG.flatMap(c => c.vendors.map(v => v.name))).size} vendors - green = cheapest option</Typography>
+          <Typography sx={{ color: '#6B7280', fontSize: '0.72rem' }}>
+            {catalogItems.length} services across {new Set(catalogItems.flatMap(c => (c.vendors||[]).map(v => v.name))).size} vendors — green = cheapest option
+            {backendTotal && backendTotal > catalogItems.length ? ` (${backendTotal} total in catalog)` : ''}
+          </Typography>
         </Box>
-        <Box sx={{ display: 'flex', gap: 1 }}>
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+          {catalogLoading && <CircularProgress size={16} sx={{ color: '#D04A02' }} />}
+          <Tooltip title="Reload from backend catalog">
+            <IconButton size="small" onClick={loadCatalog} sx={{ color: '#6B7280' }}>
+              <Refresh sx={{ fontSize: 16 }} />
+            </IconButton>
+          </Tooltip>
           <Button size="small" variant="outlined" startIcon={<Download sx={{ fontSize: 14 }} />}
             onClick={exportCatalogCSV}
             sx={{ textTransform: 'none', fontSize: '0.72rem', borderColor: '#6B7280', color: '#6B7280' }}>
@@ -121,6 +173,12 @@ export default function VendorPriceSelectorPage() {
           )}
         </Box>
       </Box>
+
+      {catalogError && (
+        <Alert severity="info" icon={<Warning sx={{ fontSize: 16 }} />} sx={{ mb: 1, py: 0.25, fontSize: '0.72rem' }}>
+          {catalogError}
+        </Alert>
+      )}
 
       {addedAlert === 'no_bom' && (
         <Alert severity="warning" sx={{ mb: 1.5, fontSize: '0.75rem', py: 0.5 }}

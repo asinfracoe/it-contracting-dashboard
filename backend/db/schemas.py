@@ -7,23 +7,63 @@ from pydantic import BaseModel, Field, validator
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 from enum import Enum
+from uuid import uuid4
 
 
 class BOMStatus(str, Enum):
-    """BOM Status Enum"""
     DRAFT = "draft"
     IN_PROGRESS = "in_progress"
     REVIEW = "review"
+    REVISION_REQUIRED = "revision_required"   # changes requested — needs rebuild
     APPROVED = "approved"
     SENT_TO_VENDOR = "sent_to_vendor"
     ARCHIVED = "archived"
 
 
+class ApprovalStatus(str, Enum):
+    PENDING = "pending"
+    APPROVED = "approved"
+    CHANGES_REQUESTED = "changes_requested"   # approver wants rebuild; resets cycle
+    REJECTED = "rejected"
+
+
 class UserRole(str, Enum):
-    """User Role Enum"""
     ADMIN = "admin"
     CREATOR = "creator"
     VIEWER = "viewer"
+
+
+# ============================================================================
+# Approval Model
+# ============================================================================
+
+class BOMApproval(BaseModel):
+    """3-party approval record — Buyer IT / Seller IT / SI"""
+    party: str                              # "buyer_it" | "seller_it" | "si"
+    approved_by: Optional[str] = None
+    approved_at: Optional[datetime] = None
+    comments: Optional[str] = None
+    change_description: Optional[str] = None  # what changes were requested
+    status: ApprovalStatus = ApprovalStatus.PENDING
+    locked: bool = False                    # True = waiting for prior party
+
+
+# ============================================================================
+# Audit Event
+# ============================================================================
+
+class AuditEvent(BaseModel):
+    event_id: str = Field(default_factory=lambda: f"audit_{uuid4().hex[:12]}")
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    user_id: str
+    user_name: Optional[str] = None
+    action: str       # created | modified | approved | rejected | exported | submitted
+    entity_type: str  # bom | session | template
+    entity_id: str
+    field_changed: Optional[str] = None
+    before_value: Optional[Any] = None
+    after_value: Optional[Any] = None
+    metadata: Dict[str, Any] = {}
 
 
 # ============================================================================
@@ -39,39 +79,42 @@ class LineItem(BaseModel):
     category: Optional[str] = None
     subcategory: Optional[str] = None
     vendor: Optional[str] = None
-    vendor_route: Optional[str] = None  # IBM BP, Cisco Direct, CDW, Entity
+    vendor_route: Optional[str] = None
     quantity: float
     unit_price: float
     extended_price: float
     currency: str = "USD"
-    term: Optional[str] = None  # 1-year, 3-year, etc.
-    otc: Optional[float] = None  # One-time cost
-    run_costs_annual: Optional[float] = None  # Annual recurring
+    term: Optional[str] = None
+    otc: Optional[float] = None
+    run_costs_annual: Optional[float] = None
     support_level: Optional[str] = None
     notes: Optional[str] = None
-    explanation: Optional[str] = None  # AI-generated explanation
-    dependencies: List[int] = []  # Line numbers of dependent items
+    explanation: Optional[str] = None
+    dependencies: List[int] = []
+    # Sprint 2 additions
+    order_sequence: Optional[int] = None    # Phase 10b ordering (1–5)
+    eol_flag: bool = False                  # True if SKU is end-of-life
+    eol_warning: Optional[str] = None       # Human-readable EOL warning
+    replacement_sku: Optional[str] = None   # Recommended replacement SKU
 
 
 class BOMTotals(BaseModel):
-    """BOM totals and summary"""
     hardware: float = 0.0
     software: float = 0.0
     services: float = 0.0
     bundled: float = 0.0
     subtotal: float = 0.0
-    total_otc: float = 0.0  # One-time costs
-    total_run_costs_annual: float = 0.0  # Annual recurring
-    tco_3year: float = 0.0  # 3-year total cost of ownership
+    total_otc: float = 0.0
+    total_run_costs_annual: float = 0.0
+    tco_3year: float = 0.0
 
 
 class BOMVersion(BaseModel):
-    """BOM version history"""
     version: int
     created_at: datetime
     created_by: str
     change_description: Optional[str] = None
-    changes: List[Dict[str, Any]] = []  # List of changes made
+    changes: List[Dict[str, Any]] = []
 
 
 class BOM(BaseModel):
@@ -89,13 +132,26 @@ class BOM(BaseModel):
     versions: List[BOMVersion] = []
     created_by: str
     created_at: datetime = Field(default_factory=datetime.utcnow)
+    # Renamed from modified_at → updated_at (ROADMAP §4.4)
+    updated_at: Optional[datetime] = None
     modified_by: Optional[str] = None
-    modified_at: Optional[datetime] = None
+    notes: Optional[str] = None             # Previously missing — now added
+    day_one_date: Optional[datetime] = None # Phase 1: drives lead-time warnings
+    approvals: List[BOMApproval] = Field(   # 3-party approval state
+        default_factory=lambda: [
+            BOMApproval(party="buyer_it"),
+            BOMApproval(party="seller_it"),
+            BOMApproval(party="si"),
+        ]
+    )
     metadata: Dict[str, Any] = {}
-    
+    revision: int = 1                       # increments each time BOM is rebuilt after changes
+    approval_cycle: int = 1                 # how many full restart cycles have occurred
+
     class Config:
         use_enum_values = True
         populate_by_name = True
+        extra = "ignore"      # drop _id, bom_id duplicates, unknown mock fields
 
 
 # ============================================================================
@@ -103,21 +159,22 @@ class BOM(BaseModel):
 # ============================================================================
 
 class ChatMessage(BaseModel):
-    """Individual chat message"""
-    role: str  # "user" or "assistant"
+    role: str
     content: str
     timestamp: datetime = Field(default_factory=datetime.utcnow)
     metadata: Dict[str, Any] = {}
 
 
 class SessionContext(BaseModel):
-    """Context maintained during BOM creation session"""
     category: Optional[str] = None
     requirements: Dict[str, Any] = {}
     template_id: Optional[str] = None
     questions_asked: int = 0
     questions_total: int = 5
     progress_percentage: float = 0.0
+    # Sprint 2 — phase state machine
+    current_phase: int = 1
+    phase_data: Dict[str, Any] = {}     # Structured answers per phase
     partial_bom: Optional[Dict[str, Any]] = None
 
 

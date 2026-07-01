@@ -14,7 +14,7 @@ azure-keyvault-secrets==4.7.0
 msal==1.26.0
 
 # AI / LLM
-anthropic==0.18.1
+anthropic>=0.39.0
 langchain==0.1.6
 langchain-community==0.0.19
 langgraph==0.0.20
@@ -46,11 +46,9 @@ python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 httpx==0.26.0
 websockets==12.0
-pydantic-core==2.14.0
 
 # Email
-sendgrid==6.11.0
-python-sendgrid==6.11.0
+sendgrid==6.9.7
 
 # Monitoring & Logging
 opencensus-ext-azure==1.1.11

@@ -24,11 +24,10 @@ class MockCosmosDBClient:
             "patterns": {},
             "templates": {},
             "analytics": {},
-            "users": {}
+            "users": {},
+            "audit": {},
         }
         logger.info("Initialized MockCosmosDBClient (in-memory storage)")
-        
-        # Seed with sample data
         self._seed_sample_data()
     
     def connect(self):
@@ -40,49 +39,127 @@ class MockCosmosDBClient:
         logger.info("Mock containers created (no-op)")
     
     def _seed_sample_data(self):
-        """Seed with sample data for testing"""
+        """Seed with realistic PwC M&A BOM data matching client projects."""
+        now = datetime.utcnow()
+
         # Sample user
-        sample_user = {
-            "_id": "user_001",
-            "user_id": "user_001",
-            "email": "demo@company.com",
-            "name": "Demo User",
-            "role": "creator",
-            "preferences": {},
-            "created_at": datetime.utcnow().isoformat()
+        self.collections["users"]["user_001"] = {
+            "_id": "user_001", "user_id": "user_001",
+            "email": "demo@pwc.com", "name": "Demo User",
+            "role": "creator", "preferences": {},
+            "created_at": now.isoformat()
         }
-        self.collections["users"]["user_001"] = sample_user
-        
+
         # Sample template
-        sample_template = {
-            "_id": "tmpl_datacenter",
-            "template_id": "tmpl_datacenter",
-            "name": "Data Center / COLO",
-            "category": "Data Center",
+        self.collections["templates"]["tmpl_datacenter"] = {
+            "_id": "tmpl_datacenter", "template_id": "tmpl_datacenter",
+            "name": "Data Center / COLO", "category": "Data Center",
             "description": "Complete data center infrastructure setup",
             "questions": [
-                {
-                    "question_id": "q1",
-                    "question_text": "How many virtual machines do you need?",
-                    "question_type": "number",
-                    "help_text": "Typical range: 10-500 VMs"
-                },
-                {
-                    "question_id": "q2",
-                    "question_text": "Do you need high availability?",
-                    "question_type": "choice",
-                    "options": ["Yes - HA pair", "No - Single instance"]
-                }
+                {"question_id": "q1", "question_text": "How many racks?", "question_type": "number"},
+                {"question_id": "q2", "question_text": "HA required?", "question_type": "choice", "options": ["Yes", "No"]},
             ],
-            "base_items": [],
-            "rules": {},
-            "example_boms": [],
-            "created_by": "system",
-            "created_at": datetime.utcnow().isoformat()
+            "base_items": [], "rules": {}, "example_boms": [],
+            "created_by": "system", "created_at": now.isoformat()
         }
-        self.collections["templates"]["tmpl_datacenter"] = sample_template
-        
-        logger.info("Seeded mock database with sample data")
+
+        # ── Seed BOM 1: Panasonic SD-WAN ──────────────────────────────────
+        pan_items = [
+            {"line_number": 1, "description": "Cisco Catalyst 8300 SD-WAN Router", "sku": "C8300-2N2S-4T2X",
+             "category": "Network Equipment", "vendor": "CDW", "quantity": 48, "unit_price": 4850,
+             "extended_price": 232800, "term": "one-time", "order_sequence": 2, "eol_flag": False},
+            {"line_number": 2, "description": "Cisco SD-WAN Software License (3yr)", "sku": "SDWAN-3Y-LIC",
+             "category": "Software Licenses", "vendor": "CDW", "quantity": 48, "unit_price": 1200,
+             "extended_price": 57600, "term": "3-year", "order_sequence": 5, "eol_flag": False},
+            {"line_number": 3, "description": "FortiGate 200F NGFW", "sku": "FG-200F",
+             "category": "Cybersecurity", "vendor": "CDW", "quantity": 12, "unit_price": 8200,
+             "extended_price": 98400, "term": "one-time", "order_sequence": 2, "eol_flag": False},
+            {"line_number": 4, "description": "3yr Hardware Maintenance — Cisco 8300", "sku": "SMARTNET-C8300-3Y",
+             "category": "Maintenance", "vendor": "Cisco Direct", "quantity": 48, "unit_price": 485,
+             "extended_price": 23280, "term": "3-year", "order_sequence": 5, "eol_flag": False},
+        ]
+        pan_total = sum(i["extended_price"] for i in pan_items)
+        self.collections["boms"]["bom_panasonic_001"] = {
+            "_id": "bom_panasonic_001", "bom_id": "bom_panasonic_001",
+            "project_name": "Panasonic", "category": "SD-WAN",
+            "line_items": pan_items,
+            "totals": {"hardware": 331200, "software": 57600, "services": 23280,
+                       "bundled": 0, "subtotal": pan_total, "total_otc": pan_total,
+                       "total_run_costs_annual": 0, "tco_3year": pan_total},
+            "status": "approved",
+            "approvals": [
+                {"party": "buyer_it", "approved_by": "Avijeet", "approved_at": now.isoformat(), "status": "approved"},
+                {"party": "seller_it", "approved_by": "Panasonic IT", "approved_at": now.isoformat(), "status": "approved"},
+                {"party": "si", "approved_by": "JBR Team", "approved_at": now.isoformat(), "status": "approved"},
+            ],
+            "version": 3, "revision": 3, "approval_cycle": 1, "created_by": "user_001",
+            "created_at": (now.replace(day=now.day - 5) if now.day > 5 else now).isoformat(),
+            "updated_at": now.isoformat(), "notes": "Final approved BOM — ready for PO."
+        }
+
+        # ── Seed BOM 2: Idemia Network Equipment ─────────────────────────
+        id_items = [
+            {"line_number": 1, "description": "Cisco Catalyst 9300-48P Switch", "sku": "C9300-48P-A",
+             "category": "Network Equipment", "vendor": "CDW", "quantity": 12, "unit_price": 6700,
+             "extended_price": 80400, "term": "one-time", "order_sequence": 2,
+             "eol_flag": True, "eol_warning": "EOS 2028-01-31", "replacement_sku": "C9300X-48P-A"},
+            {"line_number": 2, "description": "Cisco Catalyst 9500-48Y4C Core Switch", "sku": "C9500-48Y4C-A",
+             "category": "Network Equipment", "vendor": "PC Connection", "quantity": 2, "unit_price": 38500,
+             "extended_price": 77000, "term": "one-time", "order_sequence": 2, "eol_flag": False},
+            {"line_number": 3, "description": "3yr SmartNet — Catalyst 9300", "sku": "CON-SNT-C9300",
+             "category": "Maintenance", "vendor": "Cisco Direct", "quantity": 12, "unit_price": 670,
+             "extended_price": 8040, "term": "3-year", "order_sequence": 5, "eol_flag": False},
+        ]
+        id_total = sum(i["extended_price"] for i in id_items)
+        self.collections["boms"]["bom_idemia_001"] = {
+            "_id": "bom_idemia_001", "bom_id": "bom_idemia_001",
+            "project_name": "Idemia", "category": "Network Equipment",
+            "line_items": id_items,
+            "totals": {"hardware": 157400, "software": 0, "services": 8040,
+                       "bundled": 0, "subtotal": id_total, "total_otc": id_total,
+                       "total_run_costs_annual": 0, "tco_3year": id_total},
+            "status": "review",
+            "approvals": [
+                {"party": "buyer_it", "approved_by": "Buyer Team", "approved_at": now.isoformat(), "status": "approved", "locked": False},
+                {"party": "seller_it", "status": "pending", "locked": False},
+                {"party": "si", "status": "pending", "locked": True},
+            ],
+            "version": 1, "revision": 1, "approval_cycle": 1, "created_by": "user_001",
+            "created_at": now.isoformat(), "updated_at": now.isoformat(),
+            "notes": "WARNING: C9300-48P-A is EOL — consider C9300X upgrade."
+        }
+
+        # ── Seed BOM 3: Tenneco Cybersecurity ────────────────────────────
+        ten_items = [
+            {"line_number": 1, "description": "CrowdStrike Falcon Enterprise (1yr)", "sku": "CS-FALCON-ENT",
+             "category": "Cybersecurity", "vendor": "CDW", "quantity": 2500, "unit_price": 72,
+             "extended_price": 180000, "term": "1-year", "order_sequence": 5, "eol_flag": False},
+            {"line_number": 2, "description": "Palo Alto NGFW PA-3440", "sku": "PA-3440",
+             "category": "Cybersecurity", "vendor": "CDW", "quantity": 4, "unit_price": 24500,
+             "extended_price": 98000, "term": "one-time", "order_sequence": 2, "eol_flag": False},
+            {"line_number": 3, "description": "5% Spares — Critical NIC/PSU", "sku": "SPARES-KIT",
+             "category": "Spares", "vendor": "Dell", "quantity": 1, "unit_price": 12000,
+             "extended_price": 12000, "term": "one-time", "order_sequence": 4, "eol_flag": False},
+        ]
+        ten_total = sum(i["extended_price"] for i in ten_items)
+        self.collections["boms"]["bom_tenneco_001"] = {
+            "_id": "bom_tenneco_001", "bom_id": "bom_tenneco_001",
+            "project_name": "Tenneco", "category": "Cybersecurity",
+            "line_items": ten_items,
+            "totals": {"hardware": 98000, "software": 180000, "services": 12000,
+                       "bundled": 0, "subtotal": ten_total, "total_otc": ten_total,
+                       "total_run_costs_annual": 180000, "tco_3year": ten_total + 360000},
+            "status": "draft",
+            "approvals": [
+                {"party": "buyer_it", "status": "pending", "locked": False},
+                {"party": "seller_it", "status": "pending", "locked": True},
+                {"party": "si", "status": "pending", "locked": True},
+            ],
+            "version": 1, "revision": 1, "approval_cycle": 1, "created_by": "user_001",
+            "created_at": now.isoformat(), "updated_at": now.isoformat(), "notes": ""
+        }
+
+        logger.info("Seeded mock database: 3 BOMs (Panasonic, Idemia, Tenneco), 1 user, 1 template")
     
     # Generic CRUD Operations
     def create_item(self, container_name: str, item: Dict[str, Any]) -> Dict[str, Any]:
@@ -116,7 +193,7 @@ class MockCosmosDBClient:
         item: Dict[str, Any]
     ) -> Dict[str, Any]:
         """Update item in mock storage"""
-        item["modified_at"] = datetime.utcnow().isoformat()
+        item["updated_at"] = datetime.utcnow().isoformat()
         self.collections[container_name][item_id] = item
         logger.info(f"Mock updated item in {container_name}: {item_id}")
         return item
@@ -145,60 +222,44 @@ class MockCosmosDBClient:
         logger.info(f"Mock query on {container_name}: returned {len(items)} items")
         return items
     
-    # BOM-specific operations
-    def create_bom(self, bom: BOM) -> BOM:
+    # BOM-specific operations (dict-based API used by REST layer)
+    def create_bom(self, bom_data: dict) -> dict:
         """Create BOM in mock storage"""
-        bom_dict = bom.model_dump(by_alias=True, exclude_none=True)
-        created = self.create_item("boms", bom_dict)
-        return BOM(**created)
-    
-    def get_bom(self, bom_id: str, project_name: str) -> Optional[BOM]:
+        return self.create_item("boms", bom_data)
+
+    def get_bom(self, bom_id: str) -> Optional[dict]:
         """Get BOM from mock storage"""
-        item = self.read_item("boms", bom_id, project_name)
-        return BOM(**item) if item else None
-    
-    def update_bom(self, bom: BOM) -> BOM:
+        return self.read_item("boms", bom_id, bom_id)
+
+    def update_bom(self, bom_id: str, bom_data: dict) -> dict:
         """Update BOM in mock storage"""
-        bom_dict = bom.model_dump(by_alias=True, exclude_none=True)
-        updated = self.update_item("boms", bom.bom_id, bom_dict)
-        return BOM(**updated)
-    
-    def list_boms(
-        self, 
-        category: Optional[str] = None, 
-        status: Optional[str] = None,
-        limit: int = 100
-    ) -> List[BOM]:
-        """List BOMs from mock storage"""
-        items = self.query_items("boms", "")
-        boms = [BOM(**item) for item in items]
-        
-        # Apply filters
-        if category:
-            boms = [b for b in boms if b.category == category]
-        if status:
-            boms = [b for b in boms if b.status == status]
-        
-        return boms[:limit]
-    
-    # Session-specific operations
-    def create_session(self, session: ChatSession) -> ChatSession:
+        return self.update_item("boms", bom_id, bom_data)
+
+    def list_boms(self, filters: Optional[dict] = None, limit: int = 100) -> List[dict]:
+        """List BOMs from mock storage with optional dict filters"""
+        items = list(self.collections["boms"].values())
+        if filters:
+            if filters.get("category"):
+                items = [i for i in items if i.get("category") == filters["category"]]
+            if filters.get("status"):
+                items = [i for i in items if i.get("status") == filters["status"]]
+            if filters.get("user_id"):
+                items = [i for i in items if i.get("user_id") == filters["user_id"]]
+        return items[:limit]
+
+    # Session-specific operations (dict-based API used by REST layer)
+    def create_session(self, session_data: dict) -> dict:
         """Create session in mock storage"""
-        session_dict = session.model_dump(by_alias=True, exclude_none=True)
-        created = self.create_item("sessions", session_dict)
-        return ChatSession(**created)
-    
-    def get_session(self, session_id: str, user_id: str) -> Optional[ChatSession]:
+        return self.create_item("sessions", session_data)
+
+    def get_session(self, session_id: str) -> Optional[dict]:
         """Get session from mock storage"""
-        item = self.read_item("sessions", session_id, user_id)
-        return ChatSession(**item) if item else None
-    
-    def update_session(self, session: ChatSession) -> ChatSession:
+        return self.read_item("sessions", session_id, session_id)
+
+    def update_session(self, session_id: str, session_data: dict) -> dict:
         """Update session in mock storage"""
-        session_dict = session.model_dump(by_alias=True, exclude_none=True)
-        updated = self.update_item("sessions", session.session_id, session_dict)
-        return ChatSession(**updated)
-    
+        return self.update_item("sessions", session_id, session_data)
+
     def close(self):
         """Mock close - no-op"""
         logger.info("Mock Cosmos DB closed (no-op)")

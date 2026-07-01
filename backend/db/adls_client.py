@@ -25,7 +25,7 @@ class ADLSClient:
         self.file_systems: dict = {}
         
     def connect(self):
-        """Connect to ADLS"""
+        """Connect to ADLS and auto-provision filesystems."""
         try:
             account_url = f"https://{settings.adls_account_name}.dfs.core.windows.net"
             self.service_client = DataLakeServiceClient(
@@ -33,10 +33,11 @@ class ADLSClient:
                 credential=settings.adls_account_key
             )
             logger.info(f"Connected to ADLS: {settings.adls_account_name}")
-            
-            # Initialize file system clients (containers)
+
+            # Auto-create filesystems then initialise references
+            self.create_containers_if_not_exist()
             self._init_file_systems()
-            
+
         except Exception as e:
             logger.error(f"Failed to connect to ADLS: {e}")
             raise

@@ -6,6 +6,7 @@ import ChatPage from './pages/ChatPage'
 import VendorPriceSelectorPage from './pages/VendorPriceSelectorPage'
 import QuoteExtractorPage from './pages/QuoteExtractorPage'
 import RFQBuilderPage from './pages/RFQBuilderPage'
+import BOMReviewPage from './pages/BOMReviewPage'
 
 function App() {
   return (
@@ -18,6 +19,9 @@ function App() {
         <Route path="/vendor-selector" element={<VendorPriceSelectorPage />} />
         <Route path="/quote-extractor" element={<QuoteExtractorPage />} />
         <Route path="/rfq-builder" element={<RFQBuilderPage />} />
+        {/* Sprint 3 — 3-party approval workflow */}
+        <Route path="/bom-review/:bomId" element={<BOMReviewPage />} />
+        <Route path="/bom-review" element={<BOMReviewPage />} />
       </Routes>
     </Layout>
   )
