@@ -1,15 +1,16 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
 import {
   Box, Typography, Grid, Paper, Chip, Button, IconButton, TextField,
   Select, MenuItem, FormControl, InputLabel, Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow, Collapse, Alert, Tooltip, Dialog,
-  DialogTitle, DialogContent, DialogActions, CircularProgress,
+  DialogTitle, DialogContent, DialogActions, CircularProgress, LinearProgress,
 } from '@mui/material'
 import {
   Search, ExpandMore, ExpandLess, Send, Archive, Download,
   AutoAwesome, ContentCopy, Compare, CheckCircle, RateReview, Edit, Save, Close, Refresh,
+  CloudUpload,
 } from '@mui/icons-material'
 import { setActiveBOMForRFQ, setCurrentBOM, archiveBOM, saveBOM } from '../store/slices/bomSlice'
 import { bomService } from '../services/api'
@@ -99,6 +100,33 @@ export default function BOMLibraryPage() {
   const [compareOpen, setCompareOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [backendError, setBackendError] = useState(null)
+
+  // SharePoint upload state
+  const [spUploadOpen, setSpUploadOpen] = useState(false)
+  const [spFile, setSpFile] = useState(null)
+  const [spFolder, setSpFolder] = useState('BOMs')
+  const [spUploading, setSpUploading] = useState(false)
+  const [spResult, setSpResult] = useState(null)
+  const spFileRef = useRef(null)
+
+  const handleSpUpload = async () => {
+    if (!spFile) return
+    setSpUploading(true)
+    setSpResult(null)
+    try {
+      const fd = new FormData()
+      fd.append('file', spFile)
+      fd.append('folder', spFolder)
+      const resp = await fetch('/api/sharepoint/upload', { method: 'POST', body: fd })
+      const data = await resp.json()
+      if (!resp.ok) throw new Error(data.detail || 'Upload failed')
+      setSpResult({ ok: true, url: data.web_url, mock: data.mock })
+    } catch (err) {
+      setSpResult({ ok: false, msg: err.message })
+    } finally {
+      setSpUploading(false)
+    }
+  }
 
   // Load BOMs from backend on mount — merge into Redux
   const loadFromBackend = useCallback(async () => {
@@ -219,6 +247,11 @@ export default function BOMLibraryPage() {
               Compare Selected ({compareIds.length})
             </Button>
           )}
+          <Button size="small" variant="outlined" startIcon={<CloudUpload sx={{ fontSize: 14 }} />}
+            onClick={() => { setSpFile(null); setSpResult(null); setSpUploadOpen(true) }}
+            sx={{ textTransform: 'none', fontSize: '0.72rem', borderColor: '#0078D4', color: '#0078D4', '&:hover': { bgcolor: '#EFF6FF' } }}>
+            Upload to SharePoint
+          </Button>
           <Button variant="contained" startIcon={<AutoAwesome sx={{ fontSize: 15 }} />}
             onClick={() => { dispatch(setCurrentBOM(null)); navigate('/chat') }}
             sx={{ bgcolor: '#D04A02', '&:hover': { bgcolor: '#A33A00' }, textTransform: 'none', fontSize: '0.75rem', fontWeight: 700 }}>
@@ -476,6 +509,64 @@ export default function BOMLibraryPage() {
         </DialogContent>
         <DialogActions>
           <Button size="small" onClick={() => setCompareOpen(false)} sx={{ textTransform: 'none', fontSize: '0.72rem' }}>Close</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ── SharePoint Upload Dialog ────────────────────────────────── */}
+      <Dialog open={spUploadOpen} onClose={() => !spUploading && setSpUploadOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ pb: 0.5, display: 'flex', alignItems: 'center', gap: 1 }}>
+          <CloudUpload sx={{ color: '#0078D4', fontSize: 20 }} />
+          <Typography sx={{ fontWeight: 700, fontSize: '0.95rem' }}>Upload to SharePoint</Typography>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 1.5 }}>
+          <Typography sx={{ fontSize: '0.72rem', color: '#6B7280', mb: 1.5 }}>
+            Site: <strong>PWC_Vendor_Contracting_Hub</strong>
+          </Typography>
+
+          <TextField
+            size="small" fullWidth label="Destination folder" value={spFolder}
+            onChange={e => setSpFolder(e.target.value)}
+            sx={{ mb: 1.5, '& label': { fontSize: '0.75rem' }, '& input': { fontSize: '0.8rem' } }}
+            placeholder="e.g. BOMs/Panasonic"
+          />
+
+          <Box
+            onClick={() => spFileRef.current?.click()}
+            sx={{
+              border: '2px dashed #D1D5DB', borderRadius: 1.5, p: 2, textAlign: 'center',
+              cursor: 'pointer', bgcolor: '#F9FAFB',
+              '&:hover': { borderColor: '#0078D4', bgcolor: '#EFF6FF' },
+            }}>
+            <CloudUpload sx={{ fontSize: 32, color: spFile ? '#0078D4' : '#9CA3AF', mb: 0.5 }} />
+            <Typography sx={{ fontSize: '0.78rem', color: spFile ? '#0078D4' : '#6B7280', fontWeight: spFile ? 600 : 400 }}>
+              {spFile ? spFile.name : 'Click to select a file'}
+            </Typography>
+            <Typography sx={{ fontSize: '0.65rem', color: '#9CA3AF' }}>PDF, Excel, Word, CSV, JSON — max 20 MB</Typography>
+            <input ref={spFileRef} type="file" hidden
+              accept=".pdf,.xlsx,.xls,.docx,.doc,.csv,.json,.png,.jpg,.jpeg"
+              onChange={e => { setSpFile(e.target.files[0] || null); setSpResult(null) }} />
+          </Box>
+
+          {spUploading && <LinearProgress sx={{ mt: 1.5, borderRadius: 1 }} />}
+
+          {spResult && (
+            <Alert severity={spResult.ok ? 'success' : 'error'} sx={{ mt: 1.5, fontSize: '0.72rem', py: 0.5 }}>
+              {spResult.ok
+                ? <>Uploaded!{spResult.mock ? ' (Demo mode — not actually sent to SharePoint)' : ''}{' '}
+                    {spResult.url && <a href={spResult.url} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit' }}>Open in SharePoint ↗</a>}
+                  </>
+                : spResult.msg}
+            </Alert>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 2, pb: 1.5 }}>
+          <Button size="small" onClick={() => setSpUploadOpen(false)} disabled={spUploading}
+            sx={{ textTransform: 'none', fontSize: '0.72rem' }}>Cancel</Button>
+          <Button size="small" variant="contained" disabled={!spFile || spUploading}
+            onClick={handleSpUpload}
+            sx={{ bgcolor: '#0078D4', '&:hover': { bgcolor: '#005A9E' }, textTransform: 'none', fontSize: '0.72rem' }}>
+            {spUploading ? 'Uploading…' : 'Upload'}
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>

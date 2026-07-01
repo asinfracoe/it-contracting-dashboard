@@ -317,7 +317,7 @@ function getAIResponse(userMsg, currentBOM, bomList, ctx) {
     }
   }
 
-  if (msg.match(/create|build|new bom|generate|need|setup|make|prepare/) || cat || proj) {
+  if (msg.match(/create|build|new bom|generate|need|setup|make|prepare|start|begin|want|help.*bom|bom.*for|bom.*create|bom.*build|put together|draft|put.*together/) || cat || proj) {
     if (!proj && !ctx.project) {
       return { type: 'options', text: 'Which **project** is this BOM for?', field: 'project', options: PROJECTS.map(p => ({ label: p, action: 'project:' + p })) }
     }
@@ -356,22 +356,26 @@ function backendBOMtoFrontend(backendBOM, projectName) {
     category: item.category || 'General',
     description: item.description || '',
     unit: item.unit || '/unit',
-    qty: item.qty || 1,
+    // backend template uses 'qty', BOM schema uses 'quantity' — handle both
+    qty: item.qty || item.quantity || 1,
     unitPrice: item.unit_price || 0,
-    extPrice: item.extended_price || (item.unit_price || 0) * (item.qty || 1),
+    // backend template uses 'ext_price', schema uses 'extended_price'
+    extPrice: item.ext_price || item.extended_price || (item.unit_price || 0) * (item.qty || item.quantity || 1),
     vendor: item.vendor || '',
-    status: item.eol_flag ? 'eol_flagged' : 'draft',
+    status: item.eol_flag ? 'eol_flagged' : (item.status || 'draft'),
     sku: item.sku || '',
-    term: item.term || 'one-time',
+    term: item.term || item.unit || 'one-time',
     orderSeq: item.order_sequence || '',
     notes: item.notes || '',
   }))
   const totalValue = lineItems.reduce((s, i) => s + i.extPrice, 0)
+  const cat = backendBOM.category || 'Data Center / COLO'
+  const proj = backendBOM.project || projectName || 'New Project'
   return {
     id: 'bom_ai_' + Date.now(),
-    name: backendBOM.name || (projectName + ' BOM'),
-    project: backendBOM.project || projectName || 'New Project',
-    category: backendBOM.category || 'Data Center / COLO',
+    name: backendBOM.name || (proj + ' — ' + cat + ' BOM'),
+    project: proj,
+    category: cat,
     status: 'draft', version: 1,
     createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
     createdBy: 'AI Agent',
@@ -422,6 +426,7 @@ export default function ChatPage() {
   const [currentBOM, setLocalBOM] = useState(savedCurrentBOM || null)
   const [ctx, setCtx] = useState({ project: null, category: null })
   const msgEndRef = useRef(null)
+  const backendWarnedRef = useRef(false)   // show "AI unavailable" toast only once per mount
 
   // Backend AI state
   const [sessionId, setSessionId]       = useState(null)
@@ -440,6 +445,7 @@ export default function ChatPage() {
     chatApi.ping().then(online => {
       setBackendMode(online)
       setBackendChecked(true)
+      if (online) backendWarnedRef.current = false  // reset so warning fires if it goes offline
     })
   }, [])
 
@@ -473,10 +479,8 @@ export default function ChatPage() {
           const startResp = await chatApi.startSession(cat, proj)
           sid = startResp.session_id
           setSessionId(sid)
-          // Show the welcome message from backend
-          setIsTyping(false)
+          // Show the backend welcome without interrupting the typing indicator
           addMsg({ role: 'ai', type: 'text', text: startResp.message })
-          setIsTyping(true)
         }
         let resp
         try {
@@ -515,18 +519,40 @@ export default function ChatPage() {
           } catch { /* save is best-effort */ }
         }
 
+        // When BOM is complete, build a clean human-readable summary instead of
+        // showing the raw response text (which may still contain JSON remnants)
+        let displayText = resp.response || ''
+        if (resp.complete && aiBOM) {
+          const cats = [...new Set(aiBOM.lineItems.map(li => li.category))]
+          displayText = (
+            `✅ Created **${aiBOM.name}**\n\n` +
+            `**${aiBOM.lineItems.length} line items** | Total: **${fmt(aiBOM.totalValue)}**\n` +
+            `Categories: ${cats.join(' · ')}\n\n` +
+            `The BOM is live in the panel on the right. You can:\n` +
+            `- Change item 2 qty to 8\n` +
+            `- Remove item 5\n` +
+            `- Analyze cost savings\n` +
+            `- Export as CSV\n` +
+            `- Save to BOM Library`
+          )
+        }
+
         addMsg({
           role: 'ai',
           type: resp.complete ? 'bom_created' : 'text',
-          text: resp.response,
+          text: displayText,
           bom: aiBOM,
+          actions: resp.complete && aiBOM ? ['library', 'rfq'] : undefined,
         })
         return
       } catch (err) {
         // Backend call failed — fall through to local logic
         console.warn('Backend AI unavailable, falling back to local:', err?.message)
         setBackendMode(false)
-        setToast({ open: true, msg: 'AI backend unavailable — using local mode', severity: 'warning' })
+        if (!backendWarnedRef.current) {
+          backendWarnedRef.current = true
+          setToast({ open: true, msg: 'AI backend unavailable — using local mode', severity: 'warning' })
+        }
       }
     }
 
@@ -552,15 +578,71 @@ export default function ChatPage() {
     }
   }
 
-  const renderText = (text) => text.split('\n').map((line, i) => {
-    const parts = line.split(/\*\*(.+?)\*\*/)
-    return (
-      <Typography key={i} sx={{ fontSize: '0.78rem', lineHeight: 1.6, color: 'inherit' }}>
-        {parts.map((p, j) => j % 2 === 1 ? <strong key={j}>{p}</strong> : p)}
-        {i < text.split('\n').length - 1 && <br />}
-      </Typography>
-    )
-  })
+  const renderText = (text) => {
+    if (!text) return null
+    // Pre-process: strip raw ```json...``` fences entirely (should not reach here, but safety net)
+    const cleaned = text.replace(/```json[\s\S]*?```/g, '').replace(/```[\s\S]*?```/g, '').trim()
+    const lines = cleaned.split('\n')
+    const elements = []
+    let i = 0
+    while (i < lines.length) {
+      const line = lines[i]
+      // Heading 1/2
+      if (/^#{1,2}\s/.test(line)) {
+        elements.push(
+          <Typography key={i} sx={{ fontSize: '0.82rem', fontWeight: 700, color: 'inherit', mt: 0.5, lineHeight: 1.4 }}>
+            {renderInline(line.replace(/^#+\s*/, ''))}
+          </Typography>
+        )
+        i++; continue
+      }
+      // Horizontal rule
+      if (/^[\-=]{3,}$/.test(line.trim())) {
+        elements.push(<Box key={i} sx={{ borderTop: '1px solid rgba(0,0,0,0.12)', my: 0.5 }} />)
+        i++; continue
+      }
+      // Bullet / numbered list
+      if (/^[\-\*]\s/.test(line) || /^\d+\.\s/.test(line)) {
+        const listItems = []
+        while (i < lines.length && (/^[\-\*]\s/.test(lines[i]) || /^\d+\.\s/.test(lines[i]))) {
+          listItems.push(lines[i].replace(/^[\-\*\d]+\.?\s*/, ''))
+          i++
+        }
+        elements.push(
+          <Box key={'list-' + i} component="ul" sx={{ pl: 2, my: 0.25, '& li': { fontSize: '0.78rem', lineHeight: 1.7, color: 'inherit' } }}>
+            {listItems.map((li, j) => <li key={j}>{renderInline(li)}</li>)}
+          </Box>
+        )
+        continue
+      }
+      // Empty line → small gap
+      if (!line.trim()) {
+        elements.push(<Box key={i} sx={{ height: 4 }} />)
+        i++; continue
+      }
+      // Normal paragraph
+      elements.push(
+        <Typography key={i} sx={{ fontSize: '0.78rem', lineHeight: 1.6, color: 'inherit' }}>
+          {renderInline(line)}
+        </Typography>
+      )
+      i++
+    }
+    return elements
+  }
+
+  const renderInline = (text) => {
+    // Split on **bold**, *italic*, `code`
+    const parts = text.split(/(`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*)/)
+    return parts.map((p, j) => {
+      if (p.startsWith('**') && p.endsWith('**')) return <strong key={j}>{p.slice(2, -2)}</strong>
+      if (p.startsWith('*') && p.endsWith('*')) return <em key={j}>{p.slice(1, -1)}</em>
+      if (p.startsWith('`') && p.endsWith('`')) return (
+        <Box key={j} component="code" sx={{ bgcolor: 'rgba(0,0,0,0.06)', px: 0.5, borderRadius: 0.5, fontFamily: 'monospace', fontSize: '0.74rem' }}>{p.slice(1, -1)}</Box>
+      )
+      return p
+    })
+  }
 
   const isAI = (m) => m.role === 'ai'
 

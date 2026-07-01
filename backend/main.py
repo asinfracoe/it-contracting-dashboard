@@ -140,7 +140,7 @@ async def root() -> Dict[str, str]:
 
 
 # Import and register API routers
-from api import chat, bom, analytics, templates, audit, catalog
+from api import chat, bom, analytics, templates, audit, catalog, sharepoint
 
 app.include_router(chat.router)
 app.include_router(bom.router)
@@ -148,6 +148,7 @@ app.include_router(analytics.router)
 app.include_router(templates.router)
 app.include_router(audit.router)
 app.include_router(catalog.router)
+app.include_router(sharepoint.router)
 
 
 if __name__ == "__main__":

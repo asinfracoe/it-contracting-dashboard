@@ -27,6 +27,8 @@ def get_ai_client():
                 base_url=endpoint.rstrip("/"),
                 api_key=api_key,
                 default_headers={"x-ms-useragent": "anthropic-azure/1.0"},
+                max_retries=0,   # fail fast — no retries on DNS/connection errors
+                timeout=10.0,
             )
             logger.info("AI client: Azure AI Foundry (Anthropic)")
             return client, settings.azure_openai_chat_deployment
@@ -37,7 +39,11 @@ def get_ai_client():
     if settings.anthropic_api_key and settings.anthropic_api_key != "dummy-api-key":
         try:
             import anthropic
-            client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+            client = anthropic.Anthropic(
+                api_key=settings.anthropic_api_key,
+                max_retries=0,
+                timeout=10.0,
+            )
             logger.info("AI client: Direct Anthropic API")
             return client, settings.claude_model_default
         except Exception as e:

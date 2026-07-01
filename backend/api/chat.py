@@ -361,7 +361,10 @@ async def start_session(request: StartSessionRequest):
         conversation=[welcome],
         context=context,
     )
-    cosmos_client.create_session(session.model_dump(mode="json"))
+    session_dict = session.model_dump(mode="json")
+    session_dict["_id"] = session_id  # ensure mock stores under the correct key
+    session_dict["id"] = session_id
+    cosmos_client.create_session(session_dict)
     return StartSessionResponse(session_id=session_id, category=request.category, message=welcome_content)
 
 
@@ -373,7 +376,11 @@ async def send_message(request: ChatMessageRequest):
     if not session_data:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
 
-    session = ChatSession(**session_data)
+    try:
+        session = ChatSession.model_validate(session_data)
+    except Exception as exc:
+        logger.error("Session hydration failed: %s", exc)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Session data corrupt")
     session.conversation.append(ChatMessage(role="user", content=request.message))
 
     response_text, partial_bom, progress, complete = await _process_message(session, request.message)
