@@ -55,12 +55,14 @@ async def upload_to_sharepoint(
             "mock": True,
             "filename": file.filename,
             "folder": folder,
-            "web_url": f"https://xoriant.sharepoint.com/sites/PWC_Vendor_Contracting_Hub/Shared%20Documents/{folder}/{file.filename}",
+            "web_url": f"https://xoriant.sharepoint.com/sites/PWC_Project_Planning_Hub/Shared%20Documents/PWC_Vendor_Contracting_Hub/{file.filename}",
             "message": "SharePoint is in demo mode — file was not actually uploaded.",
         }
 
+    # Use the configured drive_path as folder if caller passed generic default
+    effective_folder = folder if folder != "BOMs" else sp.drive_path
     try:
-        result = sp.upload_file(content, file.filename, folder_path=folder)
+        result = sp.upload_file(content, file.filename, folder_path=effective_folder)
         return {"success": True, "mock": False, **result}
     except Exception as exc:
         logger.error("SharePoint upload failed: %s", exc)

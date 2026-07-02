@@ -96,6 +96,7 @@ class Settings(BaseSettings):
     sharepoint_client_id: str = Field(default="dummy-sp-client-id", alias="SHAREPOINT_CLIENT_ID")
     sharepoint_client_secret: str = Field(default="dummy-sp-client-secret", alias="SHAREPOINT_CLIENT_SECRET")
     sharepoint_tenant_id: str = Field(default="", alias="SHAREPOINT_TENANT_ID")
+    sharepoint_drive_path: str = Field(default="BOMs", alias="SHAREPOINT_DRIVE_PATH")
 
     # Azure AI Search (optional)
     azure_search_endpoint: str = Field(default="", alias="AZURE_SEARCH_ENDPOINT")

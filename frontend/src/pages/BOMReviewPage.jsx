@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useSelector, useDispatch } from 'react-redux'
+import { saveBOM } from '../store/slices/bomSlice'
 import {
   Box, Typography, Paper, Button, Grid, Chip, TextField, Alert,
   CircularProgress, Divider, Tooltip, Snackbar, IconButton,
@@ -14,6 +15,27 @@ import {
 } from '@mui/icons-material'
 import { bomService } from '../services/api'
 import { pushNotification } from '../store/slices/notificationsSlice'
+
+// Normalise Redux camelCase BOM → snake_case shape expected by this page
+function normaliseBOM(b) {
+  if (b.project_name) return b  // already backend shape
+  return {
+    ...b,
+    project_name: b.project || b.name?.split(' - ')[0] || b.name || '',
+    line_items: (b.lineItems || []).map(i => ({
+      ...i,
+      line_number:    i.lineNo,
+      unit_price:     i.unitPrice,
+      extended_price: i.extPrice,
+    })),
+    totals: { total_otc: b.totalValue || 0 },
+    created_at:  b.createdAt,
+    updated_at:  b.updatedAt,
+    revision:    b.version || 1,
+    approval_cycle: b.approval_cycle || 1,
+    approvals:   b.approvals || [],
+  }
+}
 
 // Sequential approval order
 const PARTY_ORDER = ['buyer_it', 'seller_it', 'si']
@@ -47,8 +69,16 @@ export default function BOMReviewPage() {
   const navigate = useNavigate()
   const dispatch = useDispatch()
   const reduxBOM = useSelector(s => s.bom.currentBOM)
+  const bomList  = useSelector(s => s.bom.bomList)
 
+  // Use URL param as primary source of truth; fall back to currentBOM only when no URL param
   const bomId = urlBomId || reduxBOM?.id || null
+
+  // Refs to read latest Redux values without them being useCallback deps (prevents re-fetch loop)
+  const bomListRef  = useRef(bomList)
+  const reduxBOMRef = useRef(reduxBOM)
+  useEffect(() => { bomListRef.current = bomList }, [bomList])
+  useEffect(() => { reduxBOMRef.current = reduxBOM }, [reduxBOM])
 
   const [bom, setBom] = useState(null)
   const [loading, setLoading] = useState(!!bomId)
@@ -69,27 +99,41 @@ export default function BOMReviewPage() {
   const [emailSending, setEmailSending] = useState(false)
 
   // ── Load BOM + approvals ─────────────────────────────────────────────────
+  // bomId is the only dep — refs give access to latest Redux without re-triggering
   const load = useCallback(async () => {
     if (!bomId) { setLoading(false); return }
     setLoading(true); setError(null)
+
+    // 1. Try Redux store first (covers seed BOMs + locally saved BOMs)
+    const list = bomListRef.current
+    const cur  = reduxBOMRef.current
+    const reduxMatch = list.find(b => b.id === bomId) || (cur?.id === bomId ? cur : null)
+    if (reduxMatch) {
+      const b = normaliseBOM(reduxMatch)
+      setBom(b)
+      const apprMap = {}
+      for (const a of b.approvals || []) apprMap[a.party] = a
+      setApprovals(apprMap)
+      setLoading(false)
+      return
+    }
+
+    // 2. Fall back to backend API (Cosmos DB) for BOMs not in Redux
     try {
       const data = await bomService.get(bomId)
       const b = data.bom || data
       setBom(b)
-      // Normalise approvals into keyed object
       const apprMap = {}
       for (const a of b.approvals || []) apprMap[a.party] = a
       setApprovals(apprMap)
     } catch (err) {
-      const status = err?.response?.status
-      if (status === 404) setError('BOM not found. It may have been deleted or the ID is incorrect.')
+      const st = err?.response?.status
+      if (st === 404) setError('BOM not found. It may have been deleted or the ID is incorrect.')
       else setError('Failed to load BOM. Please check your connection and try again.')
     } finally {
       setLoading(false)
     }
-  }, [bomId])
-
-  useEffect(() => { load() }, [load])
+  }, [bomId])  // ← bomId only; bomList/reduxBOM accessed via refs
 
   // ── Send email notification ──────────────────────────────────────────────
   const sendEmailNotification = async (subject, bodyLines) => {
@@ -150,11 +194,51 @@ export default function BOMReviewPage() {
 
     setForms(f => ({ ...f, [party]: { ...f[party], submitting: true, error: null } }))
     try {
-      const result = await bomService.approve(bomId, party, form.name.trim(), action, form.comments.trim(), form.changeDescription.trim())
-      const updatedApprMap = {}
-      for (const a of result.approvals || []) updatedApprMap[a.party] = a
-      setApprovals(updatedApprMap)
-      setBom(b => ({ ...b, status: result.bom_status, revision: result.revision, approval_cycle: result.approval_cycle }))
+      // Build updated approval entry locally
+      const newApproval = {
+        party,
+        approved_by: form.name.trim(),
+        action,
+        comments: form.comments.trim(),
+        change_description: form.changeDescription.trim(),
+        approved_at: new Date().toISOString(),
+        status: action === 'approve' ? 'approved' : action === 'request_changes' ? 'changes_requested' : 'rejected',
+      }
+
+      let result
+      const isLocalBOM = bomList.some(b => b.id === bomId)
+
+      if (isLocalBOM) {
+        // Apply approval locally in Redux — no API call needed
+        const updatedApprovals = { ...approvals, [party]: newApproval }
+        const allApproved = PARTY_ORDER.every(p => updatedApprovals[p]?.status === 'approved')
+        const newStatus = allApproved ? 'approved' : action === 'reject' ? 'archived' : action === 'request_changes' ? 'draft' : bom.status
+        const updatedBom = {
+          ...bom,
+          status: newStatus,
+          approvals: Object.values(updatedApprovals).filter(Boolean),
+          revision: action === 'request_changes' ? (bom.revision || 1) + 1 : bom.revision || 1,
+          approval_cycle: action === 'request_changes' ? (bom.approval_cycle || 1) + 1 : bom.approval_cycle || 1,
+        }
+        dispatch(saveBOM(updatedBom))
+        setApprovals(updatedApprovals)
+        setBom(updatedBom)
+        result = {
+          approvals: Object.values(updatedApprovals).filter(Boolean),
+          bom_status: newStatus,
+          revision: updatedBom.revision,
+          approval_cycle: updatedBom.approval_cycle,
+          all_approved: allApproved,
+          message: `${PARTY_META[party].label} ${action === 'approve' ? 'approved' : action === 'request_changes' ? 'requested changes' : 'rejected'} successfully.`,
+        }
+      } else {
+        // Backend BOM — use API
+        result = await bomService.approve(bomId, party, form.name.trim(), action, form.comments.trim(), form.changeDescription.trim())
+        const updatedApprMap = {}
+        for (const a of result.approvals || []) updatedApprMap[a.party] = a
+        setApprovals(updatedApprMap)
+        setBom(b => ({ ...b, status: result.bom_status, revision: result.revision, approval_cycle: result.approval_cycle }))
+      }
 
       if (result.all_approved) {
         setToast({ open: true, msg: '🎉 All 3 parties approved — BOM is finalised and ready for vendor submission!', severity: 'success' })

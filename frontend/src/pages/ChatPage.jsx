@@ -1222,7 +1222,12 @@ export default function ChatPage() {
               </Button>
               <Button fullWidth size="small" variant="outlined"
                 startIcon={<RateReview sx={{ fontSize: 13 }} />}
-                onClick={() => navigate('/bom-review')}
+                onClick={() => {
+                  if (currentBOM) {
+                    dispatch(saveBOM({ ...currentBOM, status: currentBOM.status === 'draft' ? 'review' : currentBOM.status }))
+                    navigate(`/bom-review/${currentBOM.id}`)
+                  }
+                }}
                 sx={{ mt: 0.5, textTransform: 'none', fontSize: '0.68rem', fontWeight: 600, borderColor: '#8B5CF6', color: '#8B5CF6', py: 0.4 }}>
                 Send to Review
               </Button>

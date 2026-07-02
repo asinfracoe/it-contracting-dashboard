@@ -19,11 +19,12 @@ logger = logging.getLogger(__name__)
 class SharePointClient:
     """Upload / list documents in a SharePoint document library."""
 
-    def __init__(self, tenant_id: str, client_id: str, client_secret: str, site_url: str):
+    def __init__(self, tenant_id: str, client_id: str, client_secret: str, site_url: str, drive_path: str = "BOMs"):
         self.tenant_id = tenant_id
         self.client_id = client_id
         self.client_secret = client_secret
         self.site_url = site_url.rstrip("/")
+        self.drive_path = drive_path  # default subfolder under Shared Documents
         self._sp_token: Optional[str] = None   # SharePoint-scoped
         self._graph_token: Optional[str] = None  # Graph-scoped
         self._drive_id: Optional[str] = None
@@ -237,5 +238,6 @@ def get_sharepoint_client() -> Optional[SharePointClient]:
         client_id=s.sharepoint_client_id,
         client_secret=s.sharepoint_client_secret,
         site_url=s.sharepoint_site_url,
+        drive_path=s.sharepoint_drive_path,
     )
     return _client
