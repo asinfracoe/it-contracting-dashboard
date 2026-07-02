@@ -57,8 +57,8 @@ export const bomService = {
     apiClient.get('/api/bom', { params }).then(r => r.data),
 
   /** Get single BOM */
-  get: (bomId) =>
-    apiClient.get(`/api/bom/${bomId}`).then(r => r.data),
+  get: (bomId, options = {}) =>
+    apiClient.get(`/api/bom/${bomId}`, { signal: options.signal }).then(r => r.data),
 
   /** Create a new BOM */
   create: (bomData) =>

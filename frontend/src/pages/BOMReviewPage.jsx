@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useSelector, useDispatch } from 'react-redux'
 import { saveBOM } from '../store/slices/bomSlice'
@@ -99,41 +99,56 @@ export default function BOMReviewPage() {
   const [emailSending, setEmailSending] = useState(false)
 
   // ── Load BOM + approvals ─────────────────────────────────────────────────
-  // bomId is the only dep — refs give access to latest Redux without re-triggering
-  const load = useCallback(async () => {
+  useEffect(() => {
     if (!bomId) { setLoading(false); return }
+    let cancelled = false
     setLoading(true); setError(null)
 
-    // 1. Try Redux store first (covers seed BOMs + locally saved BOMs)
-    const list = bomListRef.current
-    const cur  = reduxBOMRef.current
-    const reduxMatch = list.find(b => b.id === bomId) || (cur?.id === bomId ? cur : null)
-    if (reduxMatch) {
-      const b = normaliseBOM(reduxMatch)
-      setBom(b)
-      const apprMap = {}
-      for (const a of b.approvals || []) apprMap[a.party] = a
-      setApprovals(apprMap)
-      setLoading(false)
-      return
+    const run = async () => {
+      // 1. Redux store first (seed BOMs + locally saved)
+      const reduxMatch =
+        bomListRef.current.find(b => b.id === bomId) ||
+        (reduxBOMRef.current?.id === bomId ? reduxBOMRef.current : null)
+
+      if (reduxMatch) {
+        if (cancelled) return
+        const b = normaliseBOM(reduxMatch)
+        setBom(b)
+        const apprMap = {}
+        for (const a of b.approvals || []) apprMap[a.party] = a
+        setApprovals(apprMap)
+        setLoading(false)
+        return
+      }
+
+      // 2. Backend API — 12 s timeout so loader never hangs forever
+      const controller = new AbortController()
+      const timer = setTimeout(() => controller.abort(), 12000)
+      try {
+        const data = await bomService.get(bomId, { signal: controller.signal })
+        if (cancelled) return
+        const b = data.bom || data
+        setBom(b)
+        const apprMap = {}
+        for (const a of b.approvals || []) apprMap[a.party] = a
+        setApprovals(apprMap)
+      } catch (err) {
+        if (cancelled) return
+        if (err?.name === 'CanceledError' || err?.name === 'AbortError')
+          setError('Request timed out. The BOM could not be loaded — check backend connectivity.')
+        else if (err?.response?.status === 404)
+          setError('BOM not found. It may have been deleted or the ID is incorrect.')
+        else
+          setError('Failed to load BOM. Please check your connection and try again.')
+      } finally {
+        clearTimeout(timer)
+        if (!cancelled) setLoading(false)
+      }
     }
 
-    // 2. Fall back to backend API (Cosmos DB) for BOMs not in Redux
-    try {
-      const data = await bomService.get(bomId)
-      const b = data.bom || data
-      setBom(b)
-      const apprMap = {}
-      for (const a of b.approvals || []) apprMap[a.party] = a
-      setApprovals(apprMap)
-    } catch (err) {
-      const st = err?.response?.status
-      if (st === 404) setError('BOM not found. It may have been deleted or the ID is incorrect.')
-      else setError('Failed to load BOM. Please check your connection and try again.')
-    } finally {
-      setLoading(false)
-    }
-  }, [bomId])  // ← bomId only; bomList/reduxBOM accessed via refs
+    run()
+    return () => { cancelled = true }
+  }, [bomId])  // ← bomId only; bomList/reduxBOM via refs
 
   // ── Send email notification ──────────────────────────────────────────────
   const sendEmailNotification = async (subject, bodyLines) => {
