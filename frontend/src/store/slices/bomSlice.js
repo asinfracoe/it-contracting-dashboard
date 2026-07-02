@@ -126,6 +126,10 @@ const bomSlice = createSlice({
       s.bomList = s.bomList.filter(b => b.id !== a.payload)
       if (s.currentBOM?.id === a.payload) s.currentBOM = null
     },
+    resetToSeed: (s) => {
+      s.bomList = SEED
+      if (s.currentBOM && !SEED.find(b => b.id === s.currentBOM.id)) s.currentBOM = null
+    },
     archiveBOM: (s, a) => { const b = s.bomList.find(x => x.id === a.payload); if (b) b.status = 'archived' },
     setBOMList: (s, a) => { s.bomList = a.payload },
     setLoading:  (s, a) => { s.loading = a.payload },
@@ -133,6 +137,7 @@ const bomSlice = createSlice({
   },
 })
 
-export const { setCurrentBOM, setActiveBOMForRFQ, saveBOM, deleteBOM, addLineItem, updateLineItem, removeLineItem, archiveBOM, setBOMList, setLoading, setError } = bomSlice.actions
+export const { setCurrentBOM, setActiveBOMForRFQ, saveBOM, deleteBOM, resetToSeed, addLineItem, updateLineItem, removeLineItem, archiveBOM, setBOMList, setLoading, setError } = bomSlice.actions
+export { SEED }
 export default bomSlice.reducer
 

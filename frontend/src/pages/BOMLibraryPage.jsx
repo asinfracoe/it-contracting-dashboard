@@ -12,7 +12,7 @@ import {
   AutoAwesome, ContentCopy, Compare, CheckCircle, RateReview, Edit, Save, Close, Refresh,
   CloudUpload,
 } from '@mui/icons-material'
-import { setActiveBOMForRFQ, setCurrentBOM, archiveBOM, saveBOM } from '../store/slices/bomSlice'
+import { setActiveBOMForRFQ, setCurrentBOM, archiveBOM, saveBOM, resetToSeed } from '../store/slices/bomSlice'
 import { bomService } from '../services/api'
 
 const fmt = (v) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v)
@@ -251,6 +251,11 @@ export default function BOMLibraryPage() {
             onClick={() => { setSpFile(null); setSpResult(null); setSpUploadOpen(true) }}
             sx={{ textTransform: 'none', fontSize: '0.72rem', borderColor: '#0078D4', color: '#0078D4', '&:hover': { bgcolor: '#EFF6FF' } }}>
             Upload to SharePoint
+          </Button>
+          <Button size="small" variant="outlined" startIcon={<Refresh sx={{ fontSize: 14 }} />}
+            onClick={() => { if (window.confirm('Reset BOM library to the initial 4 BOMs? This cannot be undone.')) dispatch(resetToSeed()) }}
+            sx={{ textTransform: 'none', fontSize: '0.72rem', borderColor: '#9CA3AF', color: '#6B7280', '&:hover': { bgcolor: '#F3F4F6' } }}>
+            Reset to Initial 4
           </Button>
           <Button variant="contained" startIcon={<AutoAwesome sx={{ fontSize: 15 }} />}
             onClick={() => { dispatch(setCurrentBOM(null)); navigate('/chat') }}

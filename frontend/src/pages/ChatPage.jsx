@@ -10,6 +10,7 @@ import {
   Person, FolderOpen, CloudDone, CloudOff, RateReview, DeleteOutline,
 } from '@mui/icons-material'
 import { saveBOM, deleteBOM, setCurrentBOM, setActiveBOMForRFQ } from '../store/slices/bomSlice'
+import { pushNotification } from '../store/slices/notificationsSlice'
 import { chatApi, bomApi } from '../services/api'
 
 const PHASE_NAMES = [
@@ -523,6 +524,17 @@ export default function ChatPage() {
   const phaseName = PHASE_NAMES[currentPhase] || ''
   const phaseChips = PHASE_CHIPS[currentPhase] || []
 
+  // Tombstone: session IDs the user has deleted — persisted in localStorage so
+  // they don't reappear after backend re-fetch on reload
+  const HIDDEN_KEY = 'chat_hidden_sessions'
+  const loadHidden = () => { try { return new Set(JSON.parse(localStorage.getItem(HIDDEN_KEY) || '[]')) } catch { return new Set() } }
+  const addHidden  = (id) => { const s = loadHidden(); s.add(id); localStorage.setItem(HIDDEN_KEY, JSON.stringify([...s])) }
+  const clearHidden = () => localStorage.removeItem(HIDDEN_KEY)
+  const filterSessions = (sessions) => {
+    const hidden = loadHidden()
+    return sessions.filter(s => !hidden.has(s.session_id) && (s.message_count || 0) > 0)
+  }
+
   // On mount: check backend + load chat history
   useEffect(() => {
     chatApi.ping().then(online => {
@@ -530,9 +542,8 @@ export default function ChatPage() {
       setBackendChecked(true)
       if (online) {
         backendWarnedRef.current = false
-        // Load persisted chat history from Cosmos / ADLS
-        chatApi.getHistory('demo_user', 30)
-          .then(sessions => setChatHistory(sessions))
+        chatApi.getHistory('demo_user', 50)
+          .then(sessions => setChatHistory(filterSessions(sessions)))
           .catch(() => {})
       }
     })
@@ -541,7 +552,9 @@ export default function ChatPage() {
   // Reload history whenever a session completes (new BOM created via backend)
   const refreshHistory = () => {
     if (backendMode) {
-      chatApi.getHistory('demo_user', 30).then(sessions => setChatHistory(sessions)).catch(() => {})
+      chatApi.getHistory('demo_user', 50)
+        .then(sessions => setChatHistory(filterSessions(sessions)))
+        .catch(() => {})
     }
   }
 
@@ -577,7 +590,13 @@ export default function ChatPage() {
         setLocalBOM(resp.bom)
         dispatch(setCurrentBOM(resp.bom))
       }
-      if (resp.type === 'saved' && resp.bom) dispatch(saveBOM(resp.bom))
+      if (resp.type === 'saved' && resp.bom) {
+        dispatch(saveBOM(resp.bom))
+        dispatch(pushNotification({ type: 'bom_saved', title: 'BOM Saved', message: `${resp.bom.name} saved to BOM Library. Ready to send for approval.`, link: '/bom-library' }))
+      }
+      if (resp.type === 'bom_created' && resp.bom) {
+        dispatch(pushNotification({ type: 'bom_created', title: 'BOM Created', message: `${resp.bom.name} — ${resp.bom.lineItems.length} items · ${fmt(resp.bom.totalValue)}`, link: '/bom-library' }))
+      }
       addMsg({ role: 'ai', ...resp })
       sendingRef.current = false
       return
@@ -637,6 +656,7 @@ export default function ChatPage() {
           try {
             await bomApi?.create?.(aiBOM)
             dispatch(saveBOM(aiBOM))
+            dispatch(pushNotification({ type: 'bom_created', title: 'BOM Created', message: `${aiBOM.name} — ${aiBOM.lineItems.length} items · ${fmt(aiBOM.totalValue)}`, link: '/bom-library' }))
             setToast({ open: true, msg: 'BOM saved to library automatically', severity: 'success' })
           } catch { /* save is best-effort */ }
         }
@@ -696,7 +716,13 @@ export default function ChatPage() {
       setIsTyping(false)
       const resp = getAIResponse(userText, currentBOM, bomList, ctx)
       if (resp.bom) { setLocalBOM(resp.bom); dispatch(setCurrentBOM(resp.bom)) }
-      if (resp.type === 'saved' && resp.bom) dispatch(saveBOM(resp.bom))
+      if (resp.type === 'saved' && resp.bom) {
+        dispatch(saveBOM(resp.bom))
+        dispatch(pushNotification({ type: 'bom_saved', title: 'BOM Saved', message: `${resp.bom.name} saved to BOM Library. Ready to send for approval.`, link: '/bom-library' }))
+      }
+      if (resp.type === 'bom_created' && resp.bom) {
+        dispatch(pushNotification({ type: 'bom_created', title: 'BOM Created', message: `${resp.bom.name} — ${resp.bom.lineItems.length} items · ${fmt(resp.bom.totalValue)}`, link: '/bom-library' }))
+      }
       // When creating a NEW BOM while one already exists → insert a session divider
       // and reset the backend session so the next creation gets a fresh context
       if (resp.type === 'bom_created' && currentBOM) {
@@ -808,76 +834,106 @@ export default function ChatPage() {
           </Button>
         </Box>
 
-        {/* Chat History (persisted in Cosmos DB + ADLS) */}
-        {chatHistory.length > 0 && (
-          <>
-            <Box sx={{ px: 1, pt: 1, pb: 0.25, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Typography sx={{ fontSize: '0.55rem', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.7px' }}>
-                Chat History
+        {/* ── Unified History (chat sessions + saved BOMs merged, newest first) */}
+        <Box sx={{ px: 1, pt: 1, pb: 0.25, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Typography sx={{ fontSize: '0.55rem', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.7px' }}>
+            History &amp; Saved BOMs
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 0.25, alignItems: 'center' }}>
+            {backendMode && <Tooltip title="Synced with Azure ADLS + Cosmos DB"><CloudDone sx={{ fontSize: 11, color: '#10B981' }} /></Tooltip>}
+            {(chatHistory.length > 0) && (
+              <Tooltip title="Clear all chat history">
+                <IconButton size="small" onClick={() => { clearHidden(); chatHistory.forEach(s => addHidden(s.session_id)); setChatHistory([]) }}
+                  sx={{ p: 0.2, color: '#9CA3AF', '&:hover': { color: '#EF4444' } }}>
+                  <DeleteOutline sx={{ fontSize: 12 }} />
+                </IconButton>
+              </Tooltip>
+            )}
+          </Box>
+        </Box>
+        <Box sx={{ flex: 1, overflowY: 'auto', px: 1, pb: 1 }}>
+          {/* Merge chat sessions + saved BOMs into one time-sorted list */}
+          {(() => {
+            const chatItems = chatHistory.map(s => ({
+              key: 'chat_' + s.session_id,
+              type: 'chat',
+              label: s.category || s.project || 'Chat Session',
+              sub: s.message_count + ' msgs',
+              date: s.updated_at || '',
+              active: s.session_id === sessionId,
+              raw: s,
+            }))
+            const bomItems = bomList.map(b => ({
+              key: 'bom_' + b.id,
+              type: 'bom',
+              label: b.name,
+              sub: b.status,
+              date: b.updatedAt || b.createdAt || '',
+              active: currentBOM?.id === b.id,
+              raw: b,
+            }))
+            const all = [...chatItems, ...bomItems].sort((a, b) => (b.date > a.date ? 1 : -1))
+            if (all.length === 0) return (
+              <Typography sx={{ fontSize: '0.65rem', color: '#9CA3AF', textAlign: 'center', mt: 2 }}>
+                No history yet. Start a chat to create your first BOM.
               </Typography>
-              <Tooltip title="Stored in Azure ADLS + Cosmos DB"><CloudDone sx={{ fontSize: 11, color: '#10B981' }} /></Tooltip>
-            </Box>
-            <Box sx={{ maxHeight: 200, overflowY: 'auto', px: 1, pb: 0.5 }}>
-              {chatHistory.map(sess => {
-                const isActive = sess.session_id === sessionId
-                const label = sess.category || sess.project || 'Session'
-                const date = sess.updated_at ? new Date(sess.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''
-                return (
-                  <Box key={sess.session_id}
-                    sx={{ position: 'relative', p: '5px 6px', mb: 0.4, borderRadius: '6px', cursor: 'pointer', border: '1px solid ' + (isActive ? '#FBBF9F' : '#F3F4F6'), bgcolor: isActive ? '#FDF3ED' : 'white', '&:hover': { bgcolor: '#F9FAFB', '& .del-btn': { opacity: 1 } } }}
-                    onClick={() => {
-                      chatApi.getTranscript(sess.session_id).then(data => {
+            )
+            return all.map(item => {
+              const ST = { active: '#D1FAE5', draft: '#FEF3C7', review: '#DBEAFE', approved: '#F3E8FF' }
+              const statusBg = item.type === 'bom' ? (ST[item.sub] || '#F3F4F6') : (item.active ? '#FDF3ED' : 'white')
+              const dateStr = item.date ? new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''
+              return (
+                <Box key={item.key}
+                  sx={{ position: 'relative', p: '6px 7px', mb: 0.4, borderRadius: '6px', cursor: 'pointer',
+                    border: '1px solid ' + (item.active ? '#FBBF9F' : '#F3F4F6'),
+                    bgcolor: item.active ? '#FDF3ED' : 'white',
+                    '&:hover': { bgcolor: '#F9FAFB', '& .del-entry': { opacity: 1 } } }}
+                  onClick={() => {
+                    if (item.type === 'chat') {
+                      chatApi.getTranscript(item.raw.session_id).then(data => {
                         const restored = (data.messages || []).map((m, i) => ({
                           id: i + 1, role: m.role === 'assistant' ? 'ai' : m.role, type: 'text', text: m.content,
                         }))
                         setMessages(restored.length ? restored : [{ id: 1, role: 'ai', type: 'text', text: 'Session loaded — no messages found.' }])
-                        setSessionId(sess.session_id)
-                        setPhaseProgress(sess.progress || 0)
+                        setSessionId(item.raw.session_id)
+                        setPhaseProgress(item.raw.progress || 0)
                       }).catch(() => setToast({ open: true, msg: 'Could not load session transcript', severity: 'error' }))
-                    }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <Typography sx={{ fontSize: '0.66rem', fontWeight: 600, color: isActive ? '#D04A02' : '#374151', lineHeight: 1.2, flex: 1, pr: 0.5 }} noWrap>{label}</Typography>
-                      <IconButton className="del-btn" size="small"
-                        onClick={e => { e.stopPropagation(); setChatHistory(prev => prev.filter(s => s.session_id !== sess.session_id)) }}
-                        sx={{ opacity: 0, p: 0.1, color: '#EF4444', transition: 'opacity 0.15s', '&:hover': { bgcolor: '#FEE2E2' } }}>
-                        <DeleteOutline sx={{ fontSize: 11 }} />
-                      </IconButton>
+                    } else {
+                      handleSend('Load ' + item.raw.name)
+                    }
+                  }}>
+                  <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5 }}>
+                    <Box sx={{ fontSize: '0.65rem', mt: '1px', opacity: 0.6, flexShrink: 0 }}>
+                      {item.type === 'chat' ? '💬' : '📄'}
                     </Box>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.25 }}>
-                      <Typography sx={{ fontSize: '0.56rem', color: '#9CA3AF' }}>{sess.message_count} msgs</Typography>
-                      <Typography sx={{ fontSize: '0.56rem', color: '#9CA3AF' }}>{date}</Typography>
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Typography sx={{ fontSize: '0.67rem', fontWeight: 600, color: item.active ? '#D04A02' : '#1F2937', lineHeight: 1.2, pr: 1.5 }} noWrap>
+                        {item.label}
+                      </Typography>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.2 }}>
+                        {item.type === 'bom'
+                          ? <Chip label={item.sub} size="small" sx={{ fontSize: '0.5rem', height: 13, bgcolor: statusBg, color: '#374151' }} />
+                          : <Typography sx={{ fontSize: '0.56rem', color: '#9CA3AF' }}>{item.sub}</Typography>}
+                        <Typography sx={{ fontSize: '0.55rem', color: '#9CA3AF' }}>{dateStr}</Typography>
+                      </Box>
                     </Box>
                   </Box>
-                )
-              })}
-            </Box>
-            <Box sx={{ borderTop: '1px solid #F3F4F6', mx: 1, mb: 0.5 }} />
-          </>
-        )}
-
-        {/* Saved BOMs */}
-        <Box sx={{ px: 1, pt: chatHistory.length ? 0.5 : 1, pb: 0.5 }}>
-          <Typography sx={{ fontSize: '0.55rem', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.7px' }}>Saved BOMs</Typography>
-        </Box>
-        <Box sx={{ flex: 1, overflowY: 'auto', px: 1 }}>
-          {bomList.slice(0, 12).map(bom => (
-            <Box key={bom.id}
-              sx={{ position: 'relative', p: 1, mb: 0.5, borderRadius: '6px', cursor: 'pointer', border: '1px solid #F3F4F6', bgcolor: currentBOM?.id === bom.id ? '#FDF3ED' : 'white', '&:hover': { bgcolor: '#F9FAFB', '& .del-bom-btn': { opacity: 1 } } }}
-              onClick={() => handleSend('Load ' + bom.name)}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <Typography sx={{ fontSize: '0.68rem', fontWeight: 600, color: currentBOM?.id === bom.id ? '#D04A02' : '#1F2937', lineHeight: 1.2, mb: 0.2, flex: 1, pr: 0.5 }} noWrap>{bom.name}</Typography>
-                <IconButton className="del-bom-btn" size="small"
-                  onClick={e => { e.stopPropagation(); dispatch(deleteBOM(bom.id)) }}
-                  sx={{ opacity: 0, p: 0.1, color: '#EF4444', transition: 'opacity 0.15s', '&:hover': { bgcolor: '#FEE2E2' } }}>
-                  <DeleteOutline sx={{ fontSize: 11 }} />
-                </IconButton>
-              </Box>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                <Chip label={bom.status} size="small" sx={{ fontSize: '0.55rem', height: 14, bgcolor: bom.status === 'active' ? '#D1FAE5' : '#FEF3C7', color: bom.status === 'active' ? '#065F46' : '#92400E' }} />
-                <Typography sx={{ fontSize: '0.58rem', color: '#9CA3AF' }}>v{bom.version}</Typography>
-              </Box>
-            </Box>
-          ))}
+                  <IconButton className="del-entry" size="small"
+                    onClick={e => {
+                      e.stopPropagation()
+                      if (item.type === 'chat') {
+                        addHidden(item.raw.session_id)   // persist tombstone
+                        setChatHistory(prev => prev.filter(s => s.session_id !== item.raw.session_id))
+                      } else dispatch(deleteBOM(item.raw.id))
+                    }}
+                    sx={{ opacity: 0, position: 'absolute', top: 3, right: 3, p: 0.15, color: '#EF4444',
+                      transition: 'opacity 0.15s', '&:hover': { bgcolor: '#FEE2E2' } }}>
+                    <DeleteOutline sx={{ fontSize: 11 }} />
+                  </IconButton>
+                </Box>
+              )
+            })
+          })()}
         </Box>
       </Box>
 

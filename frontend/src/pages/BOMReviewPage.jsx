@@ -1,18 +1,19 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useSelector } from 'react-redux'
+import { useSelector, useDispatch } from 'react-redux'
 import {
   Box, Typography, Paper, Button, Grid, Chip, TextField, Alert,
   CircularProgress, Divider, Tooltip, Snackbar, IconButton,
   LinearProgress, Dialog, DialogTitle, DialogContent, DialogActions,
-  Stepper, Step, StepLabel, StepContent,
+  Stepper, Step, StepLabel, StepContent, Select, MenuItem, FormControl, InputLabel,
 } from '@mui/material'
 import {
   CheckCircle, Cancel, HourglassEmpty, Lock, LockOpen,
   ArrowBack, Download, Warning, Refresh, Person, Business, Engineering,
-  BuildCircle, Replay, SkipNext,
+  BuildCircle, Replay, SkipNext, Email as EmailIcon,
 } from '@mui/icons-material'
 import { bomService } from '../services/api'
+import { pushNotification } from '../store/slices/notificationsSlice'
 
 // Sequential approval order
 const PARTY_ORDER = ['buyer_it', 'seller_it', 'si']
@@ -44,6 +45,7 @@ const fmtDate = (s) => s ? new Date(s).toLocaleString('en-US', { month: 'short',
 export default function BOMReviewPage() {
   const { bomId: urlBomId } = useParams()
   const navigate = useNavigate()
+  const dispatch = useDispatch()
   const reduxBOM = useSelector(s => s.bom.currentBOM)
 
   const bomId = urlBomId || reduxBOM?.id || null
@@ -62,6 +64,9 @@ export default function BOMReviewPage() {
   const [toast, setToast] = useState({ open: false, msg: '', severity: 'success' })
   const [actionDialog, setActionDialog] = useState(null) // { party, action: 'request_changes'|'reject' }
   const [downloading, setDownloading] = useState(false)
+  // Role selector — who is the currently logged-in approver
+  const [myRole, setMyRole] = useState(() => localStorage.getItem('bom_approver_role') || '')
+  const [emailSending, setEmailSending] = useState(false)
 
   // ── Load BOM + approvals ─────────────────────────────────────────────────
   const load = useCallback(async () => {
@@ -85,6 +90,47 @@ export default function BOMReviewPage() {
   }, [bomId])
 
   useEffect(() => { load() }, [load])
+
+  // ── Send email notification ──────────────────────────────────────────────
+  const sendEmailNotification = async (subject, bodyLines) => {
+    setEmailSending(true)
+    try {
+      // Build plain-text body with full approval thread
+      const approvalThread = PARTY_ORDER.map(p => {
+        const a = approvals[p]
+        if (!a) return `${PARTY_META[p].label}: Pending`
+        const statusLabel = a.status === 'approved' ? '✅ Approved' : a.status === 'changes_requested' ? '⚠️ Changes Requested' : '❌ Rejected'
+        return `${PARTY_META[p].label}: ${statusLabel} by ${a.approved_by || '—'} on ${a.approved_at ? new Date(a.approved_at).toLocaleString() : '—'}${
+          a.change_description ? `\n  Required changes: ${a.change_description}` : ''
+        }${a.comments ? `\n  Comments: ${a.comments}` : ''}`
+      }).join('\n')
+      const fullBody = [
+        ...bodyLines,
+        '',
+        '--- Approval Thread ---',
+        approvalThread,
+        '',
+        `BOM: ${bom?.project_name} — ${bom?.category}`,
+        `Revision: ${bom?.revision || 1}  |  Approval Cycle: ${bom?.approval_cycle || 1}`,
+        `Total Value: ${bom?.totals?.total_otc != null ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(bom.totals.total_otc) : '—'}`,
+      ].join('\n')
+      await fetch('/api/notify/email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: ['yashu.singh@xoriant.com'],
+          subject,
+          body: fullBody,
+          bom_id: bomId,
+        }),
+      })
+      setToast(t => ({ ...t, open: true, msg: 'Email notification sent to yashu.singh@xoriant.com', severity: 'info' }))
+    } catch {
+      // Email is best-effort — don't block the user
+    } finally {
+      setEmailSending(false)
+    }
+  }
 
   // ── Approve / Request Changes / Reject ──────────────────────────────────
   const submitApproval = async (party, action) => {
@@ -112,12 +158,46 @@ export default function BOMReviewPage() {
 
       if (result.all_approved) {
         setToast({ open: true, msg: '🎉 All 3 parties approved — BOM is finalised and ready for vendor submission!', severity: 'success' })
+        dispatch(pushNotification({ type: 'all_approved', title: 'BOM Fully Approved 🎉', message: `${bom?.project_name} — ${bom?.category}: all 3 parties signed off. Ready for vendor submission.`, link: `/bom-review/${bomId}` }))
+        sendEmailNotification(
+          `[BOM Approved] ${bom?.project_name} — ${bom?.category} — All 3 Parties Signed Off`,
+          ['All three parties have approved the BOM. It is now finalised and ready for vendor submission.'],
+        )
       } else if (action === 'request_changes') {
         setToast({ open: true, msg: `⚠️ ${PARTY_META[party].label} requested changes. BOM must be rebuilt. Approval cycle restarted from Buyer IT.`, severity: 'warning' })
+        dispatch(pushNotification({ type: 'rebuild_required', title: `Changes Requested — ${PARTY_META[party].label}`, message: `${bom?.project_name}: rebuild required. ${form.changeDescription.trim().slice(0, 80)}${form.changeDescription.length > 80 ? '…' : ''}`, targetRole: 'BOM Creator', link: `/bom-review/${bomId}` }))
+        dispatch(pushNotification({ type: 'approval_request', title: 'Approval Cycle Reset to Buyer IT', message: `${bom?.project_name} — awaiting rebuild before re-submission.`, targetRole: 'Buyer IT', link: `/bom-review/${bomId}` }))
+        sendEmailNotification(
+          `[BOM Changes Requested] ${bom?.project_name} — ${bom?.category} — ${PARTY_META[party].label}`,
+          [`${PARTY_META[party].label} has requested changes. The BOM must be rebuilt before re-submission.`,
+           `Requested by: ${form.name.trim()}`,
+           `Changes required: ${form.changeDescription.trim()}`,
+           `Comments: ${form.comments.trim() || '(none)'}`],
+        )
       } else if (action === 'reject') {
         setToast({ open: true, msg: `BOM rejected by ${PARTY_META[party].label}. BOM has been archived.`, severity: 'error' })
+        dispatch(pushNotification({ type: 'rejected', title: `BOM Rejected — ${PARTY_META[party].label}`, message: `${bom?.project_name}: BOM has been archived.`, link: `/bom-review/${bomId}` }))
+        sendEmailNotification(
+          `[BOM Rejected] ${bom?.project_name} — ${bom?.category} — ${PARTY_META[party].label}`,
+          [`${PARTY_META[party].label} has rejected the BOM.`,
+           `Rejected by: ${form.name.trim()}`,
+           `Reason: ${form.comments.trim()}`],
+        )
       } else {
         setToast({ open: true, msg: result.message || `${PARTY_META[party].label} approved successfully.`, severity: 'success' })
+        // Notify the next party in the sequence
+        const nextIdx = PARTY_ORDER.indexOf(party) + 1
+        if (nextIdx < PARTY_ORDER.length) {
+          const nextParty = PARTY_ORDER[nextIdx]
+          dispatch(pushNotification({ type: 'approval_request', title: `Approval Required — ${PARTY_META[nextParty].label}`, message: `${bom?.project_name}: ${PARTY_META[party].label} approved. Your sign-off is next.`, targetRole: PARTY_META[nextParty].label, link: `/bom-review/${bomId}` }))
+        }
+        dispatch(pushNotification({ type: 'approved', title: `${PARTY_META[party].label} Approved`, message: `${bom?.project_name} — step ${PARTY_ORDER.indexOf(party) + 1} of 3 signed off.`, link: `/bom-review/${bomId}` }))
+        sendEmailNotification(
+          `[BOM Sign-off] ${bom?.project_name} — ${bom?.category} — ${PARTY_META[party].label} Approved`,
+          [`${PARTY_META[party].label} has approved the BOM.`,
+           `Approved by: ${form.name.trim()}`,
+           `Comments: ${form.comments.trim() || '(none)'}`],
+        )
       }
     } catch (err) {
       const msg = err?.response?.data?.detail || 'Submission failed. Please try again.'
@@ -190,6 +270,39 @@ export default function BOMReviewPage() {
 
   return (
     <Box sx={{ bgcolor: '#FAFAFA', p: { xs: 1.5, md: 3 }, minHeight: '100vh' }}>
+
+      {/* ── Role Selector Banner ─────────────────────────────────────────── */}
+      {!myRole && (
+        <Alert severity="info" sx={{ mb: 2, fontSize: '0.8rem' }}
+          action={
+            <FormControl size="small" sx={{ minWidth: 160 }}>
+              <InputLabel sx={{ fontSize: '0.75rem' }}>I am…</InputLabel>
+              <Select value={myRole} label="I am…" sx={{ fontSize: '0.75rem' }}
+                onChange={e => { setMyRole(e.target.value); localStorage.setItem('bom_approver_role', e.target.value) }}>
+                <MenuItem value="buyer_it" sx={{ fontSize: '0.78rem' }}>Buyer IT</MenuItem>
+                <MenuItem value="seller_it" sx={{ fontSize: '0.78rem' }}>Seller IT</MenuItem>
+                <MenuItem value="si" sx={{ fontSize: '0.78rem' }}>SI / JBR</MenuItem>
+              </Select>
+            </FormControl>
+          }>
+          Select your role to see your personalised approval view. You will only be able to act on your own sign-off step.
+        </Alert>
+      )}
+      {myRole && (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5, p: '6px 12px', bgcolor: PARTY_META[myRole].bg, borderRadius: 1, border: `1px solid ${PARTY_META[myRole].color}30` }}>
+          <Box sx={{ color: PARTY_META[myRole].color }}>{PARTY_META[myRole].icon}</Box>
+          <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: PARTY_META[myRole].color }}>
+            Viewing as: {PARTY_META[myRole].label}
+          </Typography>
+          <Typography sx={{ fontSize: '0.7rem', color: '#6B7280', flex: 1 }}>
+            — You can only act on your own sign-off step. Other steps are read-only.
+          </Typography>
+          <Button size="small" onClick={() => { setMyRole(''); localStorage.removeItem('bom_approver_role') }}
+            sx={{ fontSize: '0.65rem', textTransform: 'none', color: '#6B7280' }}>
+            Switch role
+          </Button>
+        </Box>
+      )}
 
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 2, flexWrap: 'wrap', gap: 1 }}>
@@ -317,6 +430,9 @@ export default function BOMReviewPage() {
           const isPending   = apprStatus === 'pending'
           const isChanges   = apprStatus === 'changes_requested'
           const priorLabel  = idx > 0 ? PARTY_META[PARTY_ORDER[idx - 1]].label : null
+          // Role-specific: if a role is selected, only that party can act; others are view-only
+          const isMyCard    = !myRole || myRole === party
+          const isViewOnly  = myRole && myRole !== party
 
           return (
             <Grid item xs={12} md={4} key={party}>
@@ -325,7 +441,13 @@ export default function BOMReviewPage() {
                 borderTop: `3px solid ${unlocked ? meta.color : '#E5E7EB'}`,
                 opacity: unlocked ? 1 : 0.7,
                 position: 'relative',
+                outline: isMyCard && isPending && unlocked ? `2px solid ${meta.color}` : 'none',
               }}>
+                {/* View-only badge for other parties */}
+                {isViewOnly && (
+                  <Chip label="View only" size="small"
+                    sx={{ position: 'absolute', top: 8, right: 8, fontSize: '0.55rem', height: 18, bgcolor: '#F3F4F6', color: '#9CA3AF' }} />
+                )}
                 {/* Step label */}
                 <Typography sx={{ fontSize: '0.6rem', color: unlocked ? meta.color : '#9CA3AF', fontWeight: 700,
                   letterSpacing: '0.5px', textTransform: 'uppercase', mb: 0.5 }}>
@@ -376,8 +498,8 @@ export default function BOMReviewPage() {
                   </Box>
                 )}
 
-                {/* Pending and unlocked — show action form */}
-                {unlocked && isPending && !isLocked && !needsRebuild && (
+                {/* Pending and unlocked — show action form (only for the user's own card) */}
+                {unlocked && isPending && !isLocked && !needsRebuild && isMyCard && (
                   <Box>
                     <TextField size="small" fullWidth label="Your name *" value={form.name}
                       onChange={e => setForms(f => ({ ...f, [party]: { ...f[party], name: e.target.value, error: null } }))}
@@ -411,6 +533,16 @@ export default function BOMReviewPage() {
                     Awaiting BOM rebuild before this step can proceed.
                   </Alert>
                 )}
+
+                {/* View-only: show message when another party's pending unlocked card */}
+                {unlocked && isPending && !isLocked && !needsRebuild && isViewOnly && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, p: 1.5, bgcolor: '#F9FAFB', borderRadius: 1 }}>
+                    <Person sx={{ fontSize: 16, color: '#9CA3AF' }} />
+                    <Typography sx={{ fontSize: '0.72rem', color: '#6B7280' }}>
+                      Awaiting {meta.label} sign-off. You can view this step but cannot act on it.
+                    </Typography>
+                  </Box>
+                )}
               </Paper>
             </Grid>
           )
@@ -420,9 +552,20 @@ export default function BOMReviewPage() {
       {/* ── All approved banner ───────────────────────────────────────────── */}
       {allApproved && (
         <Alert severity="success" sx={{ mt: 2, fontSize: '0.8rem' }}
-          action={<Button size="small" onClick={handleDownload} startIcon={<Download />}
-            sx={{ color: '#065F46', fontWeight: 700, textTransform: 'none' }}>Download Excel</Button>}>
-          <strong>BOM fully approved.</strong> All 3 parties have signed off. Download the Excel and submit to vendors.
+          action={
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button size="small" onClick={() => sendEmailNotification(
+                `[BOM Fully Approved] ${bom?.project_name} — ${bom?.category}`,
+                ['All three parties have approved the BOM. It is finalised and ready for vendor submission.'],
+              )} startIcon={<EmailIcon sx={{ fontSize: 14 }} />} disabled={emailSending}
+                sx={{ color: '#065F46', fontWeight: 700, textTransform: 'none' }}>
+                {emailSending ? 'Sending…' : 'Email Summary'}
+              </Button>
+              <Button size="small" onClick={handleDownload} startIcon={<Download />}
+                sx={{ color: '#065F46', fontWeight: 700, textTransform: 'none' }}>Download Excel</Button>
+            </Box>
+          }>
+          <strong>BOM fully approved.</strong> All 3 parties have signed off. Email the summary or download the Excel and submit to vendors.
         </Alert>
       )}
 

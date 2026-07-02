@@ -59,6 +59,13 @@ class Settings(BaseSettings):
     adls_container_templates: str = Field(default="templates", alias="ADLS_CONTAINER_TEMPLATES")
     adls_container_exports: str = Field(default="exports", alias="ADLS_CONTAINER_EXPORTS")
     adls_container_chat_history: str = Field(default="chat-history", alias="ADLS_CONTAINER_CHAT_HISTORY")
+
+    # SMTP email notifications (optional — leave blank to log to console only)
+    smtp_host:     str = Field(default="", alias="SMTP_HOST")
+    smtp_port:     int = Field(default=587, alias="SMTP_PORT")
+    smtp_user:     str = Field(default="", alias="SMTP_USER")
+    smtp_password: str = Field(default="", alias="SMTP_PASSWORD")
+    smtp_from:     str = Field(default="noreply@it-contracting-dashboard.com", alias="SMTP_FROM")
     
     # Azure Key Vault (optional when using dummy data)
     keyvault_url: str = Field(default="https://dummy-keyvault.vault.azure.net/", alias="KEYVAULT_URL")
