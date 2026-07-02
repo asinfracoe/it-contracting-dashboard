@@ -8,7 +8,6 @@ import {
   Build as BuildIcon,
   AutoAwesome as ChatIcon,
   LibraryBooks as LibraryIcon,
-  Analytics as AnalyticsIcon,
   FileDownload, Refresh, ChevronLeft, ChevronRight,
 } from '@mui/icons-material'
 
@@ -17,7 +16,6 @@ const NAV_C = 52
 
 const menuItems = [
   { text: 'Overview', icon: <DashboardIcon sx={{ fontSize: 17 }} />, path: '/overview' },
-  { text: 'Analytics', icon: <AnalyticsIcon sx={{ fontSize: 17 }} />, path: '/analytics' },
   { text: 'BOM Library', icon: <LibraryIcon sx={{ fontSize: 17 }} />, path: '/bom-library' },
   { text: 'AI BOM Assistant', icon: <ChatIcon sx={{ fontSize: 17 }} />, path: '/chat' },
   { text: 'Vendor Price Selector', icon: <CompareIcon sx={{ fontSize: 17 }} />, path: '/vendor-selector' },

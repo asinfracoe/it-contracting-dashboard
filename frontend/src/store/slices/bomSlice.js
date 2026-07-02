@@ -122,6 +122,10 @@ const bomSlice = createSlice({
       s.currentBOM.lineItems.forEach((i, idx) => { i.lineNo = idx + 1 })
       s.currentBOM.totalValue = s.currentBOM.lineItems.reduce((t, i) => t + (i.extPrice || 0), 0)
     },
+    deleteBOM: (s, a) => {
+      s.bomList = s.bomList.filter(b => b.id !== a.payload)
+      if (s.currentBOM?.id === a.payload) s.currentBOM = null
+    },
     archiveBOM: (s, a) => { const b = s.bomList.find(x => x.id === a.payload); if (b) b.status = 'archived' },
     setBOMList: (s, a) => { s.bomList = a.payload },
     setLoading:  (s, a) => { s.loading = a.payload },
@@ -129,6 +133,6 @@ const bomSlice = createSlice({
   },
 })
 
-export const { setCurrentBOM, setActiveBOMForRFQ, saveBOM, addLineItem, updateLineItem, removeLineItem, archiveBOM, setBOMList, setLoading, setError } = bomSlice.actions
+export const { setCurrentBOM, setActiveBOMForRFQ, saveBOM, deleteBOM, addLineItem, updateLineItem, removeLineItem, archiveBOM, setBOMList, setLoading, setError } = bomSlice.actions
 export default bomSlice.reducer
 
